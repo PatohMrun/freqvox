@@ -8,6 +8,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -156,12 +157,18 @@ fun LibraryScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 120.dp)
                 ) {
-                    items(sortedTracks, key = { it.id }) { track ->
+                    itemsIndexed(sortedTracks, key = { _, track -> track.id }) { index, track ->
                         LibraryTrackItem(
                             track = track,
                             isCurrentTrack = currentTrackTitle == track.title,
                             isPlaying = isPlaying,
-                            onClick = { onTrackClick(track) }
+                            onClick = {
+                                if (currentTrackTitle == track.title) {
+                                    playbackController.togglePlayPause()
+                                } else {
+                                    playbackController.playQueue(sortedTracks, index)
+                                }
+                            }
                         )
                     }
                 }

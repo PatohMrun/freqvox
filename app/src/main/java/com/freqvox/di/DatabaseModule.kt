@@ -3,6 +3,7 @@ package com.freqvox.di
 import android.content.Context
 import androidx.room.Room
 import com.freqvox.data.local.FreqvoxDatabase
+import com.freqvox.data.local.dao.PlayHistoryDao
 import com.freqvox.data.local.dao.PlaylistDao
 import com.freqvox.data.local.dao.TagDao
 import com.freqvox.data.local.dao.TrackDao
@@ -36,4 +37,7 @@ object DatabaseModule {
 
     @Provides
     fun providePlaylistDao(database: FreqvoxDatabase): PlaylistDao = database.playlistDao()
+
+    @Provides
+    fun providePlayHistoryDao(database: FreqvoxDatabase): PlayHistoryDao = database.playHistoryDao()
 }

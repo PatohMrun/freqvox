@@ -6,8 +6,10 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.media.MediaMetadataRetriever
 import android.provider.MediaStore
+import com.freqvox.data.local.dao.PlayHistoryDao
 import com.freqvox.data.local.dao.TagDao
 import com.freqvox.data.local.dao.TrackDao
+import com.freqvox.data.local.entities.PlayHistoryEntity
 import com.freqvox.data.local.entities.TagEntity
 import com.freqvox.data.local.entities.TrackEntity
 import com.freqvox.data.local.entities.TrackTagCrossRef
@@ -25,10 +27,17 @@ import javax.inject.Singleton
 class TrackRepository @Inject constructor(
     @ApplicationContext private val context: Context,
     private val trackDao: TrackDao,
-    private val tagDao: TagDao
+    private val tagDao: TagDao,
+    private val playHistoryDao: PlayHistoryDao
 ) {
     val allTracks: Flow<List<TrackEntity>> = trackDao.getAllTracks()
     val allTags: Flow<List<TagEntity>> = tagDao.getAllTags()
+    val allTrackTagCrossRefs: Flow<List<TrackTagCrossRef>> = tagDao.getAllTrackTagCrossRefs()
+
+    fun getRecentPlayHistory(): Flow<List<PlayHistoryEntity>> {
+        val since = System.currentTimeMillis() - 90L * 86_400_000
+        return playHistoryDao.getHistorySinceFlow(since)
+    }
 
     fun getActiveTracks(recentThreshold: Long): Flow<List<TrackEntity>> = 
         trackDao.getActiveTracks(recentThreshold)
@@ -104,18 +113,26 @@ class TrackRepository @Inject constructor(
 
     private suspend fun ensureDefaultTags() {
         val defaultTags = listOf(
-            "liked" to 0xFFFF4D7C.toInt(),
-            "chill" to 0xFF42A5F5.toInt(),
-            "energetic" to 0xFFFF4D7C.toInt(),
-            "focus" to 0xFF4DFFB4.toInt(),
-            "hype" to 0xFFFFA726.toInt(),
-            "melancholy" to 0xFF6B3FA0.toInt(),
-            "late night" to 0xFF7C4DFF.toInt()
+            "liked"       to 0xFFFF4D7C.toInt(),
+            "chill"       to 0xFF42A5F5.toInt(),
+            "energetic"   to 0xFFFF6D00.toInt(),
+            "focus"       to 0xFF4DFFB4.toInt(),
+            "hype"        to 0xFFFFA726.toInt(),
+            "melancholy"  to 0xFF6B3FA0.toInt(),
+            "late night"  to 0xFF7C4DFF.toInt(),
+            "workout"     to 0xFFFF4D7C.toInt(),
+            "drive"       to 0xFF00BCD4.toInt(),
+            "sleep"       to 0xFF3F51B5.toInt(),
+            "party"       to 0xFFE91E63.toInt(),
+            "morning"     to 0xFFFFEB3B.toInt(),
+            "throwback"   to 0xFF795548.toInt(),
+            "underrated"  to 0xFF4CAF50.toInt(),
+            "sad"         to 0xFF607D8B.toInt(),
+            "vibes"       to 0xFF9C27B0.toInt()
         )
-        
-        val currentTags = tagDao.getAllTags().first()
-        if (currentTags.isEmpty()) {
-            defaultTags.forEach { (name, color) ->
+        val existingNames = tagDao.getAllTags().first().map { it.name.lowercase() }.toSet()
+        defaultTags.forEach { (name, color) ->
+            if (name !in existingNames) {
                 tagDao.insertTag(TagEntity(name = name, color = color))
             }
         }

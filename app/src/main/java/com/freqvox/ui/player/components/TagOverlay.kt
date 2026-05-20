@@ -1,6 +1,7 @@
 package com.freqvox.ui.player.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -13,11 +14,31 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.freqvox.data.local.entities.TagEntity
+
+private val tagEmojis = mapOf(
+    "liked"      to "❤️",
+    "chill"      to "😌",
+    "energetic"  to "⚡",
+    "focus"      to "📚",
+    "hype"       to "🔥",
+    "melancholy" to "💙",
+    "late night" to "🌙",
+    "workout"    to "💪",
+    "drive"      to "🚗",
+    "sleep"      to "😴",
+    "party"      to "🎉",
+    "morning"    to "☀️",
+    "throwback"  to "🕰️",
+    "underrated" to "💎",
+    "sad"        to "😔",
+    "vibes"      to "✨"
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -30,14 +51,15 @@ fun TagOverlay(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .fillMaxHeight(0.5f),
+            .fillMaxHeight(0.55f),
         color = Color(0xFF12121A),
         shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
         tonalElevation = 16.dp
     ) {
         Column(
             modifier = Modifier
-                .padding(24.dp)
+                .padding(horizontal = 20.dp)
+                .padding(top = 20.dp, bottom = 8.dp)
                 .fillMaxSize()
         ) {
             Row(
@@ -45,29 +67,36 @@ fun TagOverlay(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "TAG TRACK",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = Color.Gray,
-                    letterSpacing = 2.sp
-                )
+                Column {
+                    Text(
+                        text = "TAG THIS TRACK",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = Color.White.copy(alpha = 0.5f),
+                        letterSpacing = 2.sp
+                    )
+                    Text(
+                        text = "Tap to toggle · builds smart playlists",
+                        color = Color.White.copy(alpha = 0.25f),
+                        fontSize = 11.sp
+                    )
+                }
                 IconButton(onClick = onClose) {
-                    Icon(Icons.Default.Close, contentDescription = null, tint = Color.Gray)
+                    Icon(Icons.Default.Close, contentDescription = null, tint = Color.White.copy(alpha = 0.4f))
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 items(tags) { tag ->
-                    val isSelected = selectedTagIds.contains(tag.id)
                     TagChip(
                         tag = tag,
-                        isSelected = isSelected,
+                        isSelected = selectedTagIds.contains(tag.id),
+                        emoji = tagEmojis[tag.name.lowercase()],
                         onClick = { onTagClick(tag) }
                     )
                 }
@@ -80,22 +109,40 @@ fun TagOverlay(
 fun TagChip(
     tag: TagEntity,
     isSelected: Boolean,
+    emoji: String? = null,
     onClick: () -> Unit
 ) {
-    Surface(
+    val tagColor = Color(tag.color)
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(50.dp)
+            .height(52.dp)
+            .clip(RoundedCornerShape(26.dp))
+            .background(
+                if (isSelected) tagColor.copy(alpha = 0.18f)
+                else Color.White.copy(alpha = 0.05f)
+            )
+            .then(
+                if (isSelected)
+                    Modifier.border(1.5.dp, tagColor.copy(alpha = 0.7f), RoundedCornerShape(26.dp))
+                else
+                    Modifier.border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(26.dp))
+            )
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(25.dp),
-        color = if (isSelected) Color(tag.color).copy(alpha = 0.3f) else Color(0xFF1A1A26),
-        border = if (isSelected) CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(Color(tag.color))) else null
+        contentAlignment = Alignment.Center
     ) {
-        Box(contentAlignment = Alignment.Center) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            if (emoji != null) {
+                Text(text = emoji, fontSize = 16.sp)
+                Spacer(modifier = Modifier.width(6.dp))
+            }
             Text(
-                text = tag.name,
-                color = if (isSelected) Color.White else Color.Gray,
-                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                text = tag.name.replaceFirstChar { it.uppercase() },
+                color = if (isSelected) Color.White else Color.White.copy(alpha = 0.55f),
+                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
                 fontSize = 14.sp
             )
         }

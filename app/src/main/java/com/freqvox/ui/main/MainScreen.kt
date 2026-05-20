@@ -49,6 +49,12 @@ fun MainScreen(
     val currentArtworkUri by playbackController.currentArtworkUri.collectAsState()
     val currentPosition by playbackController.currentPosition.collectAsState()
     val duration by playbackController.duration.collectAsState()
+    val shuffleEnabled by playbackController.shuffleEnabled.collectAsState()
+    val repeatMode by playbackController.repeatMode.collectAsState()
+    val sleepTimerActive by playbackController.isTimerRunning.collectAsState()
+    val sleepTimerTimeLeft by playbackController.timerTimeLeft.collectAsState()
+    val queue by playbackController.queue.collectAsState()
+    val currentQueueIndex by playbackController.currentQueueIndex.collectAsState()
     
     val isLiked by viewModel.isCurrentTrackLiked.collectAsState()
     val allTags by viewModel.allTags.collectAsState()
@@ -186,13 +192,13 @@ fun MainScreen(
                     composable(Screen.Home.route) {
                         HomeScreen(
                             playbackController = playbackController,
-                            onTrackClick = { track ->
+                            onTrackClick = { track, contextTracks ->
                                 val currentTitle = playbackController.currentTrackTitle.value
                                 if (currentTitle == track.title) {
-                                    // Same track — toggle play/pause
                                     playbackController.togglePlayPause()
                                 } else {
-                                    playbackController.playMediaUri(track.path, track.title, track.artist, track.id.toString(), track.artworkPath)
+                                    val startIndex = contextTracks.indexOf(track).coerceAtLeast(0)
+                                    playbackController.playQueue(contextTracks, startIndex)
                                 }
                             }
                         )
@@ -220,7 +226,7 @@ fun MainScreen(
                             playbackController.playMediaUri(station.url, station.name, "Radio", station.url)
                         }) 
                     }
-                    composable(Screen.Player.route) { 
+                    composable(Screen.Player.route) {
                         PlayerScreen(
                             trackTitle = currentTrackTitle,
                             artist = currentArtist,
@@ -229,13 +235,26 @@ fun MainScreen(
                             duration = duration,
                             artworkUri = currentArtworkUri?.toString(),
                             isLiked = isLiked,
+                            shuffleEnabled = shuffleEnabled,
+                            repeatMode = repeatMode,
+                            sleepTimerActive = sleepTimerActive,
+                            sleepTimerTimeLeft = sleepTimerTimeLeft,
+                            onBack = { navController.popBackStack() },
                             onPlayPauseClick = { playbackController.togglePlayPause() },
-                            onNextClick = { playbackController.playNext() },
+                            onNextClick = { playbackController.skipNext() },
                             onPreviousClick = { playbackController.playPrevious() },
                             onSeek = { playbackController.seekTo((it * duration.toFloat()).toLong()) },
                             onLikeClick = { viewModel.toggleLike() },
+                            onShuffleClick = { playbackController.toggleShuffle() },
+                            onRepeatClick = { playbackController.cycleRepeatMode() },
+                            onSleepTimer = { minutes -> playbackController.startSleepTimer(minutes) },
+                            onStopSleepTimer = { playbackController.stopSleepTimer() },
+                            queue = queue,
+                            currentQueueIndex = currentQueueIndex,
+                            onQueueItemClick = { index -> playbackController.jumpToQueueItem(index) },
+                            onQueueItemRemove = { index -> playbackController.removeFromQueue(index) },
                             onTagSwipeUp = { showTagSheet = true }
-                        ) 
+                        )
                     }
                 }
 

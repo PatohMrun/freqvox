@@ -39,7 +39,7 @@ import java.util.*
 @Composable
 fun HomeScreen(
     playbackController: PlaybackController,
-    onTrackClick: (TrackEntity) -> Unit,
+    onTrackClick: (TrackEntity, List<TrackEntity>) -> Unit,
     viewModel: MainViewModel = hiltViewModel()
 ) {
     val activeTracks by viewModel.activeTracks.collectAsState()
@@ -48,13 +48,13 @@ fun HomeScreen(
     val totalDuration by viewModel.totalDuration.collectAsState()
     val isPlaying by playbackController.isPlaying.collectAsState()
     val currentTrackTitle by playbackController.currentTrackTitle.collectAsState()
+    val playHistory by viewModel.playHistory.collectAsState()
+    val taggedTrackIds by viewModel.taggedTrackIds.collectAsState()
 
     val greeting = rememberGreeting()
-    
-    // Generate the endless dynamic feed based on the ENTIRE library (shuffled)
-    val feedItems = remember(activeTracks) {
-        val shuffledTracks = activeTracks.shuffled()
-        FeedGenerator.generateFeed(shuffledTracks)
+
+    val feedItems = remember(activeTracks, playHistory, taggedTrackIds) {
+        FeedGenerator.generateFeed(activeTracks, FeedContext(playHistory, taggedTrackIds))
     }
 
     val heroTrack = currentTrack ?: activeTracks.firstOrNull()
@@ -97,7 +97,7 @@ fun HomeScreen(
             if (heroTrack != null) {
                 HeroFeedCard(
                     track = heroTrack,
-                    onClick = { onTrackClick(heroTrack) },
+                    onClick = { onTrackClick(heroTrack, activeTracks) },
                     modifier = Modifier.padding(horizontal = 24.dp)
                 )
                 Spacer(modifier = Modifier.height(32.dp))
@@ -110,7 +110,7 @@ fun HomeScreen(
                 is FeedItem.Spotlight -> {
                     SpotlightFeedBlock(
                         track = item.track,
-                        onClick = { onTrackClick(item.track) },
+                        onClick = { onTrackClick(item.track, activeTracks) },
                         modifier = Modifier.padding(horizontal = 24.dp)
                     )
                     Spacer(modifier = Modifier.height(32.dp))
@@ -119,7 +119,7 @@ fun HomeScreen(
                 is FeedItem.FeaturedBanner -> {
                     FeaturedBannerBlock(
                         track = item.track,
-                        onClick = { onTrackClick(item.track) },
+                        onClick = { onTrackClick(item.track, activeTracks) },
                         modifier = Modifier.padding(horizontal = 24.dp)
                     )
                     Spacer(modifier = Modifier.height(32.dp))
@@ -136,7 +136,7 @@ fun HomeScreen(
                                 track = track,
                                 isCurrentTrack = currentTrackTitle == track.title,
                                 isPlaying = isPlaying,
-                                onClick = { onTrackClick(track) }
+                                onClick = { onTrackClick(track, item.tracks) }
                             )
                             Spacer(modifier = Modifier.height(12.dp))
                         }
@@ -147,17 +147,29 @@ fun HomeScreen(
                 is FeedItem.HorizontalCarousel -> {
                     SectionTitle(item.title, modifier = Modifier.padding(horizontal = 24.dp))
                     Spacer(modifier = Modifier.height(16.dp))
-                    QuickPicksRow(item.tracks, onTrackClick)
+                    QuickPicksRow(
+                        tracks = item.tracks,
+                        queueContext = item.tracks,
+                        onTrackClick = onTrackClick
+                    )
                     Spacer(modifier = Modifier.height(32.dp))
                 }
-                
+
                 is FeedItem.DoubleHorizontalCarousel -> {
                     SectionTitle(item.title, modifier = Modifier.padding(horizontal = 24.dp))
                     Spacer(modifier = Modifier.height(16.dp))
                     val half = item.tracks.size / 2
-                    QuickPicksRow(item.tracks.take(half), onTrackClick)
+                    QuickPicksRow(
+                        tracks = item.tracks.take(half),
+                        queueContext = item.tracks,
+                        onTrackClick = onTrackClick
+                    )
                     Spacer(modifier = Modifier.height(12.dp))
-                    QuickPicksRow(item.tracks.drop(half), onTrackClick)
+                    QuickPicksRow(
+                        tracks = item.tracks.drop(half),
+                        queueContext = item.tracks,
+                        onTrackClick = onTrackClick
+                    )
                     Spacer(modifier = Modifier.height(32.dp))
                 }
 
@@ -166,7 +178,7 @@ fun HomeScreen(
                     Spacer(modifier = Modifier.height(16.dp))
                     GridFeedBlock(
                         tracks = item.tracks,
-                        onClick = onTrackClick,
+                        onClick = { track -> onTrackClick(track, item.tracks) },
                         modifier = Modifier.padding(horizontal = 24.dp)
                     )
                     Spacer(modifier = Modifier.height(32.dp))
@@ -506,7 +518,11 @@ fun SectionTitle(title: String, modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun QuickPicksRow(tracks: List<TrackEntity>, onTrackClick: (TrackEntity) -> Unit) {
+fun QuickPicksRow(
+    tracks: List<TrackEntity>,
+    queueContext: List<TrackEntity>,
+    onTrackClick: (TrackEntity, List<TrackEntity>) -> Unit
+) {
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         contentPadding = PaddingValues(horizontal = 24.dp)
@@ -516,7 +532,7 @@ fun QuickPicksRow(tracks: List<TrackEntity>, onTrackClick: (TrackEntity) -> Unit
                 modifier = Modifier
                     .width(130.dp)
                     .clip(RoundedCornerShape(16.dp))
-                    .clickable { onTrackClick(track) }
+                    .clickable { onTrackClick(track, queueContext) }
             ) {
                 Surface(
                     modifier = Modifier.size(130.dp),

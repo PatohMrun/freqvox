@@ -7,12 +7,14 @@ import androidx.fragment.app.Fragment;
 import androidx.lifecycle.SavedStateHandle;
 import androidx.lifecycle.ViewModel;
 import com.freqvox.data.local.FreqvoxDatabase;
+import com.freqvox.data.local.dao.PlayHistoryDao;
 import com.freqvox.data.local.dao.PlaylistDao;
 import com.freqvox.data.local.dao.TagDao;
 import com.freqvox.data.local.dao.TrackDao;
 import com.freqvox.data.repository.PlaylistRepository;
 import com.freqvox.data.repository.TrackRepository;
 import com.freqvox.di.DatabaseModule_ProvideDatabaseFactory;
+import com.freqvox.di.DatabaseModule_ProvidePlayHistoryDaoFactory;
 import com.freqvox.di.DatabaseModule_ProvidePlaylistDaoFactory;
 import com.freqvox.di.DatabaseModule_ProvideTagDaoFactory;
 import com.freqvox.di.DatabaseModule_ProvideTrackDaoFactory;
@@ -581,6 +583,10 @@ public final class DaggerFreqvoxApplication_HiltComponents_SingletonC {
       return DatabaseModule_ProvideTrackDaoFactory.provideTrackDao(provideDatabaseProvider.get());
     }
 
+    private PlayHistoryDao playHistoryDao() {
+      return DatabaseModule_ProvidePlayHistoryDaoFactory.providePlayHistoryDao(provideDatabaseProvider.get());
+    }
+
     private TagDao tagDao() {
       return DatabaseModule_ProvideTagDaoFactory.provideTagDao(provideDatabaseProvider.get());
     }
@@ -632,7 +638,7 @@ public final class DaggerFreqvoxApplication_HiltComponents_SingletonC {
       public T get() {
         switch (id) {
           case 0: // com.freqvox.playback.PlaybackController 
-          return (T) PlaybackModule_ProvidePlaybackControllerFactory.providePlaybackController(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule), singletonCImpl.trackDao(), singletonCImpl.sleepTimerManagerProvider.get());
+          return (T) PlaybackModule_ProvidePlaybackControllerFactory.providePlaybackController(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule), singletonCImpl.trackDao(), singletonCImpl.playHistoryDao(), singletonCImpl.sleepTimerManagerProvider.get());
 
           case 1: // com.freqvox.data.local.FreqvoxDatabase 
           return (T) DatabaseModule_ProvideDatabaseFactory.provideDatabase(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule));
@@ -641,7 +647,7 @@ public final class DaggerFreqvoxApplication_HiltComponents_SingletonC {
           return (T) new SleepTimerManager();
 
           case 3: // com.freqvox.data.repository.TrackRepository 
-          return (T) new TrackRepository(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule), singletonCImpl.trackDao(), singletonCImpl.tagDao());
+          return (T) new TrackRepository(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule), singletonCImpl.trackDao(), singletonCImpl.tagDao(), singletonCImpl.playHistoryDao());
 
           case 4: // com.freqvox.data.repository.PlaylistRepository 
           return (T) new PlaylistRepository(singletonCImpl.playlistDao(), singletonCImpl.tagDao(), singletonCImpl.trackRepositoryProvider.get());

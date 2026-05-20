@@ -110,7 +110,7 @@ public final class TagDao_Impl implements TagDao {
   }
 
   @Override
-  public Object insertTag(final TagEntity tag, final Continuation<? super Unit> arg1) {
+  public Object insertTag(final TagEntity tag, final Continuation<? super Unit> $completion) {
     return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
       @Override
       @NonNull
@@ -124,12 +124,12 @@ public final class TagDao_Impl implements TagDao {
           __db.endTransaction();
         }
       }
-    }, arg1);
+    }, $completion);
   }
 
   @Override
   public Object insertTrackTagCrossRef(final TrackTagCrossRef crossRef,
-      final Continuation<? super Unit> arg1) {
+      final Continuation<? super Unit> $completion) {
     return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
       @Override
       @NonNull
@@ -143,11 +143,11 @@ public final class TagDao_Impl implements TagDao {
           __db.endTransaction();
         }
       }
-    }, arg1);
+    }, $completion);
   }
 
   @Override
-  public Object deleteTag(final TagEntity tag, final Continuation<? super Unit> arg1) {
+  public Object deleteTag(final TagEntity tag, final Continuation<? super Unit> $completion) {
     return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
       @Override
       @NonNull
@@ -161,12 +161,12 @@ public final class TagDao_Impl implements TagDao {
           __db.endTransaction();
         }
       }
-    }, arg1);
+    }, $completion);
   }
 
   @Override
   public Object deleteTrackTagCrossRef(final TrackTagCrossRef crossRef,
-      final Continuation<? super Unit> arg1) {
+      final Continuation<? super Unit> $completion) {
     return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
       @Override
       @NonNull
@@ -180,7 +180,7 @@ public final class TagDao_Impl implements TagDao {
           __db.endTransaction();
         }
       }
-    }, arg1);
+    }, $completion);
   }
 
   @Override
@@ -379,7 +379,8 @@ public final class TagDao_Impl implements TagDao {
   }
 
   @Override
-  public Object getTagIdsForTrack(final long trackId, final Continuation<? super List<Long>> arg1) {
+  public Object getTagIdsForTrack(final long trackId,
+      final Continuation<? super List<Long>> $completion) {
     final String _sql = "SELECT tagId FROM track_tags WHERE trackId = ?";
     final RoomSQLiteQuery _statement = RoomSQLiteQuery.acquire(_sql, 1);
     int _argIndex = 1;
@@ -407,7 +408,45 @@ public final class TagDao_Impl implements TagDao {
           _statement.release();
         }
       }
-    }, arg1);
+    }, $completion);
+  }
+
+  @Override
+  public Flow<List<TrackTagCrossRef>> getAllTrackTagCrossRefs() {
+    final String _sql = "SELECT * FROM track_tags";
+    final RoomSQLiteQuery _statement = RoomSQLiteQuery.acquire(_sql, 0);
+    return CoroutinesRoom.createFlow(__db, false, new String[] {"track_tags"}, new Callable<List<TrackTagCrossRef>>() {
+      @Override
+      @NonNull
+      public List<TrackTagCrossRef> call() throws Exception {
+        final Cursor _cursor = DBUtil.query(__db, _statement, false, null);
+        try {
+          final int _cursorIndexOfTrackId = CursorUtil.getColumnIndexOrThrow(_cursor, "trackId");
+          final int _cursorIndexOfTagId = CursorUtil.getColumnIndexOrThrow(_cursor, "tagId");
+          final int _cursorIndexOfAssignedAt = CursorUtil.getColumnIndexOrThrow(_cursor, "assignedAt");
+          final List<TrackTagCrossRef> _result = new ArrayList<TrackTagCrossRef>(_cursor.getCount());
+          while (_cursor.moveToNext()) {
+            final TrackTagCrossRef _item;
+            final long _tmpTrackId;
+            _tmpTrackId = _cursor.getLong(_cursorIndexOfTrackId);
+            final long _tmpTagId;
+            _tmpTagId = _cursor.getLong(_cursorIndexOfTagId);
+            final long _tmpAssignedAt;
+            _tmpAssignedAt = _cursor.getLong(_cursorIndexOfAssignedAt);
+            _item = new TrackTagCrossRef(_tmpTrackId,_tmpTagId,_tmpAssignedAt);
+            _result.add(_item);
+          }
+          return _result;
+        } finally {
+          _cursor.close();
+        }
+      }
+
+      @Override
+      protected void finalize() {
+        _statement.release();
+      }
+    });
   }
 
   @NonNull

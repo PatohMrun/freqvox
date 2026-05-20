@@ -86,7 +86,7 @@ public final class PlaylistDao_Impl implements PlaylistDao {
 
   @Override
   public Object insertPlaylist(final PlaylistEntity playlist,
-      final Continuation<? super Long> $completion) {
+      final Continuation<? super Long> arg1) {
     return CoroutinesRoom.execute(__db, true, new Callable<Long>() {
       @Override
       @NonNull
@@ -100,12 +100,12 @@ public final class PlaylistDao_Impl implements PlaylistDao {
           __db.endTransaction();
         }
       }
-    }, $completion);
+    }, arg1);
   }
 
   @Override
   public Object deletePlaylist(final PlaylistEntity playlist,
-      final Continuation<? super Unit> $completion) {
+      final Continuation<? super Unit> arg1) {
     return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
       @Override
       @NonNull
@@ -119,7 +119,7 @@ public final class PlaylistDao_Impl implements PlaylistDao {
           __db.endTransaction();
         }
       }
-    }, $completion);
+    }, arg1);
   }
 
   @Override
@@ -179,8 +179,7 @@ public final class PlaylistDao_Impl implements PlaylistDao {
   }
 
   @Override
-  public Object getPlaylistById(final long id,
-      final Continuation<? super PlaylistEntity> $completion) {
+  public Object getPlaylistById(final long id, final Continuation<? super PlaylistEntity> arg1) {
     final String _sql = "SELECT * FROM playlists WHERE id = ?";
     final RoomSQLiteQuery _statement = RoomSQLiteQuery.acquire(_sql, 1);
     int _argIndex = 1;
@@ -231,7 +230,7 @@ public final class PlaylistDao_Impl implements PlaylistDao {
           _statement.release();
         }
       }
-    }, $completion);
+    }, arg1);
   }
 
   @NonNull

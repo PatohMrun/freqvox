@@ -11,6 +11,8 @@ import androidx.room.util.DBUtil;
 import androidx.room.util.TableInfo;
 import androidx.sqlite.db.SupportSQLiteDatabase;
 import androidx.sqlite.db.SupportSQLiteOpenHelper;
+import com.freqvox.data.local.dao.PlayHistoryDao;
+import com.freqvox.data.local.dao.PlayHistoryDao_Impl;
 import com.freqvox.data.local.dao.PlaylistDao;
 import com.freqvox.data.local.dao.PlaylistDao_Impl;
 import com.freqvox.data.local.dao.TagDao;
@@ -38,6 +40,8 @@ public final class FreqvoxDatabase_Impl extends FreqvoxDatabase {
   private volatile TagDao _tagDao;
 
   private volatile PlaylistDao _playlistDao;
+
+  private volatile PlayHistoryDao _playHistoryDao;
 
   @Override
   @NonNull
@@ -245,6 +249,7 @@ public final class FreqvoxDatabase_Impl extends FreqvoxDatabase {
     _typeConvertersMap.put(TrackDao.class, TrackDao_Impl.getRequiredConverters());
     _typeConvertersMap.put(TagDao.class, TagDao_Impl.getRequiredConverters());
     _typeConvertersMap.put(PlaylistDao.class, PlaylistDao_Impl.getRequiredConverters());
+    _typeConvertersMap.put(PlayHistoryDao.class, PlayHistoryDao_Impl.getRequiredConverters());
     return _typeConvertersMap;
   }
 
@@ -301,6 +306,20 @@ public final class FreqvoxDatabase_Impl extends FreqvoxDatabase {
           _playlistDao = new PlaylistDao_Impl(this);
         }
         return _playlistDao;
+      }
+    }
+  }
+
+  @Override
+  public PlayHistoryDao playHistoryDao() {
+    if (_playHistoryDao != null) {
+      return _playHistoryDao;
+    } else {
+      synchronized(this) {
+        if(_playHistoryDao == null) {
+          _playHistoryDao = new PlayHistoryDao_Impl(this);
+        }
+        return _playHistoryDao;
       }
     }
   }

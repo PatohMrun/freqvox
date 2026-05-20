@@ -36,4 +36,7 @@ interface TagDao {
     
     @Query("SELECT tagId FROM track_tags WHERE trackId = :trackId")
     suspend fun getTagIdsForTrack(trackId: Long): List<Long>
+
+    @Query("SELECT * FROM track_tags")
+    fun getAllTrackTagCrossRefs(): Flow<List<TrackTagCrossRef>>
 }

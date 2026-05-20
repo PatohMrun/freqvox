@@ -1,6 +1,7 @@
 package com.freqvox.di
 
 import android.content.Context
+import com.freqvox.data.local.dao.PlayHistoryDao
 import com.freqvox.data.local.dao.TrackDao
 import com.freqvox.playback.PlaybackController
 import com.freqvox.playback.SleepTimerManager
@@ -20,9 +21,10 @@ object PlaybackModule {
     fun providePlaybackController(
         @ApplicationContext context: Context,
         trackDao: TrackDao,
+        playHistoryDao: PlayHistoryDao,
         sleepTimerManager: SleepTimerManager
     ): PlaybackController {
-        return PlaybackController(context, trackDao, sleepTimerManager).apply {
+        return PlaybackController(context, trackDao, playHistoryDao, sleepTimerManager).apply {
             initializeController()
         }
     }

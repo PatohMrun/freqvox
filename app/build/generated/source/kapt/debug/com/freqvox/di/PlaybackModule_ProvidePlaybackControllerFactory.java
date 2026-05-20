@@ -1,6 +1,7 @@
 package com.freqvox.di;
 
 import android.content.Context;
+import com.freqvox.data.local.dao.PlayHistoryDao;
 import com.freqvox.data.local.dao.TrackDao;
 import com.freqvox.playback.PlaybackController;
 import com.freqvox.playback.SleepTimerManager;
@@ -31,28 +32,33 @@ public final class PlaybackModule_ProvidePlaybackControllerFactory implements Fa
 
   private final Provider<TrackDao> trackDaoProvider;
 
+  private final Provider<PlayHistoryDao> playHistoryDaoProvider;
+
   private final Provider<SleepTimerManager> sleepTimerManagerProvider;
 
   public PlaybackModule_ProvidePlaybackControllerFactory(Provider<Context> contextProvider,
-      Provider<TrackDao> trackDaoProvider, Provider<SleepTimerManager> sleepTimerManagerProvider) {
+      Provider<TrackDao> trackDaoProvider, Provider<PlayHistoryDao> playHistoryDaoProvider,
+      Provider<SleepTimerManager> sleepTimerManagerProvider) {
     this.contextProvider = contextProvider;
     this.trackDaoProvider = trackDaoProvider;
+    this.playHistoryDaoProvider = playHistoryDaoProvider;
     this.sleepTimerManagerProvider = sleepTimerManagerProvider;
   }
 
   @Override
   public PlaybackController get() {
-    return providePlaybackController(contextProvider.get(), trackDaoProvider.get(), sleepTimerManagerProvider.get());
+    return providePlaybackController(contextProvider.get(), trackDaoProvider.get(), playHistoryDaoProvider.get(), sleepTimerManagerProvider.get());
   }
 
   public static PlaybackModule_ProvidePlaybackControllerFactory create(
       Provider<Context> contextProvider, Provider<TrackDao> trackDaoProvider,
+      Provider<PlayHistoryDao> playHistoryDaoProvider,
       Provider<SleepTimerManager> sleepTimerManagerProvider) {
-    return new PlaybackModule_ProvidePlaybackControllerFactory(contextProvider, trackDaoProvider, sleepTimerManagerProvider);
+    return new PlaybackModule_ProvidePlaybackControllerFactory(contextProvider, trackDaoProvider, playHistoryDaoProvider, sleepTimerManagerProvider);
   }
 
   public static PlaybackController providePlaybackController(Context context, TrackDao trackDao,
-      SleepTimerManager sleepTimerManager) {
-    return Preconditions.checkNotNullFromProvides(PlaybackModule.INSTANCE.providePlaybackController(context, trackDao, sleepTimerManager));
+      PlayHistoryDao playHistoryDao, SleepTimerManager sleepTimerManager) {
+    return Preconditions.checkNotNullFromProvides(PlaybackModule.INSTANCE.providePlaybackController(context, trackDao, playHistoryDao, sleepTimerManager));
   }
 }

@@ -4,9 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.freqvox.data.repository.TrackRepository
 import com.freqvox.data.repository.PlaylistRepository
-import com.freqvox.data.local.entities.TrackEntity
-import com.freqvox.data.local.entities.TagEntity
+import com.freqvox.data.local.entities.PlayHistoryEntity
 import com.freqvox.data.local.entities.PlaylistEntity
+import com.freqvox.data.local.entities.TagEntity
+import com.freqvox.data.local.entities.TrackEntity
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
@@ -45,6 +46,30 @@ class MainViewModel @Inject constructor(
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = emptyList()
         )
+
+    val playHistory: StateFlow<List<PlayHistoryEntity>> = trackRepository.getRecentPlayHistory()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
+
+    val taggedTrackIds: StateFlow<Map<String, Set<Long>>> = combine(
+        trackRepository.allTags,
+        trackRepository.allTrackTagCrossRefs
+    ) { tags, crossRefs ->
+        val tagIdToName = tags.associate { it.id to it.name.lowercase() }
+        val result = mutableMapOf<String, MutableSet<Long>>()
+        crossRefs.forEach { ref ->
+            val name = tagIdToName[ref.tagId] ?: return@forEach
+            result.getOrPut(name) { mutableSetOf() }.add(ref.trackId)
+        }
+        result
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyMap()
+    )
 
     val allPlaylists: StateFlow<List<PlaylistEntity>> = playlistRepository.allPlaylists
         .stateIn(

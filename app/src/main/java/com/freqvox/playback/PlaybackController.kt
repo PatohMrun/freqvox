@@ -14,14 +14,22 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import androidx.core.content.ContextCompat
+import com.freqvox.data.local.dao.PlayHistoryDao
 import com.freqvox.data.local.dao.TrackDao
+import com.freqvox.data.local.entities.PlayHistoryEntity
 import com.freqvox.data.local.entities.SkipHistoryEntity
-import javax.inject.Inject
-import javax.inject.Singleton
+import com.freqvox.data.local.entities.TrackEntity
+
+data class QueueItem(
+    val trackId: String,
+    val title: String,
+    val artist: String
+)
 
 class PlaybackController(
     private val context: Context,
     private val trackDao: TrackDao,
+    private val playHistoryDao: PlayHistoryDao,
     private val sleepTimerManager: SleepTimerManager
 ) {
     private var controllerFuture: ListenableFuture<MediaController>? = null
@@ -36,7 +44,7 @@ class PlaybackController(
 
     private val _currentArtist = MutableStateFlow("")
     val currentArtist: StateFlow<String> = _currentArtist.asStateFlow()
-    
+
     private val _currentArtworkUri = MutableStateFlow<Uri?>(null)
     val currentArtworkUri: StateFlow<Uri?> = _currentArtworkUri.asStateFlow()
 
@@ -46,10 +54,32 @@ class PlaybackController(
     private val _duration = MutableStateFlow(0L)
     val duration: StateFlow<Long> = _duration.asStateFlow()
 
+    private val _shuffleEnabled = MutableStateFlow(false)
+    val shuffleEnabled: StateFlow<Boolean> = _shuffleEnabled.asStateFlow()
+
+    // 0 = off, 1 = repeat one, 2 = repeat all
+    private val _repeatMode = MutableStateFlow(0)
+    val repeatMode: StateFlow<Int> = _repeatMode.asStateFlow()
+
+    val isTimerRunning: StateFlow<Boolean> = sleepTimerManager.isTimerRunning
+    val timerTimeLeft: StateFlow<Long> = sleepTimerManager.timeLeft
+
+    private val _queue = MutableStateFlow<List<QueueItem>>(emptyList())
+    val queue: StateFlow<List<QueueItem>> = _queue.asStateFlow()
+
+    private val _currentQueueIndex = MutableStateFlow(0)
+    val currentQueueIndex: StateFlow<Int> = _currentQueueIndex.asStateFlow()
+
     private var pendingMediaItem: MediaItem? = null
-    
+
+    // incrementPlayCount tracking (existing behaviour, untouched)
     private var lastTrackId: Long? = null
-    private var playStartTime: Long = 0
+    private var playStartTime: Long = 0L
+
+    // Play history accumulation — tracks actual listen time excluding pauses
+    private var historyTrackId: Long? = null
+    private var historyAccumulated: Long = 0L   // ms of confirmed listen time
+    private var historySegmentStart: Long = 0L  // start of current un-paused segment
 
     init {
         startPositionPolling()
@@ -73,27 +103,40 @@ class PlaybackController(
 
     private fun setupControllerListener() {
         mediaController?.addListener(object : Player.Listener {
+
             override fun onIsPlayingChanged(isPlaying: Boolean) {
                 _isPlaying.value = isPlaying
                 if (isPlaying) {
                     playStartTime = System.currentTimeMillis()
+                    historySegmentStart = System.currentTimeMillis()
                 } else {
+                    // Seal off the current listen segment
+                    if (historySegmentStart > 0L) {
+                        historyAccumulated += System.currentTimeMillis() - historySegmentStart
+                        historySegmentStart = 0L
+                    }
                     logPlayTime()
                 }
             }
+
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-                if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO || 
-                    reason == Player.MEDIA_ITEM_TRANSITION_REASON_SEEK) {
-                    logPlayTime()
-                }
-                
+                // Flush stats for the track we are leaving (before metadata updates)
+                logPlayTime()
+                insertHistoryRecord()
                 updateMetadata(mediaItem)
+                _currentQueueIndex.value = mediaController?.currentMediaItemIndex?.coerceAtLeast(0) ?: 0
             }
+
+            override fun onTimelineChanged(timeline: androidx.media3.common.Timeline, reason: Int) {
+                refreshQueue()
+            }
+
             override fun onMediaMetadataChanged(mediaMetadata: MediaMetadata) {
                 _currentTrackTitle.value = mediaMetadata.title?.toString() ?: "Unknown Track"
                 _currentArtist.value = mediaMetadata.artist?.toString() ?: "Unknown Artist"
                 _currentArtworkUri.value = mediaMetadata.artworkUri
             }
+
             override fun onPlaybackStateChanged(playbackState: Int) {
                 if (playbackState == Player.STATE_READY) {
                     val dur = mediaController?.duration ?: 0L
@@ -101,6 +144,14 @@ class PlaybackController(
                         _duration.value = dur
                     }
                 }
+            }
+
+            override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
+                _shuffleEnabled.value = shuffleModeEnabled
+            }
+
+            override fun onRepeatModeChanged(repeatMode: Int) {
+                _repeatMode.value = repeatMode
             }
         })
     }
@@ -114,23 +165,53 @@ class PlaybackController(
         if (dur != androidx.media3.common.C.TIME_UNSET) {
             _duration.value = dur
         }
-        
-        // Update track ID for stats
+
         val newId = mediaItem?.mediaId?.toLongOrNull()
         if (newId != lastTrackId) {
             lastTrackId = newId
             playStartTime = System.currentTimeMillis()
+            // Reset history accumulation for the new track
+            historyTrackId = newId
+            historyAccumulated = 0L
+            historySegmentStart = System.currentTimeMillis()
         }
     }
 
     private fun logPlayTime() {
         val id = lastTrackId ?: return
         val durationPlayed = System.currentTimeMillis() - playStartTime
-        if (durationPlayed > 5000) { // Log if played for more than 5s
+        if (durationPlayed > 5000L) {
             scope.launch(Dispatchers.IO) {
                 trackDao.incrementPlayCount(id, System.currentTimeMillis(), durationPlayed)
             }
         }
+    }
+
+    private fun insertHistoryRecord() {
+        val id = historyTrackId ?: return
+        // Include the current active segment if playback is running during transition
+        val currentSegment = if (_isPlaying.value && historySegmentStart > 0L)
+            System.currentTimeMillis() - historySegmentStart
+        else 0L
+        val total = historyAccumulated + currentSegment
+        if (total < 5000L) return
+
+        val dur = _duration.value
+        val completed = dur > 0L && total >= (dur * 0.75f).toLong()
+        scope.launch(Dispatchers.IO) {
+            playHistoryDao.insert(
+                PlayHistoryEntity(
+                    trackId = id,
+                    playedAt = System.currentTimeMillis(),
+                    durationPlayed = total,
+                    completed = completed
+                )
+            )
+        }
+        // Reset so updateMetadata can cleanly initialise the next track
+        historyTrackId = null
+        historyAccumulated = 0L
+        historySegmentStart = 0L
     }
 
     private fun startPositionPolling() {
@@ -150,17 +231,15 @@ class PlaybackController(
         val metadataBuilder = MediaMetadata.Builder()
             .setTitle(title)
             .setArtist(artist)
-            
+
         if (artworkPath != null) {
             metadataBuilder.setArtworkUri(Uri.parse("file://$artworkPath"))
         }
 
-        val mediaMetadata = metadataBuilder.build()
-
         val mediaItem = MediaItem.Builder()
             .setMediaId(trackId)
             .setUri(uri)
-            .setMediaMetadata(mediaMetadata)
+            .setMediaMetadata(metadataBuilder.build())
             .build()
 
         playMediaItem(mediaItem)
@@ -184,11 +263,7 @@ class PlaybackController(
 
     fun togglePlayPause() {
         mediaController?.let { controller ->
-            if (controller.isPlaying) {
-                controller.pause()
-            } else {
-                controller.play()
-            }
+            if (controller.isPlaying) controller.pause() else controller.play()
         }
     }
 
@@ -211,6 +286,79 @@ class PlaybackController(
         mediaController?.seekToPreviousMediaItem()
     }
 
+    fun toggleShuffle() {
+        val controller = mediaController ?: return
+        val new = !controller.shuffleModeEnabled
+        controller.shuffleModeEnabled = new
+        _shuffleEnabled.value = new
+    }
+
+    fun cycleRepeatMode() {
+        val controller = mediaController ?: return
+        val new = when (controller.repeatMode) {
+            0 -> 2   // OFF → ALL
+            2 -> 1   // ALL → ONE
+            else -> 0 // ONE → OFF
+        }
+        controller.repeatMode = new
+        _repeatMode.value = new
+    }
+
+    private fun refreshQueue() {
+        val controller = mediaController ?: return
+        _queue.value = (0 until controller.mediaItemCount).map { i ->
+            val item = controller.getMediaItemAt(i)
+            QueueItem(
+                trackId = item.mediaId,
+                title   = item.mediaMetadata.title?.toString() ?: "Unknown",
+                artist  = item.mediaMetadata.artist?.toString() ?: "Unknown"
+            )
+        }
+        _currentQueueIndex.value = controller.currentMediaItemIndex.coerceAtLeast(0)
+    }
+
+    fun playQueue(tracks: List<TrackEntity>, startIndex: Int = 0) {
+        val mediaItems = tracks.map { track ->
+            val meta = MediaMetadata.Builder().setTitle(track.title).setArtist(track.artist)
+            track.artworkPath?.let { meta.setArtworkUri(Uri.parse("file://$it")) }
+            MediaItem.Builder()
+                .setMediaId(track.id.toString())
+                .setUri(track.path)
+                .setMediaMetadata(meta.build())
+                .build()
+        }
+        val controller = mediaController
+        if (controller != null) {
+            controller.setMediaItems(mediaItems, startIndex, 0L)
+            controller.prepare()
+            controller.play()
+            pendingMediaItem = null
+        } else {
+            pendingMediaItem = mediaItems.getOrNull(startIndex)
+        }
+    }
+
+    fun addToQueue(track: TrackEntity) {
+        val meta = MediaMetadata.Builder().setTitle(track.title).setArtist(track.artist)
+        track.artworkPath?.let { meta.setArtworkUri(Uri.parse("file://$it")) }
+        val item = MediaItem.Builder()
+            .setMediaId(track.id.toString())
+            .setUri(track.path)
+            .setMediaMetadata(meta.build())
+            .build()
+        mediaController?.addMediaItem(item)
+    }
+
+    fun removeFromQueue(index: Int) {
+        mediaController?.removeMediaItem(index)
+    }
+
+    fun jumpToQueueItem(index: Int) {
+        val controller = mediaController ?: return
+        controller.seekTo(index, 0L)
+        if (!controller.isPlaying) controller.play()
+    }
+
     fun startSleepTimer(minutes: Int) {
         sleepTimerManager.startTimer(minutes) {
             mediaController?.pause()
@@ -222,7 +370,13 @@ class PlaybackController(
     }
 
     fun release() {
+        // Seal the final segment before flushing
+        if (_isPlaying.value && historySegmentStart > 0L) {
+            historyAccumulated += System.currentTimeMillis() - historySegmentStart
+            historySegmentStart = 0L
+        }
         logPlayTime()
+        insertHistoryRecord()
         scope.cancel()
         controllerFuture?.let { MediaController.releaseFuture(it) }
         controllerFuture = null
