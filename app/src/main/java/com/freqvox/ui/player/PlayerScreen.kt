@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.freqvox.ui.player.components.FreqvoxVisualizer
 import com.freqvox.ui.player.components.WaveformScrubber
 import com.freqvox.ui.theme.dynamic.LocalGradientPrimary
 import com.freqvox.ui.theme.dynamic.LocalGradientSecondary
@@ -174,46 +175,22 @@ fun PlayerScreen(
                             offsetY = 0f
                         }
                     )
-                    .shadow(
-                        elevation   = 32.dp,
-                        shape       = RoundedCornerShape(24.dp),
-                        spotColor   = accentPrimary.copy(alpha = 0.6f),
-                        ambientColor = accentSecondary.copy(alpha = 0.3f)
-                    )
                     .clip(RoundedCornerShape(24.dp))
-                    .background(Color(0xFF1A1A26)),
+                    .background(Color(0xFF1A1A26).copy(alpha = 0.85f))
+                    .border(
+                        width = 1.dp,
+                        color = Color.White.copy(alpha = 0.08f),
+                        shape = RoundedCornerShape(24.dp)
+                    ),
                 contentAlignment = Alignment.Center
             ) {
-                AsyncImage(
-                    model = artworkUri,
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
+                FreqvoxVisualizer(
+                    isPlaying = isPlaying,
+                    trackTitle = trackTitle,
+                    accentPrimary = accentPrimary,
+                    accentSecondary = accentSecondary,
+                    modifier = Modifier.fillMaxSize()
                 )
-
-                // Subtle gradient overlay on artwork bottom so equalizer bars read well
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .fillMaxHeight(0.35f)
-                        .align(Alignment.BottomCenter)
-                        .background(
-                            Brush.verticalGradient(
-                                colors = listOf(Color.Transparent, Color(0x88000000))
-                            )
-                        )
-                )
-
-                // Equalizer bars pinned at bottom inside artwork
-                if (isPlaying) {
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .padding(bottom = 16.dp)
-                    ) {
-                        EqualizerAnimation(accentColor = accentPrimary)
-                    }
-                }
             } // end Album art card
         }
         Spacer(modifier = Modifier.heightIn(min = 16.dp).weight(1f))
