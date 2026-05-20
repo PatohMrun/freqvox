@@ -20,9 +20,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -50,10 +52,30 @@ fun HomeScreen(
         FeedGenerator.generateFeed(shuffledTracks)
     }
 
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(top = 24.dp, bottom = 120.dp) // Space for bottom nav/player
-    ) {
+    val heroTrack = currentTrack ?: activeTracks.firstOrNull()
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        // Feed Illumination Layer: Massively blurred radial gradient from the Hero track
+        if (heroTrack != null) {
+            val colors = getColorsForTrack(heroTrack.title)
+            val primaryColor = colors.first().copy(alpha = 0.10f) // Balanced ambient glow
+            Canvas(modifier = Modifier.fillMaxWidth().height(500.dp)) {
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(primaryColor, Color.Transparent),
+                        center = Offset(size.width / 2, -100f),
+                        radius = size.width
+                    ),
+                    center = Offset(size.width / 2, -100f),
+                    radius = size.width
+                )
+            }
+        }
+
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(top = 24.dp, bottom = 120.dp) // Space for bottom nav/player
+        ) {
         // 1. Header with inline metrics
         item {
             Header(
@@ -67,7 +89,6 @@ fun HomeScreen(
 
         // 2. The Hero "Jump Back In" Card (Always shows last played or first available)
         item {
-            val heroTrack = currentTrack ?: activeTracks.firstOrNull()
             if (heroTrack != null) {
                 HeroFeedCard(
                     track = heroTrack,
@@ -143,6 +164,7 @@ fun HomeScreen(
             }
         }
     }
+    } // Close Box
 }
 
 @Composable
@@ -166,16 +188,9 @@ fun GridFeedBlock(tracks: List<TrackEntity>, onClick: (TrackEntity) -> Unit, mod
                                 .fillMaxWidth()
                                 .aspectRatio(1f),
                             shape = RoundedCornerShape(12.dp),
-                            color = Color(0xFF1A1A26)
+                            color = Color.Transparent
                         ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text(
-                                    text = track.title.take(1).uppercase(),
-                                    color = Color.White.copy(alpha = 0.4f),
-                                    fontSize = 48.sp,
-                                    fontWeight = FontWeight.Black
-                                )
-                            }
+                            ProceduralArtwork(track = track, modifier = Modifier.fillMaxSize())
                         }
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
@@ -421,20 +436,12 @@ fun FeedTrackCard(track: TrackEntity, onClick: () -> Unit, modifier: Modifier = 
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Track Icon/Monogram
         Surface(
             modifier = Modifier.size(56.dp),
             shape = RoundedCornerShape(12.dp),
-            color = Color(0xFF1A1A26)
+            color = Color.Transparent
         ) {
-            Box(contentAlignment = Alignment.Center) {
-                Text(
-                    text = track.title.take(1).uppercase(),
-                    color = Color.White.copy(alpha = 0.8f),
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 20.sp
-                )
-            }
+            ProceduralArtwork(track = track, modifier = Modifier.fillMaxSize())
         }
         Spacer(modifier = Modifier.width(16.dp))
         Column(modifier = Modifier.weight(1f)) {
@@ -491,16 +498,9 @@ fun QuickPicksRow(tracks: List<TrackEntity>, onTrackClick: (TrackEntity) -> Unit
                 Surface(
                     modifier = Modifier.size(130.dp),
                     shape = RoundedCornerShape(16.dp),
-                    color = Color(0xFF1A1A26)
+                    color = Color.Transparent
                 ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text(
-                            text = track.title.take(1).uppercase(),
-                            color = Color.White.copy(alpha = 0.2f),
-                            fontSize = 64.sp,
-                            fontWeight = FontWeight.Black
-                        )
-                    }
+                    ProceduralArtwork(track = track, modifier = Modifier.fillMaxSize())
                 }
                 Spacer(modifier = Modifier.height(10.dp))
                 Text(
@@ -530,6 +530,93 @@ fun rememberGreeting(): String {
         in 0..11 -> "Good morning"
         in 12..16 -> "Good afternoon"
         else -> "Good evening"
+    }
+}
+
+private val premiumGradients = listOf(
+    listOf(Color(0xFFFF416C), Color(0xFFFF4B2B)), // Sunset
+    listOf(Color(0xFF4776E6), Color(0xFF8E54E9)), // Purple Rain
+    listOf(Color(0xFF00B4DB), Color(0xFF0083B0)), // Ocean
+    listOf(Color(0xFFF7971E), Color(0xFFFFD200)), // Gold
+    listOf(Color(0xFF11998E), Color(0xFF38EF7D)), // Emerald
+    listOf(Color(0xFF8A2387), Color(0xFFE94057)), // Citrus
+    listOf(Color(0xFF654EA3), Color(0xFFEAAFC8)), // Velvet
+    listOf(Color(0xFFED213A), Color(0xFF93291E)), // Blood
+    listOf(Color(0xFF00C9FF), Color(0xFF92FE9D)), // Mint
+    listOf(Color(0xFFB20A2C), Color(0xFFFFFBD5))  // Cherry
+)
+
+fun getColorsForTrack(title: String): List<Color> {
+    val index = kotlin.math.abs(title.hashCode()) % premiumGradients.size
+    return premiumGradients[index]
+}
+
+fun getGradientForTrack(title: String): Brush {
+    return Brush.linearGradient(getColorsForTrack(title))
+}
+
+@Composable
+fun ProceduralArtwork(track: TrackEntity, modifier: Modifier = Modifier) {
+    val hash = track.title.hashCode()
+    val random = java.util.Random(hash.toLong())
+    
+    val shapeType = random.nextInt(3)
+    val shapeAlpha = 0.20f + random.nextFloat() * 0.2f // Balanced shape visibility
+    val scale = 0.5f + random.nextFloat() * 1.5f
+    val offsetX = -0.5f + random.nextFloat()
+    val offsetY = -0.5f + random.nextFloat()
+    
+    Box(
+        modifier = modifier
+            .background(getGradientForTrack(track.title))
+            .clipToBounds()
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val centerPoint = Offset(
+                size.width / 2 + size.width * offsetX,
+                size.height / 2 + size.height * offsetY
+            )
+            val radius = size.minDimension * scale
+            
+            when (shapeType) {
+                0 -> {
+                    drawCircle(color = Color.White.copy(alpha = shapeAlpha), radius = radius, center = centerPoint)
+                    drawCircle(color = Color.Black.copy(alpha = shapeAlpha * 0.5f), radius = radius * 0.6f, center = Offset(centerPoint.x + radius * 0.3f, centerPoint.y - radius * 0.3f))
+                }
+                1 -> {
+                    val strokeWidth = size.minDimension * 0.4f
+                    drawLine(color = Color.Black.copy(alpha = shapeAlpha), start = Offset(-size.width * scale, size.height + size.height * scale), end = Offset(size.width + size.width * scale, -size.height * scale), strokeWidth = strokeWidth)
+                }
+                2 -> {
+                    drawCircle(
+                        brush = Brush.radialGradient(colors = listOf(Color.White.copy(alpha = shapeAlpha), Color.Transparent), center = centerPoint, radius = radius),
+                        radius = radius,
+                        center = centerPoint
+                    )
+                }
+            }
+        }
+        
+        Text(
+            text = track.title.take(3).uppercase(),
+            color = Color.White.copy(alpha = 0.12f), // Balanced typography
+            fontWeight = FontWeight.Black,
+            fontSize = 80.sp,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .offset(x = 10.dp, y = 10.dp)
+                .graphicsLayer {
+                    rotationZ = -15f
+                    scaleX = 1.5f
+                    scaleY = 1.5f
+                }
+        )
+        
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xFF1A1A26).copy(alpha = 0.55f)) // Sweet spot: not too bright, not too dark
+        )
     }
 }
 
