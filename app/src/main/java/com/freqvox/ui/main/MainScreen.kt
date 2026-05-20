@@ -67,34 +67,51 @@ fun MainScreen(
             currentDestination?.route != Screen.Player.route
 
     DynamicTheme(artworkPath = currentArtworkUri?.path, trackTitle = currentTrackTitle) {
-        val gradientPrimary = com.freqvox.ui.theme.dynamic.LocalGradientPrimary.current
+        val gradientPrimary   = com.freqvox.ui.theme.dynamic.LocalGradientPrimary.current
         val gradientSecondary = com.freqvox.ui.theme.dynamic.LocalGradientSecondary.current
+        val gradientTertiary  = com.freqvox.ui.theme.dynamic.LocalGradientTertiary.current
         
-        // Unpredictable-but-consistent gradient direction per track
+        // 6-way direction from title hash — no simple repeating pattern
         val gradientAngle = remember(currentTrackTitle) {
             val hash = kotlin.math.abs(currentTrackTitle.hashCode())
-            hash % 4 // 0=top-bottom, 1=bottom-top, 2=top-left→bottom-right, 3=top-right→bottom-left
+            hash % 6
         }
         
-        val gradientBrush = remember(gradientPrimary, gradientSecondary, gradientAngle) {
-            val c1 = gradientPrimary.copy(alpha = 0.35f)
-            val c2 = gradientSecondary.copy(alpha = 0.25f)
+        val gradientBrush = remember(gradientPrimary, gradientSecondary, gradientTertiary, gradientAngle) {
+            val c1 = gradientPrimary.copy(alpha = 0.40f)
+            val c2 = gradientSecondary.copy(alpha = 0.30f)
+            val c3 = gradientTertiary.copy(alpha = 0.20f)
             when (gradientAngle) {
+                // Vertical top → c1, mid → c2, bottom → dark
                 0 -> androidx.compose.ui.graphics.Brush.verticalGradient(
-                    colors = listOf(c1, c2, Color(0xFF0A0A0F))
+                    colors = listOf(c1, c2, c3, Color(0xFF06060C))
                 )
+                // Vertical inverted
                 1 -> androidx.compose.ui.graphics.Brush.verticalGradient(
-                    colors = listOf(c2, Color(0xFF0A0A0F), c1)
+                    colors = listOf(c3, Color(0xFF06060C), c1, c2)
                 )
+                // Diagonal top-left → bottom-right
                 2 -> androidx.compose.ui.graphics.Brush.linearGradient(
-                    colors = listOf(c1, c2, Color(0xFF0A0A0F)),
+                    colors = listOf(c1, c2, c3),
                     start = androidx.compose.ui.geometry.Offset(0f, 0f),
-                    end = androidx.compose.ui.geometry.Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+                    end   = androidx.compose.ui.geometry.Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
                 )
-                else -> androidx.compose.ui.graphics.Brush.linearGradient(
-                    colors = listOf(c2, Color(0xFF0A0A0F), c1),
+                // Diagonal top-right → bottom-left
+                3 -> androidx.compose.ui.graphics.Brush.linearGradient(
+                    colors = listOf(c2, c1, c3),
                     start = androidx.compose.ui.geometry.Offset(Float.POSITIVE_INFINITY, 0f),
-                    end = androidx.compose.ui.geometry.Offset(0f, Float.POSITIVE_INFINITY)
+                    end   = androidx.compose.ui.geometry.Offset(0f, Float.POSITIVE_INFINITY)
+                )
+                // Stage light: vivid glow rises from the bottom
+                4 -> androidx.compose.ui.graphics.Brush.verticalGradient(
+                    colors = listOf(Color(0xFF06060C), c3, c2, c1)
+                )
+                // Split: c1 top, c3 bottom, c2 center fade
+                else -> androidx.compose.ui.graphics.Brush.verticalGradient(
+                    0.0f to c1,
+                    0.4f to c2,
+                    0.7f to c3,
+                    1.0f to Color(0xFF06060C)
                 )
             }
         }
