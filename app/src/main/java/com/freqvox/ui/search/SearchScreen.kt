@@ -20,7 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.freqvox.data.local.entities.TrackEntity
-import com.freqvox.ui.library.TrackItem
+import com.freqvox.ui.library.LibraryTrackItem
 import com.freqvox.ui.main.MainViewModel
 
 @Composable
@@ -81,7 +81,7 @@ fun SearchScreen(
             } else {
                 LazyColumn {
                     items(searchResults) { track ->
-                        TrackItem(track = track, onClick = { onTrackClick(track) })
+                        LibraryTrackItem(track = track, onClick = { onTrackClick(track) })
                     }
                 }
             }

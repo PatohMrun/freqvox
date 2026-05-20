@@ -202,10 +202,18 @@ fun MainScreen(
                             playbackController.playMediaUri(track.path, track.title, track.artist, track.id.toString(), track.artworkPath)
                         }) 
                     }
-                    composable(Screen.Library.route) { 
-                        LibraryScreen(onTrackClick = { track ->
-                            playbackController.playMediaUri(track.path, track.title, track.artist, track.id.toString(), track.artworkPath)
-                        }) 
+                    composable(Screen.Library.route) {
+                        LibraryScreen(
+                            playbackController = playbackController,
+                            onTrackClick = { track ->
+                                val currentTitle = playbackController.currentTrackTitle.value
+                                if (currentTitle == track.title) {
+                                    playbackController.togglePlayPause()
+                                } else {
+                                    playbackController.playMediaUri(track.path, track.title, track.artist, track.id.toString(), track.artworkPath)
+                                }
+                            }
+                        )
                     }
                     composable(Screen.Radio.route) { 
                         RadioScreen(onStationClick = { station ->
