@@ -18,6 +18,8 @@ import com.freqvox.ui.theme.FreqvoxTheme
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
+import androidx.activity.enableEdgeToEdge
+
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     
@@ -34,6 +36,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Modern Compose way to setup edge-to-edge rendering
+        enableEdgeToEdge()
         
         setContent {
             FreqvoxTheme {

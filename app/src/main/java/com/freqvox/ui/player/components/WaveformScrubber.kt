@@ -33,7 +33,7 @@ fun WaveformScrubber(
         Canvas(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(64.dp)
+                .height(36.dp)
                 .pointerInput(Unit) {
                     detectTapGestures { offset ->
                         onSeek(offset.x / size.width)

@@ -3,6 +3,7 @@ package com.freqvox.ui.player
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
@@ -82,10 +83,11 @@ fun PlayerScreen(
     )
     val currentGlowAlpha = if (isPlaying) glowAlpha else 0.20f
 
-    // Full atmospheric — no scrim, let the gradient breathe
     Column(
         modifier = modifier
             .fillMaxSize()
+            .statusBarsPadding()
+            .navigationBarsPadding()
             .padding(horizontal = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -123,15 +125,14 @@ fun PlayerScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.heightIn(min = 16.dp).weight(1f))
 
         // ── Artwork + Radial Glow ──────────────────────────────────────────────
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier
                 .fillMaxWidth()
-                .aspectRatio(1f)
-                .padding(horizontal = 8.dp)
+                .aspectRatio(1f) // Forces a perfect square that exactly matches the width of the glass cards below
         ) {
             // Radial glow painted on Canvas behind the artwork
             Canvas(modifier = Modifier.fillMaxSize()) {
@@ -155,7 +156,6 @@ fun PlayerScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(16.dp)
                     .offset { IntOffset(offsetX.roundToInt(), offsetY.roundToInt()) }
                     .draggable(
                         orientation = Orientation.Horizontal,
@@ -214,12 +214,25 @@ fun PlayerScreen(
                         EqualizerAnimation(accentColor = accentPrimary)
                     }
                 }
-            }
+            } // end Album art card
         }
+        Spacer(modifier = Modifier.heightIn(min = 16.dp).weight(1f))
 
-        Spacer(modifier = Modifier.height(28.dp))
-
-        // ── Track Info + Like ──────────────────────────────────────────────────
+        // ── Glass Card 1: Track Info + Waveform ──────────────────────────────
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(20.dp))
+                .background(Color.White.copy(alpha = 0.07f))
+                .then(
+                    Modifier.border(
+                        width = 1.dp,
+                        color = Color.White.copy(alpha = 0.10f),
+                        shape = RoundedCornerShape(20.dp)
+                    )
+                )
+                .padding(horizontal = 16.dp, vertical = 10.dp)
+        ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
@@ -233,7 +246,7 @@ fun PlayerScreen(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = artist,
                     color = Color.White.copy(alpha = 0.55f),
@@ -259,20 +272,35 @@ fun PlayerScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
-        // ── Waveform Scrubber ──────────────────────────────────────────────────
-        WaveformScrubber(
-            progress        = progress,
-            durationStr     = durationStr,
-            currentPosStr   = currentPosStr,
-            onSeek          = onSeek,
-            accentPrimary   = accentPrimary,
-            accentSecondary = accentSecondary
-        )
+            // ── Waveform Scrubber ──────────────────────────────────────────────────
+            WaveformScrubber(
+                progress        = progress,
+                durationStr     = durationStr,
+                currentPosStr   = currentPosStr,
+                onSeek          = onSeek,
+                accentPrimary   = accentPrimary,
+                accentSecondary = accentSecondary
+            )
+        } // end glass card 1
 
-        Spacer(modifier = Modifier.height(28.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
+        // ── Glass Card: Controls + Volume + Extra ─────────────────────────────
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(20.dp))
+                .background(Color.White.copy(alpha = 0.06f))
+                .border(
+                    width = 1.dp,
+                    color = Color.White.copy(alpha = 0.08f),
+                    shape = RoundedCornerShape(20.dp)
+                )
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
         // ── Playback Controls ──────────────────────────────────────────────────
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -288,12 +316,12 @@ fun PlayerScreen(
                 )
             }
 
-            IconButton(onClick = onPreviousClick, modifier = Modifier.size(52.dp)) {
+            IconButton(onClick = onPreviousClick, modifier = Modifier.size(44.dp)) {
                 Icon(
                     Icons.Default.SkipPrevious,
                     contentDescription = "Previous",
                     tint = Color.White.copy(alpha = 0.85f),
-                    modifier = Modifier.size(36.dp)
+                    modifier = Modifier.size(32.dp)
                 )
             }
 
@@ -301,7 +329,7 @@ fun PlayerScreen(
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
-                    .size(68.dp)
+                    .size(56.dp)
                     .shadow(
                         elevation    = 20.dp,
                         shape        = CircleShape,
@@ -325,12 +353,12 @@ fun PlayerScreen(
                 }
             }
 
-            IconButton(onClick = onNextClick, modifier = Modifier.size(52.dp)) {
+            IconButton(onClick = onNextClick, modifier = Modifier.size(44.dp)) {
                 Icon(
                     Icons.Default.SkipNext,
                     contentDescription = "Next",
                     tint = Color.White.copy(alpha = 0.85f),
-                    modifier = Modifier.size(36.dp)
+                    modifier = Modifier.size(32.dp)
                 )
             }
 
@@ -344,55 +372,59 @@ fun PlayerScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
+            HorizontalDivider(
+                modifier = Modifier.padding(vertical = 4.dp),
+                color = Color.White.copy(alpha = 0.08f)
+            )
 
-        // ── Volume Row ─────────────────────────────────────────────────────────
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Icon(
-                Icons.AutoMirrored.Filled.VolumeDown,
-                contentDescription = null,
-                tint = Color.White.copy(alpha = 0.35f),
-                modifier = Modifier.size(18.dp)
-            )
-            Slider(
-                value = 0.7f,
-                onValueChange = {},
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(horizontal = 10.dp),
-                colors = SliderDefaults.colors(
-                    thumbColor        = Color.White,
-                    activeTrackColor  = accentPrimary,
-                    inactiveTrackColor = Color.White.copy(alpha = 0.12f)
+            // ── Volume Row (inside card 2) ──────────────────────────────────────
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    Icons.AutoMirrored.Filled.VolumeDown,
+                    contentDescription = null,
+                    tint = Color.White.copy(alpha = 0.35f),
+                    modifier = Modifier.size(18.dp)
                 )
-            )
-            Icon(
-                Icons.AutoMirrored.Filled.VolumeUp,
-                contentDescription = null,
-                tint = Color.White.copy(alpha = 0.35f),
-                modifier = Modifier.size(18.dp)
-            )
-        }
+                Slider(
+                    value = 0.7f,
+                    onValueChange = {},
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 10.dp),
+                    colors = SliderDefaults.colors(
+                        thumbColor         = Color.White,
+                        activeTrackColor   = accentPrimary,
+                        inactiveTrackColor = Color.White.copy(alpha = 0.12f)
+                    )
+                )
+                Icon(
+                    Icons.AutoMirrored.Filled.VolumeUp,
+                    contentDescription = null,
+                    tint = Color.White.copy(alpha = 0.35f),
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // ── Extra Controls Row ─────────────────────────────────────────────────
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                ExtraControlButton(icon = Icons.Default.Lyrics,      label = "Lyrics")
+                ExtraControlButton(icon = Icons.AutoMirrored.Filled.QueueMusic, label = "Queue")
+                ExtraControlButton(icon = Icons.Default.Equalizer,   label = "EQ")
+                ExtraControlButton(icon = Icons.Default.Bedtime,     label = "Sleep")
+                ExtraControlButton(icon = Icons.Default.Share,        label = "Share")
+            }
+        } // end glass card 2
 
         Spacer(modifier = Modifier.height(16.dp))
-
-        // ── Extra Controls Row ─────────────────────────────────────────────────
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            ExtraControlButton(icon = Icons.Default.Lyrics,      label = "Lyrics")
-            ExtraControlButton(icon = Icons.AutoMirrored.Filled.QueueMusic, label = "Queue")
-            ExtraControlButton(icon = Icons.Default.Equalizer,   label = "EQ")
-            ExtraControlButton(icon = Icons.Default.Bedtime,     label = "Sleep")
-            ExtraControlButton(icon = Icons.Default.Share,        label = "Share")
-        }
-
-        Spacer(modifier = Modifier.height(20.dp))
     }
 }
 

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.background
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -124,6 +125,12 @@ fun MainScreen(
             Scaffold(
                 containerColor = Color.Transparent,
             bottomBar = {
+                val isPlayerScreen = currentDestination?.route == Screen.Player.route
+                AnimatedVisibility(
+                    visible = !isPlayerScreen,
+                    enter = slideInVertically(initialOffsetY = { it }),
+                    exit = slideOutVertically(targetOffsetY = { it })
+                ) {
                 Column {
                     AnimatedVisibility(
                         visible = showMiniPlayer,
@@ -167,9 +174,11 @@ fun MainScreen(
                         }
                     }
                 }
+                } // end AnimatedVisibility
             }
-        ) { innerPadding ->
-            Box(modifier = Modifier.padding(innerPadding)) {
+        ) { innerPadding -> 
+            val isPlayerScreen = currentDestination?.route == Screen.Player.route
+            Box(modifier = if (isPlayerScreen) Modifier.fillMaxSize() else Modifier.padding(innerPadding)) {
                 NavHost(
                     navController = navController,
                     startDestination = Screen.Home.route
