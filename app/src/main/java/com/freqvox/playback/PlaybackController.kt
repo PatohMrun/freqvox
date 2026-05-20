@@ -283,7 +283,13 @@ class PlaybackController(
     }
 
     fun playPrevious() {
-        mediaController?.seekToPreviousMediaItem()
+        val controller = mediaController ?: return
+        // Industry standard: If playing for more than 3 seconds, restart. Otherwise skip back.
+        if (controller.currentPosition > 3000) {
+            controller.seekTo(0)
+        } else {
+            controller.seekToPreviousMediaItem()
+        }
     }
 
     fun toggleShuffle() {

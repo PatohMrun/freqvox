@@ -2,7 +2,11 @@ package com.freqvox.ui.player
 
 import android.content.Context
 import android.content.Intent
+import android.database.ContentObserver
 import android.media.AudioManager
+import android.os.Handler
+import android.os.Looper
+import android.provider.Settings
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -39,7 +43,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.freqvox.ui.player.components.AestheticLikeButton
 import com.freqvox.ui.player.components.FreqvoxVisualizer
+import com.freqvox.ui.player.components.SleekVolumeControl
 import com.freqvox.ui.player.components.WaveformScrubber
 import com.freqvox.ui.theme.dynamic.LocalGradientPrimary
 import com.freqvox.ui.theme.dynamic.LocalGradientSecondary
@@ -88,6 +94,24 @@ fun PlayerScreen(
     val maxVolume = remember { audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC) }
     var volume by remember {
         mutableFloatStateOf(audioManager.getStreamVolume(AudioManager.STREAM_MUSIC).toFloat() / maxVolume)
+    }
+
+    // Observe system volume changes in real-time
+    DisposableEffect(context) {
+        val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
+            override fun onChange(selfChange: Boolean) {
+                val currentVol = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
+                volume = currentVol.toFloat() / maxVolume
+            }
+        }
+        context.contentResolver.registerContentObserver(
+            Settings.System.CONTENT_URI,
+            true,
+            observer
+        )
+        onDispose {
+            context.contentResolver.unregisterContentObserver(observer)
+        }
     }
 
     var offsetX by remember { mutableStateOf(0f) }
@@ -283,14 +307,10 @@ fun PlayerScreen(
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-                IconButton(onClick = { likeScale = 1.4f; onLikeClick() }) {
-                    Icon(
-                        imageVector = if (isLiked) Icons.Default.Favorite else Icons.Outlined.FavoriteBorder,
-                        contentDescription = "Like",
-                        tint = if (isLiked) Color(0xFFFF4D7C) else Color.White.copy(alpha = 0.5f),
-                        modifier = Modifier.size(26.dp).scale(animatedLikeScale)
-                    )
-                }
+                AestheticLikeButton(
+                    isLiked = isLiked,
+                    onClick = onLikeClick
+                )
             }
 
             Spacer(modifier = Modifier.height(10.dp))
@@ -388,40 +408,19 @@ fun PlayerScreen(
             HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = Color.White.copy(alpha = 0.08f))
 
             // ── Volume Row ─────────────────────────────────────────────────────
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(
-                    Icons.AutoMirrored.Filled.VolumeDown,
-                    contentDescription = null,
-                    tint = Color.White.copy(alpha = 0.35f),
-                    modifier = Modifier.size(18.dp)
-                )
-                Slider(
-                    value = volume,
-                    onValueChange = { v ->
-                        volume = v
-                        audioManager.setStreamVolume(
-                            AudioManager.STREAM_MUSIC,
-                            (v * maxVolume).roundToInt(),
-                            0
-                        )
-                    },
-                    modifier = Modifier.weight(1f).padding(horizontal = 10.dp),
-                    colors = SliderDefaults.colors(
-                        thumbColor         = Color.White,
-                        activeTrackColor   = accentPrimary,
-                        inactiveTrackColor = Color.White.copy(alpha = 0.12f)
+            SleekVolumeControl(
+                volume = volume,
+                onVolumeChange = { v ->
+                    volume = v
+                    audioManager.setStreamVolume(
+                        AudioManager.STREAM_MUSIC,
+                        (v * maxVolume).roundToInt(),
+                        0
                     )
-                )
-                Icon(
-                    Icons.AutoMirrored.Filled.VolumeUp,
-                    contentDescription = null,
-                    tint = Color.White.copy(alpha = 0.35f),
-                    modifier = Modifier.size(18.dp)
-                )
-            }
+                },
+                accentPrimary = accentPrimary,
+                accentSecondary = Color(0xFF4DFFB4) // Spec neon green
+            )
 
             Spacer(modifier = Modifier.height(4.dp))
 
