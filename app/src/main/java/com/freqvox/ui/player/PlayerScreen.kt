@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.freqvox.ui.player.components.WaveformScrubber
+import com.freqvox.ui.theme.dynamic.LocalGradientPrimary
 import java.util.Locale
 import kotlin.math.roundToInt
 
@@ -49,13 +50,20 @@ fun PlayerScreen(
     val progress = if (duration > 0) currentPosition.toFloat() / duration else 0f
     val currentPosStr = formatTime(currentPosition)
     val durationStr = formatTime(duration)
+    val accentColor = LocalGradientPrimary.current
 
     // Gesture state for artwork
     var offsetX by remember { mutableStateOf(0f) }
     var offsetY by remember { mutableStateOf(0f) }
 
-    Column(
+    // Dark scrim ensures text/controls always have contrast against any dynamic background
+    Box(
         modifier = modifier
+            .fillMaxSize()
+            .background(Color(0x99000000)) // 60% black scrim for contrast
+    ) {
+    Column(
+        modifier = Modifier
             .fillMaxSize()
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -116,9 +124,15 @@ fun PlayerScreen(
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
             )
-            
+            // Equalizer pinned bottom-center INSIDE the artwork, not overlapping controls
             if (isPlaying) {
-                EqualizerAnimation()
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 12.dp)
+                ) {
+                    EqualizerAnimation(accentColor = accentColor)
+                }
             }
         }
 
@@ -147,7 +161,7 @@ fun PlayerScreen(
                 Icon(
                     imageVector = if (isLiked) Icons.Default.Favorite else Icons.Outlined.FavoriteBorder,
                     contentDescription = null,
-                    tint = if (isLiked) Color(0xFFFF4D7C) else Color.White,
+                    tint = if (isLiked) Color(0xFFFF4D7C) else Color.White.copy(alpha = 0.7f),
                     modifier = Modifier.size(28.dp)
                 )
             }
@@ -221,15 +235,16 @@ fun PlayerScreen(
                 modifier = Modifier.weight(1f).padding(horizontal = 12.dp),
                 colors = SliderDefaults.colors(
                     thumbColor = Color.White,
-                    activeTrackColor = Color(0xFF4DFFB4),
-                    inactiveTrackColor = Color(0xFF1A1A26)
+                    activeTrackColor = Color.White.copy(alpha = 0.8f),
+                    inactiveTrackColor = Color.White.copy(alpha = 0.15f)
                 )
             )
             Icon(Icons.AutoMirrored.Filled.VolumeUp, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(16.dp))
         }
         
         Spacer(modifier = Modifier.height(20.dp))
-    }
+    } // end Column
+    } // end Box scrim
 }
 
 private fun formatTime(ms: Long): String {
@@ -240,10 +255,10 @@ private fun formatTime(ms: Long): String {
 }
 
 @Composable
-fun EqualizerAnimation() {
+fun EqualizerAnimation(accentColor: Color = Color(0xFF4DFFB4)) {
     Row(
-        modifier = Modifier.height(40.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        modifier = Modifier.height(32.dp),
+        horizontalArrangement = Arrangement.spacedBy(3.dp),
         verticalAlignment = Alignment.Bottom
     ) {
         repeat(7) { index ->
@@ -259,9 +274,9 @@ fun EqualizerAnimation() {
             )
             Box(
                 modifier = Modifier
-                    .width(4.dp)
+                    .width(3.dp)
                     .fillMaxHeight(height)
-                    .background(Color(0xFF4DFFB4), RoundedCornerShape(2.dp))
+                    .background(accentColor.copy(alpha = 0.85f), RoundedCornerShape(2.dp))
             )
         }
     }

@@ -67,21 +67,42 @@ fun MainScreen(
             currentDestination?.route != Screen.Player.route
 
     DynamicTheme(artworkPath = currentArtworkUri?.path, trackTitle = currentTrackTitle) {
-        val gradientSeed = com.freqvox.ui.theme.dynamic.LocalGradientSeed.current
+        val gradientPrimary = com.freqvox.ui.theme.dynamic.LocalGradientPrimary.current
+        val gradientSecondary = com.freqvox.ui.theme.dynamic.LocalGradientSecondary.current
+        
+        // Unpredictable-but-consistent gradient direction per track
+        val gradientAngle = remember(currentTrackTitle) {
+            val hash = kotlin.math.abs(currentTrackTitle.hashCode())
+            hash % 4 // 0=top-bottom, 1=bottom-top, 2=top-left→bottom-right, 3=top-right→bottom-left
+        }
+        
+        val gradientBrush = remember(gradientPrimary, gradientSecondary, gradientAngle) {
+            val c1 = gradientPrimary.copy(alpha = 0.35f)
+            val c2 = gradientSecondary.copy(alpha = 0.25f)
+            when (gradientAngle) {
+                0 -> androidx.compose.ui.graphics.Brush.verticalGradient(
+                    colors = listOf(c1, c2, Color(0xFF0A0A0F))
+                )
+                1 -> androidx.compose.ui.graphics.Brush.verticalGradient(
+                    colors = listOf(c2, Color(0xFF0A0A0F), c1)
+                )
+                2 -> androidx.compose.ui.graphics.Brush.linearGradient(
+                    colors = listOf(c1, c2, Color(0xFF0A0A0F)),
+                    start = androidx.compose.ui.geometry.Offset(0f, 0f),
+                    end = androidx.compose.ui.geometry.Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+                )
+                else -> androidx.compose.ui.graphics.Brush.linearGradient(
+                    colors = listOf(c2, Color(0xFF0A0A0F), c1),
+                    start = androidx.compose.ui.geometry.Offset(Float.POSITIVE_INFINITY, 0f),
+                    end = androidx.compose.ui.geometry.Offset(0f, Float.POSITIVE_INFINITY)
+                )
+            }
+        }
         
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(
-                    brush = androidx.compose.ui.graphics.Brush.verticalGradient(
-                        colors = listOf(
-                            gradientSeed.copy(alpha = 0.15f),
-                            MaterialTheme.colorScheme.background
-                        ),
-                        startY = 0f,
-                        endY = Float.POSITIVE_INFINITY
-                    )
-                )
+                .background(brush = gradientBrush)
         ) {
             Scaffold(
                 containerColor = Color.Transparent,
@@ -101,7 +122,7 @@ fun MainScreen(
                     }
                     
                     NavigationBar(
-                        containerColor = Color(0xFF12121A),
+                        containerColor = MaterialTheme.colorScheme.background.copy(alpha = 0.92f),
                         contentColor = Color.White
                     ) {
                         bottomNavScreens.forEach { screen ->
