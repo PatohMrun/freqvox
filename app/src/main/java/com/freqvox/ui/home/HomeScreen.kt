@@ -25,17 +25,20 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.material.icons.filled.Pause
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.freqvox.data.local.entities.TrackEntity
+import com.freqvox.playback.PlaybackController
 import com.freqvox.ui.main.MainViewModel
 import java.util.*
 
 @Composable
 fun HomeScreen(
+    playbackController: PlaybackController,
     onTrackClick: (TrackEntity) -> Unit,
     viewModel: MainViewModel = hiltViewModel()
 ) {
@@ -43,6 +46,8 @@ fun HomeScreen(
     val currentTrack by viewModel.currentTrack.collectAsState()
     val totalSongs by viewModel.totalSongs.collectAsState()
     val totalDuration by viewModel.totalDuration.collectAsState()
+    val isPlaying by playbackController.isPlaying.collectAsState()
+    val currentTrackTitle by playbackController.currentTrackTitle.collectAsState()
 
     val greeting = rememberGreeting()
     
@@ -127,7 +132,12 @@ fun HomeScreen(
                     }
                     Column(modifier = Modifier.padding(horizontal = 24.dp)) {
                         item.tracks.forEach { track ->
-                            FeedTrackCard(track = track, onClick = { onTrackClick(track) })
+                            FeedTrackCard(
+                                track = track,
+                                isCurrentTrack = currentTrackTitle == track.title,
+                                isPlaying = isPlaying,
+                                onClick = { onTrackClick(track) }
+                            )
                             Spacer(modifier = Modifier.height(12.dp))
                         }
                     }
@@ -426,12 +436,25 @@ fun HeroFeedCard(track: TrackEntity, onClick: () -> Unit, modifier: Modifier = M
 }
 
 @Composable
-fun FeedTrackCard(track: TrackEntity, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun FeedTrackCard(
+    track: TrackEntity,
+    isCurrentTrack: Boolean = false,
+    isPlaying: Boolean = false,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val activeAccent = Color(0xFF7C4DFF)
+    val bgAlpha = if (isCurrentTrack) 0.10f else 0.04f
+    val borderModifier = if (isCurrentTrack) {
+        Modifier.border(1.dp, activeAccent.copy(alpha = 0.6f), RoundedCornerShape(16.dp))
+    } else Modifier
+
     Row(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(Color.White.copy(alpha = 0.04f))
+            .background(if (isCurrentTrack) activeAccent.copy(alpha = bgAlpha) else Color.White.copy(alpha = bgAlpha))
+            .then(borderModifier)
             .clickable(onClick = onClick)
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -447,7 +470,7 @@ fun FeedTrackCard(track: TrackEntity, onClick: () -> Unit, modifier: Modifier = 
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = track.title,
-                color = Color.White,
+                color = if (isCurrentTrack) activeAccent else Color.White,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
@@ -463,9 +486,9 @@ fun FeedTrackCard(track: TrackEntity, onClick: () -> Unit, modifier: Modifier = 
             )
         }
         Icon(
-            Icons.Default.PlayArrow,
-            contentDescription = "Play",
-            tint = Color.White.copy(alpha = 0.3f),
+            imageVector = if (isCurrentTrack && isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+            contentDescription = if (isCurrentTrack && isPlaying) "Pause" else "Play",
+            tint = if (isCurrentTrack) activeAccent else Color.White.copy(alpha = 0.3f),
             modifier = Modifier.size(28.dp)
         )
     }

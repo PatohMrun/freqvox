@@ -183,10 +183,19 @@ fun MainScreen(
                     navController = navController,
                     startDestination = Screen.Home.route
                 ) {
-                    composable(Screen.Home.route) { 
-                        HomeScreen(onTrackClick = { track ->
-                            playbackController.playMediaUri(track.path, track.title, track.artist, track.id.toString(), track.artworkPath)
-                        }) 
+                    composable(Screen.Home.route) {
+                        HomeScreen(
+                            playbackController = playbackController,
+                            onTrackClick = { track ->
+                                val currentTitle = playbackController.currentTrackTitle.value
+                                if (currentTitle == track.title) {
+                                    // Same track — toggle play/pause
+                                    playbackController.togglePlayPause()
+                                } else {
+                                    playbackController.playMediaUri(track.path, track.title, track.artist, track.id.toString(), track.artworkPath)
+                                }
+                            }
+                        )
                     }
                     composable(Screen.Search.route) { 
                         SearchScreen(onTrackClick = { track ->
