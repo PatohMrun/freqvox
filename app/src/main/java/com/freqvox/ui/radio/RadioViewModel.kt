@@ -28,12 +28,12 @@ data class CountryOption(val code: String, val label: String)
 
 // Curated Kenyan stations — verified stream URLs, loaded without any API call
 val KENYA_CURATED_STATIONS = listOf(
-    RadioStation("ke_capital",   "Capital FM",         "https://eu10.fastcast4u.com/capitalfm",                    "Kenya", "98.4 FM · Hip Hop, R&B, Pop",          0xFF7C3AED),
+    RadioStation("ke_capital",   "Capital FM",         "https://icecast.teletrax.com/capitalfm",                    "Kenya", "98.4 FM · Hip Hop, R&B, Pop",          0xFF7C3AED),
     RadioStation("ke_classic",   "Classic 105",        "https://streams.radio.co/s6db01f11e/listen",               "Kenya", "105.2 FM · Classic Hits, Talk",          0xFF1E3A5F),
     RadioStation("ke_kiss",      "Kiss 100 FM",        "https://streams.radio.co/sa35c5cba5/listen",               "Kenya", "100.3 FM · Top 40, Pop",                 0xFF9D174D),
     RadioStation("ke_jambo",     "Radio Jambo",        "https://streams.radio.co/s837130df1/listen",               "Kenya", "97.5 FM · News, Sports, Swahili",        0xFF065F46),
     RadioStation("ke_citizen",   "Radio Citizen",      "https://edge.iono.fm/xice/citizen_fm_live.aac",            "Kenya", "National · News, Local Music, Swahili",  0xFF166534),
-    RadioStation("ke_nrg",       "NRG Radio",          "https://streaming.nrg.radio/nrg",                         "Kenya", "97.1 FM · Youth, Urban, Afrobeats",      0xFF1D4ED8),
+    RadioStation("ke_nrg",       "NRG Radio",          "https://streamingv2.shoutcast.com/nrg-radio-ke",                         "Kenya", "97.1 FM · Youth, Urban, Afrobeats",      0xFF1D4ED8),
     RadioStation("ke_maisha",    "Radio Maisha",       "https://edge.iono.fm/xice/standard_rm_live.aac",           "Kenya", "National · Bongo, Swahili Pop",          0xFF831843),
     RadioStation("ke_ghetto",    "Ghetto Radio",       "https://s3.radio.co/sbefab6c14/listen",                   "Kenya", "89.5 FM · Reggae, Sheng, Youth",         0xFF064E3B),
     RadioStation("ke_spice",     "Spice FM",           "https://edge.iono.fm/xice/standard_spice_live.aac",        "Kenya", "94.4 FM · Soul, R&B",                    0xFF78350F),
@@ -173,8 +173,21 @@ class RadioViewModel @Inject constructor(
             .launchIn(viewModelScope)
     }
 
-    fun selectGenre(genre: String) { _selectedGenre.value = genre }
-    fun selectCountry(code: String?) { _selectedCountryCode.value = code }
+    fun selectGenre(genre: String) {
+        if (_selectedGenre.value == genre && genre != "Top") {
+            _selectedGenre.value = "Top"
+        } else {
+            _selectedGenre.value = genre
+        }
+    }
+
+    fun selectCountry(code: String?) {
+        if (_selectedCountryCode.value == code && code != null) {
+            _selectedCountryCode.value = null
+        } else {
+            _selectedCountryCode.value = code
+        }
+    }
     fun setSearchQuery(q: String) { _searchQuery.value = q }
     fun setPlayingStation(station: RadioStation) { _playingStation.value = station }
 
@@ -211,8 +224,13 @@ class RadioViewModel @Inject constructor(
                     val encoded = URLEncoder.encode(query, "UTF-8")
                     "$API_BASE/search?name=$encoded&limit=$LIMIT&hidebroken=true&order=clickcount&reverse=true$countryParam"
                 }
-                genre == "Top" ->
-                    "$API_BASE/topclick?limit=$LIMIT&hidebroken=true$countryParam"
+                genre == "Top" -> {
+                    if (countryCode != null) {
+                        "$API_BASE/bycountrycodeexact/${URLEncoder.encode(countryCode, "UTF-8")}?limit=$LIMIT&hidebroken=true&order=clickcount&reverse=true"
+                    } else {
+                        "$API_BASE/topclick?limit=$LIMIT&hidebroken=true"
+                    }
+                }
                 else -> {
                     val tag = URLEncoder.encode(GENRE_TAGS[genre] ?: genre.lowercase(), "UTF-8")
                     "$API_BASE/bytag/$tag?limit=$LIMIT&hidebroken=true&order=clickcount&reverse=true$countryParam"

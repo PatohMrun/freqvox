@@ -27,7 +27,7 @@ class FreqvoxPlaybackService : MediaSessionService() {
         // COMPATIBLE_TLS allows TLS 1.0/1.1 so older African CDNs (iono.fm, etc.) can connect.
         // CLEARTEXT covers plain HTTP streams (some Kenyan stations).
         val okHttpClient = OkHttpClient.Builder()
-            .connectionSpecs(listOf(ConnectionSpec.COMPATIBLE_TLS, ConnectionSpec.CLEARTEXT))
+            .connectionSpecs(listOf(ConnectionSpec.MODERN_TLS, ConnectionSpec.COMPATIBLE_TLS, ConnectionSpec.CLEARTEXT))
             .followRedirects(true)
             .followSslRedirects(true)
             .build()
@@ -35,8 +35,10 @@ class FreqvoxPlaybackService : MediaSessionService() {
         val dataSourceFactory = OkHttpDataSource.Factory(okHttpClient)
             .setUserAgent("Freqvox/1.0 (Android)")
 
+        val defaultDataSourceFactory = androidx.media3.datasource.DefaultDataSource.Factory(this, dataSourceFactory)
+
         val player = ExoPlayer.Builder(this)
-            .setMediaSourceFactory(DefaultMediaSourceFactory(dataSourceFactory))
+            .setMediaSourceFactory(DefaultMediaSourceFactory(defaultDataSourceFactory))
             .setAudioAttributes(AudioAttributes.DEFAULT, true)
             .setHandleAudioBecomingNoisy(true)
             .setWakeMode(C.WAKE_MODE_NETWORK)

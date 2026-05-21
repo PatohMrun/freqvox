@@ -467,15 +467,15 @@ public final class DaggerFreqvoxApplication_HiltComponents_SingletonC {
 
     @IdentifierNameString
     private static final class LazyClassKeyProvider {
-      static String com_freqvox_ui_main_MainViewModel = "com.freqvox.ui.main.MainViewModel";
-
       static String com_freqvox_ui_radio_RadioViewModel = "com.freqvox.ui.radio.RadioViewModel";
 
-      @KeepFieldType
-      MainViewModel com_freqvox_ui_main_MainViewModel2;
+      static String com_freqvox_ui_main_MainViewModel = "com.freqvox.ui.main.MainViewModel";
 
       @KeepFieldType
       RadioViewModel com_freqvox_ui_radio_RadioViewModel2;
+
+      @KeepFieldType
+      MainViewModel com_freqvox_ui_main_MainViewModel2;
     }
 
     private static final class SwitchingProvider<T> implements Provider<T> {

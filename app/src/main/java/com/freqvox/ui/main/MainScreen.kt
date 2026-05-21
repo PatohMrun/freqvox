@@ -1,6 +1,9 @@
 package com.freqvox.ui.main
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Box
@@ -195,7 +198,11 @@ fun MainScreen(
             Box(modifier = if (isPlayerScreen) Modifier.fillMaxSize() else Modifier.padding(innerPadding)) {
                 NavHost(
                     navController = navController,
-                    startDestination = Screen.Home.route
+                    startDestination = Screen.Home.route,
+                    enterTransition = { fadeIn(animationSpec = tween(150)) },
+                    exitTransition = { fadeOut(animationSpec = tween(150)) },
+                    popEnterTransition = { fadeIn(animationSpec = tween(150)) },
+                    popExitTransition = { fadeOut(animationSpec = tween(150)) }
                 ) {
                     composable(Screen.Home.route) {
                         HomeScreen(
