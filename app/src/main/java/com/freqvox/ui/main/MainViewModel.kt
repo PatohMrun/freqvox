@@ -164,7 +164,13 @@ class MainViewModel @Inject constructor(
     fun toggleLike() {
         val track = currentTrack.value ?: return
         viewModelScope.launch {
-            val likedTag = allTags.value.find { it.name.lowercase() == "liked" }
+            var likedTag = allTags.value.find { it.name.lowercase() == "liked" }
+            if (likedTag == null) {
+                // Should not happen as per ensureDefaultTags, but safety first
+                trackRepository.scanLibrary() // will trigger ensureDefaultTags
+                likedTag = allTags.value.find { it.name.lowercase() == "liked" }
+            }
+            
             if (likedTag != null) {
                 trackRepository.toggleTagForTrack(track.id, likedTag.id)
             }

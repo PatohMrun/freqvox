@@ -21,6 +21,7 @@ import hilt_aggregated_deps._com_freqvox_FreqvoxApplication_GeneratedInjector;
 import hilt_aggregated_deps._com_freqvox_MainActivity_GeneratedInjector;
 import hilt_aggregated_deps._com_freqvox_di_DatabaseModule;
 import hilt_aggregated_deps._com_freqvox_di_PlaybackModule;
+import hilt_aggregated_deps._com_freqvox_playback_FreqvoxPlaybackService_GeneratedInjector;
 import hilt_aggregated_deps._com_freqvox_ui_main_MainViewModel_HiltModules_BindsModule;
 import hilt_aggregated_deps._com_freqvox_ui_main_MainViewModel_HiltModules_KeyModule;
 import hilt_aggregated_deps._dagger_hilt_android_flags_FragmentGetContextFix_FragmentGetContextFixEntryPoint;
@@ -67,6 +68,7 @@ import hilt_aggregated_deps._dagger_hilt_android_internal_modules_HiltWrapper_Ac
         _com_freqvox_MainActivity_GeneratedInjector.class,
         _com_freqvox_di_DatabaseModule.class,
         _com_freqvox_di_PlaybackModule.class,
+        _com_freqvox_playback_FreqvoxPlaybackService_GeneratedInjector.class,
         _com_freqvox_ui_main_MainViewModel_HiltModules_BindsModule.class,
         _com_freqvox_ui_main_MainViewModel_HiltModules_KeyModule.class,
         _dagger_hilt_android_flags_FragmentGetContextFix_FragmentGetContextFixEntryPoint.class,

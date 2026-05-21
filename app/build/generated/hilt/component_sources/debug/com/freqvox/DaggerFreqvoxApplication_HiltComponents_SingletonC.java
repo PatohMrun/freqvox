@@ -18,7 +18,11 @@ import com.freqvox.di.DatabaseModule_ProvidePlayHistoryDaoFactory;
 import com.freqvox.di.DatabaseModule_ProvidePlaylistDaoFactory;
 import com.freqvox.di.DatabaseModule_ProvideTagDaoFactory;
 import com.freqvox.di.DatabaseModule_ProvideTrackDaoFactory;
+import com.freqvox.di.PlaybackModule_ProvideEqualizerManagerFactory;
 import com.freqvox.di.PlaybackModule_ProvidePlaybackControllerFactory;
+import com.freqvox.playback.FreqvoxEqualizerManager;
+import com.freqvox.playback.FreqvoxPlaybackService;
+import com.freqvox.playback.FreqvoxPlaybackService_MembersInjector;
 import com.freqvox.playback.PlaybackController;
 import com.freqvox.playback.SleepTimerManager;
 import com.freqvox.ui.main.MainViewModel;
@@ -556,6 +560,16 @@ public final class DaggerFreqvoxApplication_HiltComponents_SingletonC {
 
 
     }
+
+    @Override
+    public void injectFreqvoxPlaybackService(FreqvoxPlaybackService freqvoxPlaybackService) {
+      injectFreqvoxPlaybackService2(freqvoxPlaybackService);
+    }
+
+    private FreqvoxPlaybackService injectFreqvoxPlaybackService2(FreqvoxPlaybackService instance) {
+      FreqvoxPlaybackService_MembersInjector.injectEqualizerManager(instance, singletonCImpl.provideEqualizerManagerProvider.get());
+      return instance;
+    }
   }
 
   private static final class SingletonCImpl extends FreqvoxApplication_HiltComponents.SingletonC {
@@ -566,6 +580,8 @@ public final class DaggerFreqvoxApplication_HiltComponents_SingletonC {
     private Provider<FreqvoxDatabase> provideDatabaseProvider;
 
     private Provider<SleepTimerManager> sleepTimerManagerProvider;
+
+    private Provider<FreqvoxEqualizerManager> provideEqualizerManagerProvider;
 
     private Provider<PlaybackController> providePlaybackControllerProvider;
 
@@ -599,9 +615,10 @@ public final class DaggerFreqvoxApplication_HiltComponents_SingletonC {
     private void initialize(final ApplicationContextModule applicationContextModuleParam) {
       this.provideDatabaseProvider = DoubleCheck.provider(new SwitchingProvider<FreqvoxDatabase>(singletonCImpl, 1));
       this.sleepTimerManagerProvider = DoubleCheck.provider(new SwitchingProvider<SleepTimerManager>(singletonCImpl, 2));
+      this.provideEqualizerManagerProvider = DoubleCheck.provider(new SwitchingProvider<FreqvoxEqualizerManager>(singletonCImpl, 3));
       this.providePlaybackControllerProvider = DoubleCheck.provider(new SwitchingProvider<PlaybackController>(singletonCImpl, 0));
-      this.trackRepositoryProvider = DoubleCheck.provider(new SwitchingProvider<TrackRepository>(singletonCImpl, 3));
-      this.playlistRepositoryProvider = DoubleCheck.provider(new SwitchingProvider<PlaylistRepository>(singletonCImpl, 4));
+      this.trackRepositoryProvider = DoubleCheck.provider(new SwitchingProvider<TrackRepository>(singletonCImpl, 4));
+      this.playlistRepositoryProvider = DoubleCheck.provider(new SwitchingProvider<PlaylistRepository>(singletonCImpl, 5));
     }
 
     @Override
@@ -638,7 +655,7 @@ public final class DaggerFreqvoxApplication_HiltComponents_SingletonC {
       public T get() {
         switch (id) {
           case 0: // com.freqvox.playback.PlaybackController 
-          return (T) PlaybackModule_ProvidePlaybackControllerFactory.providePlaybackController(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule), singletonCImpl.trackDao(), singletonCImpl.playHistoryDao(), singletonCImpl.sleepTimerManagerProvider.get());
+          return (T) PlaybackModule_ProvidePlaybackControllerFactory.providePlaybackController(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule), singletonCImpl.trackDao(), singletonCImpl.playHistoryDao(), singletonCImpl.sleepTimerManagerProvider.get(), singletonCImpl.provideEqualizerManagerProvider.get());
 
           case 1: // com.freqvox.data.local.FreqvoxDatabase 
           return (T) DatabaseModule_ProvideDatabaseFactory.provideDatabase(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule));
@@ -646,10 +663,13 @@ public final class DaggerFreqvoxApplication_HiltComponents_SingletonC {
           case 2: // com.freqvox.playback.SleepTimerManager 
           return (T) new SleepTimerManager();
 
-          case 3: // com.freqvox.data.repository.TrackRepository 
+          case 3: // com.freqvox.playback.FreqvoxEqualizerManager 
+          return (T) PlaybackModule_ProvideEqualizerManagerFactory.provideEqualizerManager();
+
+          case 4: // com.freqvox.data.repository.TrackRepository 
           return (T) new TrackRepository(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule), singletonCImpl.trackDao(), singletonCImpl.tagDao(), singletonCImpl.playHistoryDao());
 
-          case 4: // com.freqvox.data.repository.PlaylistRepository 
+          case 5: // com.freqvox.data.repository.PlaylistRepository 
           return (T) new PlaylistRepository(singletonCImpl.playlistDao(), singletonCImpl.tagDao(), singletonCImpl.trackRepositoryProvider.get());
 
           default: throw new AssertionError(id);

@@ -127,7 +127,7 @@ fun HomeScreen(
 
                 is FeedItem.VerticalList -> {
                     if (item.title != null) {
-                        SectionTitle(item.title, modifier = Modifier.padding(horizontal = 24.dp))
+                        SectionTitle(item.title, icon = item.icon, modifier = Modifier.padding(horizontal = 24.dp))
                         Spacer(modifier = Modifier.height(16.dp))
                     }
                     Column(modifier = Modifier.padding(horizontal = 24.dp)) {
@@ -145,7 +145,7 @@ fun HomeScreen(
                 }
 
                 is FeedItem.HorizontalCarousel -> {
-                    SectionTitle(item.title, modifier = Modifier.padding(horizontal = 24.dp))
+                    SectionTitle(item.title, icon = item.icon, modifier = Modifier.padding(horizontal = 24.dp))
                     Spacer(modifier = Modifier.height(16.dp))
                     QuickPicksRow(
                         tracks = item.tracks,
@@ -156,7 +156,7 @@ fun HomeScreen(
                 }
 
                 is FeedItem.DoubleHorizontalCarousel -> {
-                    SectionTitle(item.title, modifier = Modifier.padding(horizontal = 24.dp))
+                    SectionTitle(item.title, icon = item.icon, modifier = Modifier.padding(horizontal = 24.dp))
                     Spacer(modifier = Modifier.height(16.dp))
                     val half = item.tracks.size / 2
                     QuickPicksRow(
@@ -174,7 +174,7 @@ fun HomeScreen(
                 }
 
                 is FeedItem.Grid -> {
-                    SectionTitle(item.title, modifier = Modifier.padding(horizontal = 24.dp))
+                    SectionTitle(item.title, icon = item.icon, modifier = Modifier.padding(horizontal = 24.dp))
                     Spacer(modifier = Modifier.height(16.dp))
                     GridFeedBlock(
                         tracks = item.tracks,
@@ -507,14 +507,27 @@ fun FeedTrackCard(
 }
 
 @Composable
-fun SectionTitle(title: String, modifier: Modifier = Modifier) {
-    Text(
-        text = title,
-        fontSize = 18.sp,
-        fontWeight = FontWeight.Bold,
-        color = Color.White,
-        modifier = modifier.padding(vertical = 4.dp)
-    )
+fun SectionTitle(title: String, icon: androidx.compose.ui.graphics.vector.ImageVector? = null, modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier.padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (icon != null) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = Color(0xFF7C4DFF),
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+        }
+        Text(
+            text = title,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.White
+        )
+    }
 }
 
 @Composable

@@ -43,8 +43,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.freqvox.data.local.entities.TrackEntity
+import com.freqvox.playback.FreqvoxEqualizerManager
 import com.freqvox.ui.player.components.AestheticLikeButton
+import com.freqvox.ui.player.components.EqualizerSheet
 import com.freqvox.ui.player.components.FreqvoxVisualizer
+import com.freqvox.ui.player.components.LyricsSheet
 import com.freqvox.ui.player.components.SleekVolumeControl
 import com.freqvox.ui.player.components.WaveformScrubber
 import com.freqvox.ui.theme.dynamic.LocalGradientPrimary
@@ -81,6 +85,8 @@ fun PlayerScreen(
     onQueueItemClick: (Int) -> Unit,
     onQueueItemRemove: (Int) -> Unit,
     onTagSwipeUp: () -> Unit,
+    equalizerManager: FreqvoxEqualizerManager,
+    currentTrack: TrackEntity?,
     modifier: Modifier = Modifier
 ) {
     val progress        = if (duration > 0) currentPosition.toFloat() / duration else 0f
@@ -116,14 +122,6 @@ fun PlayerScreen(
 
     var offsetX by remember { mutableStateOf(0f) }
     var offsetY by remember { mutableStateOf(0f) }
-
-    var likeScale by remember { mutableStateOf(1f) }
-    val animatedLikeScale by animateFloatAsState(
-        targetValue = likeScale,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
-        label = "likeScale",
-        finishedListener = { likeScale = 1f }
-    )
 
     val glowAlpha by rememberInfiniteTransition(label = "glow").animateFloat(
         initialValue = 0.25f,
@@ -186,14 +184,6 @@ fun PlayerScreen(
                     onDismissRequest = { showMoreMenu = false },
                     modifier = Modifier.background(Color(0xFF1E1E2E))
                 ) {
-                    DropdownMenuItem(
-                        text = { Text("Share track", color = Color.White.copy(alpha = 0.85f), fontSize = 14.sp) },
-                        leadingIcon = { Icon(Icons.Default.Share, contentDescription = null, tint = Color.White.copy(alpha = 0.6f), modifier = Modifier.size(18.dp)) },
-                        onClick = {
-                            showMoreMenu = false
-                            shareTrack(context, trackTitle, artist)
-                        }
-                    )
                     DropdownMenuItem(
                         text = { Text("Sleep timer", color = Color.White.copy(alpha = 0.85f), fontSize = 14.sp) },
                         leadingIcon = { Icon(Icons.Default.Bedtime, contentDescription = null, tint = if (sleepTimerActive) Color(0xFF7C4DFF) else Color.White.copy(alpha = 0.6f), modifier = Modifier.size(18.dp)) },
@@ -543,30 +533,11 @@ fun PlayerScreen(
 
     // ── Lyrics Sheet ──────────────────────────────────────────────────────────
     if (showLyricsSheet) {
-        ModalBottomSheet(
-            onDismissRequest = { showLyricsSheet = false },
-            containerColor = Color(0xFF1A1A26)
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(300.dp)
-                    .padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                Icon(Icons.Default.Lyrics, contentDescription = null, tint = Color.White.copy(alpha = 0.2f), modifier = Modifier.size(48.dp))
-                Spacer(modifier = Modifier.height(16.dp))
-                Text("No lyrics found", color = Color.White.copy(alpha = 0.6f), fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    "Lyrics sync coming soon",
-                    color = Color.White.copy(alpha = 0.35f),
-                    fontSize = 13.sp,
-                    textAlign = TextAlign.Center
-                )
-            }
-        }
+        LyricsSheet(
+            track = currentTrack,
+            currentPosition = currentPosition,
+            onDismiss = { showLyricsSheet = false }
+        )
     }
 
     // ── Queue Sheet ───────────────────────────────────────────────────────────
@@ -726,30 +697,10 @@ fun PlayerScreen(
 
     // ── EQ Sheet ──────────────────────────────────────────────────────────────
     if (showEqSheet) {
-        ModalBottomSheet(
-            onDismissRequest = { showEqSheet = false },
-            containerColor = Color(0xFF1A1A26)
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(280.dp)
-                    .padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                Icon(Icons.Default.Equalizer, contentDescription = null, tint = Color.White.copy(alpha = 0.2f), modifier = Modifier.size(48.dp))
-                Spacer(modifier = Modifier.height(16.dp))
-                Text("Equalizer", color = Color.White.copy(alpha = 0.6f), fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    "Per-band EQ coming soon",
-                    color = Color.White.copy(alpha = 0.35f),
-                    fontSize = 13.sp,
-                    textAlign = TextAlign.Center
-                )
-            }
-        }
+        EqualizerSheet(
+            equalizerManager = equalizerManager,
+            onDismiss = { showEqSheet = false }
+        )
     }
 }
 
@@ -795,14 +746,6 @@ private fun ExtraControlButton(
             letterSpacing = 0.5.sp
         )
     }
-}
-
-private fun shareTrack(context: Context, title: String, artist: String) {
-    val intent = Intent(Intent.ACTION_SEND).apply {
-        type = "text/plain"
-        putExtra(Intent.EXTRA_TEXT, "🎵 $title — $artist")
-    }
-    context.startActivity(Intent.createChooser(intent, "Share track"))
 }
 
 private fun formatTime(ms: Long): String {

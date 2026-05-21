@@ -182,7 +182,7 @@ public final class TrackDao_Impl implements TrackDao {
 
   @Override
   public Object insertTracks(final List<TrackEntity> tracks,
-      final Continuation<? super Unit> arg1) {
+      final Continuation<? super Unit> $completion) {
     return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
       @Override
       @NonNull
@@ -196,12 +196,12 @@ public final class TrackDao_Impl implements TrackDao {
           __db.endTransaction();
         }
       }
-    }, arg1);
+    }, $completion);
   }
 
   @Override
   public Object insertSkipEvent(final SkipHistoryEntity skip,
-      final Continuation<? super Unit> arg1) {
+      final Continuation<? super Unit> $completion) {
     return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
       @Override
       @NonNull
@@ -215,11 +215,11 @@ public final class TrackDao_Impl implements TrackDao {
           __db.endTransaction();
         }
       }
-    }, arg1);
+    }, $completion);
   }
 
   @Override
-  public Object updateTrack(final TrackEntity track, final Continuation<? super Unit> arg1) {
+  public Object updateTrack(final TrackEntity track, final Continuation<? super Unit> $completion) {
     return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
       @Override
       @NonNull
@@ -233,12 +233,12 @@ public final class TrackDao_Impl implements TrackDao {
           __db.endTransaction();
         }
       }
-    }, arg1);
+    }, $completion);
   }
 
   @Override
   public Object incrementPlayCount(final long trackId, final long timestamp,
-      final long durationPlayed, final Continuation<? super Unit> arg3) {
+      final long durationPlayed, final Continuation<? super Unit> $completion) {
     return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
       @Override
       @NonNull
@@ -263,11 +263,12 @@ public final class TrackDao_Impl implements TrackDao {
           __preparedStmtOfIncrementPlayCount.release(_stmt);
         }
       }
-    }, arg3);
+    }, $completion);
   }
 
   @Override
-  public Object incrementTrackSkipCount(final long trackId, final Continuation<? super Unit> arg1) {
+  public Object incrementTrackSkipCount(final long trackId,
+      final Continuation<? super Unit> $completion) {
     return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
       @Override
       @NonNull
@@ -288,7 +289,7 @@ public final class TrackDao_Impl implements TrackDao {
           __preparedStmtOfIncrementTrackSkipCount.release(_stmt);
         }
       }
-    }, arg1);
+    }, $completion);
   }
 
   @Override
@@ -482,7 +483,8 @@ public final class TrackDao_Impl implements TrackDao {
   }
 
   @Override
-  public Object getTrackById(final long trackId, final Continuation<? super TrackEntity> arg1) {
+  public Object getTrackById(final long trackId,
+      final Continuation<? super TrackEntity> $completion) {
     final String _sql = "SELECT * FROM tracks WHERE id = ?";
     final RoomSQLiteQuery _statement = RoomSQLiteQuery.acquire(_sql, 1);
     int _argIndex = 1;
@@ -566,7 +568,7 @@ public final class TrackDao_Impl implements TrackDao {
           _statement.release();
         }
       }
-    }, arg1);
+    }, $completion);
   }
 
   @Override
@@ -660,7 +662,7 @@ public final class TrackDao_Impl implements TrackDao {
 
   @Override
   public Object getSimilarTracks(final long trackId, final int limit,
-      final Continuation<? super List<TrackEntity>> arg2) {
+      final Continuation<? super List<TrackEntity>> $completion) {
     final String _sql = "\n"
             + "        SELECT t.* FROM tracks t\n"
             + "        JOIN track_tags tt ON t.id = tt.trackId\n"
@@ -756,7 +758,7 @@ public final class TrackDao_Impl implements TrackDao {
           _statement.release();
         }
       }
-    }, arg2);
+    }, $completion);
   }
 
   @Override
@@ -861,7 +863,7 @@ public final class TrackDao_Impl implements TrackDao {
 
   @Override
   public Object deleteRemovedTracks(final List<Long> remainingIds,
-      final Continuation<? super Unit> arg1) {
+      final Continuation<? super Unit> $completion) {
     return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
       @Override
       @NonNull
@@ -891,7 +893,7 @@ public final class TrackDao_Impl implements TrackDao {
           __db.endTransaction();
         }
       }
-    }, arg1);
+    }, $completion);
   }
 
   @NonNull

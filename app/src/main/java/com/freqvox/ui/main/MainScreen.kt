@@ -57,6 +57,7 @@ fun MainScreen(
     val currentQueueIndex by playbackController.currentQueueIndex.collectAsState()
     
     val isLiked by viewModel.isCurrentTrackLiked.collectAsState()
+    val currentTrack by viewModel.currentTrack.collectAsState()
     val allTags by viewModel.allTags.collectAsState()
     val currentTrackTags by viewModel.currentTrackTags.collectAsState()
     
@@ -253,7 +254,9 @@ fun MainScreen(
                             currentQueueIndex = currentQueueIndex,
                             onQueueItemClick = { index -> playbackController.jumpToQueueItem(index) },
                             onQueueItemRemove = { index -> playbackController.removeFromQueue(index) },
-                            onTagSwipeUp = { showTagSheet = true }
+                            onTagSwipeUp = { showTagSheet = true },
+                            equalizerManager = playbackController.equalizerManager,
+                            currentTrack = currentTrack
                         )
                     }
                 }

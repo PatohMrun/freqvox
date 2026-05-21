@@ -2,6 +2,7 @@ package com.freqvox;
 
 import com.freqvox.di.DatabaseModule;
 import com.freqvox.di.PlaybackModule;
+import com.freqvox.playback.FreqvoxPlaybackService_GeneratedInjector;
 import com.freqvox.ui.main.MainViewModel_HiltModules;
 import dagger.Binds;
 import dagger.Component;
@@ -146,7 +147,8 @@ public final class FreqvoxApplication_HiltComponents {
 
   @Subcomponent
   @ServiceScoped
-  public abstract static class ServiceC implements ServiceComponent,
+  public abstract static class ServiceC implements FreqvoxPlaybackService_GeneratedInjector,
+      ServiceComponent,
       GeneratedComponent {
     @Subcomponent.Builder
     abstract interface Builder extends ServiceComponentBuilder {

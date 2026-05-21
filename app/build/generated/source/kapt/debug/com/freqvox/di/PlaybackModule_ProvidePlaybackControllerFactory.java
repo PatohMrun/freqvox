@@ -3,6 +3,7 @@ package com.freqvox.di;
 import android.content.Context;
 import com.freqvox.data.local.dao.PlayHistoryDao;
 import com.freqvox.data.local.dao.TrackDao;
+import com.freqvox.playback.FreqvoxEqualizerManager;
 import com.freqvox.playback.PlaybackController;
 import com.freqvox.playback.SleepTimerManager;
 import dagger.internal.DaggerGenerated;
@@ -36,29 +37,35 @@ public final class PlaybackModule_ProvidePlaybackControllerFactory implements Fa
 
   private final Provider<SleepTimerManager> sleepTimerManagerProvider;
 
+  private final Provider<FreqvoxEqualizerManager> equalizerManagerProvider;
+
   public PlaybackModule_ProvidePlaybackControllerFactory(Provider<Context> contextProvider,
       Provider<TrackDao> trackDaoProvider, Provider<PlayHistoryDao> playHistoryDaoProvider,
-      Provider<SleepTimerManager> sleepTimerManagerProvider) {
+      Provider<SleepTimerManager> sleepTimerManagerProvider,
+      Provider<FreqvoxEqualizerManager> equalizerManagerProvider) {
     this.contextProvider = contextProvider;
     this.trackDaoProvider = trackDaoProvider;
     this.playHistoryDaoProvider = playHistoryDaoProvider;
     this.sleepTimerManagerProvider = sleepTimerManagerProvider;
+    this.equalizerManagerProvider = equalizerManagerProvider;
   }
 
   @Override
   public PlaybackController get() {
-    return providePlaybackController(contextProvider.get(), trackDaoProvider.get(), playHistoryDaoProvider.get(), sleepTimerManagerProvider.get());
+    return providePlaybackController(contextProvider.get(), trackDaoProvider.get(), playHistoryDaoProvider.get(), sleepTimerManagerProvider.get(), equalizerManagerProvider.get());
   }
 
   public static PlaybackModule_ProvidePlaybackControllerFactory create(
       Provider<Context> contextProvider, Provider<TrackDao> trackDaoProvider,
       Provider<PlayHistoryDao> playHistoryDaoProvider,
-      Provider<SleepTimerManager> sleepTimerManagerProvider) {
-    return new PlaybackModule_ProvidePlaybackControllerFactory(contextProvider, trackDaoProvider, playHistoryDaoProvider, sleepTimerManagerProvider);
+      Provider<SleepTimerManager> sleepTimerManagerProvider,
+      Provider<FreqvoxEqualizerManager> equalizerManagerProvider) {
+    return new PlaybackModule_ProvidePlaybackControllerFactory(contextProvider, trackDaoProvider, playHistoryDaoProvider, sleepTimerManagerProvider, equalizerManagerProvider);
   }
 
   public static PlaybackController providePlaybackController(Context context, TrackDao trackDao,
-      PlayHistoryDao playHistoryDao, SleepTimerManager sleepTimerManager) {
-    return Preconditions.checkNotNullFromProvides(PlaybackModule.INSTANCE.providePlaybackController(context, trackDao, playHistoryDao, sleepTimerManager));
+      PlayHistoryDao playHistoryDao, SleepTimerManager sleepTimerManager,
+      FreqvoxEqualizerManager equalizerManager) {
+    return Preconditions.checkNotNullFromProvides(PlaybackModule.INSTANCE.providePlaybackController(context, trackDao, playHistoryDao, sleepTimerManager, equalizerManager));
   }
 }

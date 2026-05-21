@@ -30,7 +30,8 @@ class PlaybackController(
     private val context: Context,
     private val trackDao: TrackDao,
     private val playHistoryDao: PlayHistoryDao,
-    private val sleepTimerManager: SleepTimerManager
+    private val sleepTimerManager: SleepTimerManager,
+    val equalizerManager: FreqvoxEqualizerManager
 ) {
     private var controllerFuture: ListenableFuture<MediaController>? = null
     private var mediaController: MediaController? = null

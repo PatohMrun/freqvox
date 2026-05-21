@@ -7,9 +7,15 @@ import androidx.media3.common.C
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
+import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class FreqvoxPlaybackService : MediaSessionService() {
     private var mediaSession: MediaSession? = null
+
+    @Inject
+    lateinit var equalizerManager: FreqvoxEqualizerManager
 
     override fun onCreate() {
         super.onCreate()
@@ -17,7 +23,6 @@ class FreqvoxPlaybackService : MediaSessionService() {
         val player = ExoPlayer.Builder(this)
             .setAudioAttributes(AudioAttributes.DEFAULT, true)
             .setHandleAudioBecomingNoisy(true)
-            // ExoPlayer handles gapless by default for most formats.
             .build()
             
         // Setup MediaSession with Activity deep link
@@ -29,6 +34,9 @@ class FreqvoxPlaybackService : MediaSessionService() {
         mediaSession = MediaSession.Builder(this, player)
             .setSessionActivity(pendingIntent)
             .build()
+
+        // Initialize Equalizer with the player's audio session ID
+        equalizerManager.init(player.audioSessionId)
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? {
@@ -41,6 +49,7 @@ class FreqvoxPlaybackService : MediaSessionService() {
             release()
         }
         mediaSession = null
+        equalizerManager.release()
         super.onDestroy()
     }
 }
