@@ -57,7 +57,9 @@ fun HomeScreen(
         FeedGenerator.generateFeed(activeTracks, FeedContext(playHistory, taggedTrackIds))
     }
 
-    val heroTrack = currentTrack ?: activeTracks.firstOrNull()
+    val heroTrack = currentTrack
+        ?: activeTracks.find { it.id == playHistory.firstOrNull()?.trackId }
+        ?: activeTracks.firstOrNull()
 
     Box(modifier = Modifier.fillMaxSize()) {
         // Feed Illumination Layer: Massively blurred radial gradient from the Hero track

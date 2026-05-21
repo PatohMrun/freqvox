@@ -18,6 +18,10 @@ class PlaylistRepository @Inject constructor(
 ) {
     val allPlaylists: Flow<List<PlaylistEntity>> = playlistDao.getAllPlaylists()
 
+    suspend fun deletePlaylist(playlist: PlaylistEntity) {
+        playlistDao.deletePlaylist(playlist)
+    }
+
     suspend fun createDynamicPlaylist(name: String, includedTagIds: List<Long>, excludedTagIds: List<Long> = emptyList()) {
         val queryJson = """{"include": ${includedTagIds}, "exclude": ${excludedTagIds}}"""
         playlistDao.insertPlaylist(

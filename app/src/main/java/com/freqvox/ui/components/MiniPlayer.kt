@@ -1,8 +1,11 @@
 package com.freqvox.ui.components
 
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.*
@@ -17,8 +20,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
@@ -41,51 +47,63 @@ fun MiniPlayer(
     val currentPosition by playbackController.currentPosition.collectAsState()
     val duration by playbackController.duration.collectAsState()
 
-    val progress = if (duration > 0) currentPosition.toFloat() / duration else 0f
-    
+    // Swipe-to-skip state (on the content row, not the seek bar)
     var offsetX by remember { mutableStateOf(0f) }
 
-    Surface(
+    // Seek bar state
+    var barWidth by remember { mutableIntStateOf(1) }
+    var isDragging by remember { mutableStateOf(false) }
+    var seekFraction by remember { mutableFloatStateOf(0f) }
+    // Holds the last seeked fraction until currentPosition catches up (prevents bounce)
+    var pendingSeekFraction by remember { mutableFloatStateOf(-1f) }
+    val barHeight by animateDpAsState(if (isDragging) 4.dp else 2.dp, label = "barH")
+
+    // Clear pending seek once currentPosition reflects the seek target (within 3%)
+    if (pendingSeekFraction >= 0f && duration > 0) {
+        val positionFraction = currentPosition.toFloat() / duration
+        if (kotlin.math.abs(positionFraction - pendingSeekFraction) < 0.03f) {
+            pendingSeekFraction = -1f
+        }
+    }
+
+    val displayProgress = when {
+        isDragging -> seekFraction
+        pendingSeekFraction >= 0f -> pendingSeekFraction
+        duration > 0 -> currentPosition.toFloat() / duration
+        else -> 0f
+    }
+
+    Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(68.dp)
-            .offset { IntOffset(offsetX.roundToInt(), 0) }
-            .draggable(
-                orientation = Orientation.Horizontal,
-                state = rememberDraggableState { delta ->
-                    offsetX += delta
-                },
-                onDragStopped = {
-                    if (offsetX > 150) {
-                        playbackController.playPrevious()
-                    } else if (offsetX < -150) {
-                        playbackController.playNext()
-                    }
-                    offsetX = 0f
-                }
-            )
-            .clickable(onClick = onMiniPlayerClick),
-        color = Color(0xFF1A1A26),
-        tonalElevation = 8.dp
+            .shadow(8.dp, clip = false)
+            .background(Color(0xFF1A1A26))
     ) {
-        Column {
-            // Real-time progress bar at the bottom
-            LinearProgressIndicator(
-                progress = { progress },
-                modifier = Modifier.fillMaxWidth().height(2.dp),
-                color = Color(0xFF7C4DFF),
-                trackColor = Color.White.copy(alpha = 0.05f),
-            )
-
+        Box(modifier = Modifier.fillMaxWidth()) {
+            // ── Content row — swipe left/right to skip ────────────────────────
             Row(
                 modifier = Modifier
-                    .fillMaxSize()
+                    .fillMaxWidth()
+                    .height(60.dp)
+                    .offset { IntOffset(offsetX.roundToInt(), 0) }
+                    .draggable(
+                        orientation = Orientation.Horizontal,
+                        state = rememberDraggableState { delta -> offsetX += delta },
+                        onDragStopped = {
+                            if (offsetX > 150) playbackController.playPrevious()
+                            else if (offsetX < -150) playbackController.playNext()
+                            offsetX = 0f
+                        }
+                    )
+                    .clickable(onClick = onMiniPlayerClick)
                     .padding(horizontal = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Artwork thumbnail
                 Surface(
-                    modifier = Modifier.size(44.dp).clip(RoundedCornerShape(6.dp)),
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(RoundedCornerShape(6.dp)),
                     color = Color(0xFF12121A)
                 ) {
                     if (artworkUri != null) {
@@ -97,7 +115,11 @@ fun MiniPlayer(
                         )
                     } else {
                         Box(contentAlignment = Alignment.Center) {
-                            Text(trackTitle.take(1).uppercase(), color = Color.Gray, fontWeight = FontWeight.Bold)
+                            Text(
+                                trackTitle.take(1).uppercase(),
+                                color = Color.Gray,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
                     }
                 }
@@ -125,13 +147,12 @@ fun MiniPlayer(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = { playbackController.playPrevious() }) {
                         Icon(
-                            imageVector = Icons.Default.SkipPrevious,
+                            Icons.Default.SkipPrevious,
                             contentDescription = "Previous",
                             tint = Color.White,
                             modifier = Modifier.size(20.dp)
                         )
                     }
-
                     IconButton(
                         onClick = { playbackController.togglePlayPause() },
                         modifier = Modifier.size(40.dp)
@@ -143,15 +164,94 @@ fun MiniPlayer(
                             modifier = Modifier.size(28.dp)
                         )
                     }
-
                     IconButton(onClick = { playbackController.playNext() }) {
                         Icon(
-                            imageVector = Icons.Default.SkipNext,
+                            Icons.Default.SkipNext,
                             contentDescription = "Next",
                             tint = Color.White,
                             modifier = Modifier.size(20.dp)
                         )
                     }
+                }
+            }
+
+            // ── Seek bar — 24dp touch target overlay at the top ───────────────────
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(24.dp)
+                    .align(Alignment.TopCenter)
+                    .onSizeChanged { barWidth = it.width }
+                    .pointerInput(barWidth, duration) {
+                        awaitEachGesture {
+                            // Wait for finger down
+                            val firstEvent = awaitPointerEvent()
+                            val firstChange = firstEvent.changes.firstOrNull()
+                                ?: return@awaitEachGesture
+                            if (!firstChange.pressed) return@awaitEachGesture
+                            firstChange.consume()
+
+                            isDragging = true
+                            seekFraction = (firstChange.position.x / barWidth).coerceIn(0f, 1f)
+
+                            // Track drag
+                            var event = firstEvent
+                            while (event.changes.any { it.pressed }) {
+                                event = awaitPointerEvent()
+                                val change = event.changes.firstOrNull() ?: break
+                                if (change.pressed) {
+                                    seekFraction = (change.position.x / barWidth).coerceIn(0f, 1f)
+                                    change.consume()
+                                }
+                            }
+
+                            // Seek on release — freeze display at seekFraction until position converges
+                            if (duration > 0) {
+                                pendingSeekFraction = seekFraction
+                                playbackController.seekTo((seekFraction * duration).toLong())
+                            }
+                            isDragging = false
+                        }
+                    },
+                contentAlignment = Alignment.TopCenter
+            ) {
+                Canvas(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(24.dp) // Use full touch target height so thumb isn't clipped
+                ) {
+                    val trackHeight = barHeight.toPx()
+                    // Draw the track exactly at the top boundary so there's zero gap above it
+                    val y = trackHeight / 2f 
+                    
+                    // Draw background track
+                    drawLine(
+                        color = Color.White.copy(alpha = 0.06f),
+                        start = androidx.compose.ui.geometry.Offset(0f, y),
+                        end = androidx.compose.ui.geometry.Offset(size.width, y),
+                        strokeWidth = trackHeight,
+                        cap = androidx.compose.ui.graphics.StrokeCap.Round
+                    )
+                    
+                    val progressWidth = size.width * displayProgress
+                    // Draw active progress
+                    if (progressWidth > 0) {
+                        drawLine(
+                            color = Color(0xFF7C4DFF),
+                            start = androidx.compose.ui.geometry.Offset(0f, y),
+                            end = androidx.compose.ui.geometry.Offset(progressWidth, y),
+                            strokeWidth = trackHeight,
+                            cap = androidx.compose.ui.graphics.StrokeCap.Round
+                        )
+                    }
+                    
+                    // Draw the thumb (knob) at the tip
+                    val thumbRadius = if (isDragging) 6.dp.toPx() else 4.dp.toPx()
+                    drawCircle(
+                        color = Color.White,
+                        radius = thumbRadius,
+                        center = androidx.compose.ui.geometry.Offset(progressWidth, y)
+                    )
                 }
             }
         }

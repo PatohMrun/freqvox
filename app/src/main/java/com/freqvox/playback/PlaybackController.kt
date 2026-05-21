@@ -37,6 +37,9 @@ class PlaybackController(
     private var mediaController: MediaController? = null
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
+    private val _currentTrackId = MutableStateFlow<Long?>(null)
+    val currentTrackId: StateFlow<Long?> = _currentTrackId.asStateFlow()
+
     private val _isPlaying = MutableStateFlow(false)
     val isPlaying: StateFlow<Boolean> = _isPlaying.asStateFlow()
 
@@ -77,6 +80,9 @@ class PlaybackController(
     private var lastTrackId: Long? = null
     private var playStartTime: Long = 0L
 
+    // Debounce job: suppresses brief isPlaying=false blips during seek buffering
+    private var seekDebounceJob: kotlinx.coroutines.Job? = null
+
     // Play history accumulation — tracks actual listen time excluding pauses
     private var historyTrackId: Long? = null
     private var historyAccumulated: Long = 0L   // ms of confirmed listen time
@@ -87,36 +93,66 @@ class PlaybackController(
     }
 
     fun initializeController() {
+        if (mediaController?.isConnected == true) return
+        // Don't start a second connection if one is already in progress
+        if (controllerFuture?.isDone == false) return
         val sessionToken = SessionToken(
             context,
             ComponentName(context, FreqvoxPlaybackService::class.java)
         )
-        controllerFuture = MediaController.Builder(context, sessionToken).buildAsync()
-        controllerFuture?.addListener(
+        val future = MediaController.Builder(context, sessionToken).buildAsync()
+        controllerFuture = future
+        future.addListener(
             {
-                mediaController = controllerFuture?.get()
-                setupControllerListener()
-                pendingMediaItem?.let { playMediaItem(it) }
+                // Ignore stale callbacks from a superseded future
+                if (controllerFuture !== future) return@addListener
+                try {
+                    // Capture 'future' (already resolved here), NOT controllerFuture
+                    // — reading controllerFuture.get() when it points to a different future blocks the main thread
+                    mediaController = future.get()
+                    setupControllerListener()
+                    pendingMediaItem?.let { playMediaItem(it) }
+                } catch (e: Exception) {
+                    android.util.Log.e("PlaybackController", "Service connection failed", e)
+                }
             },
             ContextCompat.getMainExecutor(context)
         )
+    }
+
+    fun reconnectIfNeeded() {
+        if (mediaController?.isConnected == true) return
+        // Connection still in progress — let it complete
+        if (controllerFuture?.isDone == false) return
+        // Service died after a previous completed connection — clean up and reconnect
+        controllerFuture?.let { MediaController.releaseFuture(it) }
+        controllerFuture = null
+        mediaController = null
+        initializeController()
     }
 
     private fun setupControllerListener() {
         mediaController?.addListener(object : Player.Listener {
 
             override fun onIsPlayingChanged(isPlaying: Boolean) {
-                _isPlaying.value = isPlaying
                 if (isPlaying) {
+                    seekDebounceJob?.cancel()
+                    _isPlaying.value = true
                     playStartTime = System.currentTimeMillis()
                     historySegmentStart = System.currentTimeMillis()
                 } else {
-                    // Seal off the current listen segment
+                    // Seal history segment immediately — accurate listen time
                     if (historySegmentStart > 0L) {
                         historyAccumulated += System.currentTimeMillis() - historySegmentStart
                         historySegmentStart = 0L
                     }
                     logPlayTime()
+                    // Delay the UI state update so seek-buffering blips (< ~200ms) never reach the UI
+                    seekDebounceJob?.cancel()
+                    seekDebounceJob = scope.launch {
+                        delay(200)
+                        _isPlaying.value = false
+                    }
                 }
             }
 
@@ -170,6 +206,7 @@ class PlaybackController(
         val newId = mediaItem?.mediaId?.toLongOrNull()
         if (newId != lastTrackId) {
             lastTrackId = newId
+            _currentTrackId.value = newId   // drives like/tag state in ViewModel
             playStartTime = System.currentTimeMillis()
             // Reset history accumulation for the new track
             historyTrackId = newId
@@ -377,15 +414,15 @@ class PlaybackController(
     }
 
     fun release() {
-        // Seal the final segment before flushing
         if (_isPlaying.value && historySegmentStart > 0L) {
             historyAccumulated += System.currentTimeMillis() - historySegmentStart
             historySegmentStart = 0L
         }
         logPlayTime()
         insertHistoryRecord()
-        scope.cancel()
         controllerFuture?.let { MediaController.releaseFuture(it) }
         controllerFuture = null
+        mediaController = null
+        scope.cancel()
     }
 }

@@ -7,6 +7,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -14,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import com.freqvox.playback.PlaybackController
 import com.freqvox.ui.main.MainScreen
+import com.freqvox.ui.main.MainViewModel
 import com.freqvox.ui.theme.FreqvoxTheme
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -22,15 +24,17 @@ import androidx.activity.enableEdgeToEdge
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
-    
+
     @Inject
     lateinit var playbackController: PlaybackController
+
+    private val viewModel: MainViewModel by viewModels()
 
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted: Boolean ->
         if (isGranted) {
-            // ViewModel will trigger scan automatically
+            viewModel.scanLibrary()
         }
     }
 
@@ -66,11 +70,12 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onStart() {
+        super.onStart()
+        playbackController.reconnectIfNeeded()
+    }
+
     override fun onDestroy() {
-        // controller is released by Hilt or via repository if scoped correctly, 
-        // but since it's a singleton we might want a manual release if tied to Activity lifecycle.
-        // However, MediaController.release() should be called.
-        playbackController.release()
         super.onDestroy()
     }
 }

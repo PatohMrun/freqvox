@@ -1,5 +1,6 @@
 package com.freqvox.di;
 
+import android.content.Context;
 import com.freqvox.playback.FreqvoxEqualizerManager;
 import dagger.internal.DaggerGenerated;
 import dagger.internal.Factory;
@@ -7,9 +8,10 @@ import dagger.internal.Preconditions;
 import dagger.internal.QualifierMetadata;
 import dagger.internal.ScopeMetadata;
 import javax.annotation.processing.Generated;
+import javax.inject.Provider;
 
 @ScopeMetadata("javax.inject.Singleton")
-@QualifierMetadata
+@QualifierMetadata("dagger.hilt.android.qualifiers.ApplicationContext")
 @DaggerGenerated
 @Generated(
     value = "dagger.internal.codegen.ComponentProcessor",
@@ -23,20 +25,23 @@ import javax.annotation.processing.Generated;
     "cast"
 })
 public final class PlaybackModule_ProvideEqualizerManagerFactory implements Factory<FreqvoxEqualizerManager> {
+  private final Provider<Context> contextProvider;
+
+  public PlaybackModule_ProvideEqualizerManagerFactory(Provider<Context> contextProvider) {
+    this.contextProvider = contextProvider;
+  }
+
   @Override
   public FreqvoxEqualizerManager get() {
-    return provideEqualizerManager();
+    return provideEqualizerManager(contextProvider.get());
   }
 
-  public static PlaybackModule_ProvideEqualizerManagerFactory create() {
-    return InstanceHolder.INSTANCE;
+  public static PlaybackModule_ProvideEqualizerManagerFactory create(
+      Provider<Context> contextProvider) {
+    return new PlaybackModule_ProvideEqualizerManagerFactory(contextProvider);
   }
 
-  public static FreqvoxEqualizerManager provideEqualizerManager() {
-    return Preconditions.checkNotNullFromProvides(PlaybackModule.INSTANCE.provideEqualizerManager());
-  }
-
-  private static final class InstanceHolder {
-    private static final PlaybackModule_ProvideEqualizerManagerFactory INSTANCE = new PlaybackModule_ProvideEqualizerManagerFactory();
+  public static FreqvoxEqualizerManager provideEqualizerManager(Context context) {
+    return Preconditions.checkNotNullFromProvides(PlaybackModule.INSTANCE.provideEqualizerManager(context));
   }
 }

@@ -44,6 +44,8 @@ public final class TrackDao_Impl implements TrackDao {
 
   private final EntityDeletionOrUpdateAdapter<TrackEntity> __updateAdapterOfTrackEntity;
 
+  private final SharedSQLiteStatement __preparedStmtOfDeleteTrackById;
+
   private final SharedSQLiteStatement __preparedStmtOfIncrementPlayCount;
 
   private final SharedSQLiteStatement __preparedStmtOfIncrementTrackSkipCount;
@@ -162,6 +164,14 @@ public final class TrackDao_Impl implements TrackDao {
         statement.bindLong(13, entity.getId());
       }
     };
+    this.__preparedStmtOfDeleteTrackById = new SharedSQLiteStatement(__db) {
+      @Override
+      @NonNull
+      public String createQuery() {
+        final String _query = "DELETE FROM tracks WHERE id = ?";
+        return _query;
+      }
+    };
     this.__preparedStmtOfIncrementPlayCount = new SharedSQLiteStatement(__db) {
       @Override
       @NonNull
@@ -231,6 +241,31 @@ public final class TrackDao_Impl implements TrackDao {
           return Unit.INSTANCE;
         } finally {
           __db.endTransaction();
+        }
+      }
+    }, $completion);
+  }
+
+  @Override
+  public Object deleteTrackById(final long trackId, final Continuation<? super Unit> $completion) {
+    return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
+      @Override
+      @NonNull
+      public Unit call() throws Exception {
+        final SupportSQLiteStatement _stmt = __preparedStmtOfDeleteTrackById.acquire();
+        int _argIndex = 1;
+        _stmt.bindLong(_argIndex, trackId);
+        try {
+          __db.beginTransaction();
+          try {
+            _stmt.executeUpdateDelete();
+            __db.setTransactionSuccessful();
+            return Unit.INSTANCE;
+          } finally {
+            __db.endTransaction();
+          }
+        } finally {
+          __preparedStmtOfDeleteTrackById.release(_stmt);
         }
       }
     }, $completion);

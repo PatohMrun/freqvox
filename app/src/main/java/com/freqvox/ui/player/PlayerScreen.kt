@@ -13,8 +13,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -206,6 +210,17 @@ fun PlayerScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(1f)
+                .pointerInput(duration, currentPosition) {
+                    detectTapGestures(
+                        onDoubleTap = { offset ->
+                            if (duration > 0) {
+                                val seekDelta = if (offset.x < size.width / 2f) -10_000L else 10_000L
+                                val newPos = (currentPosition + seekDelta).coerceIn(0L, duration)
+                                onSeek(newPos.toFloat() / duration)
+                            }
+                        }
+                    )
+                }
         ) {
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val radius = size.minDimension * 0.55f
@@ -273,17 +288,18 @@ fun PlayerScreen(
                 .clip(RoundedCornerShape(20.dp))
                 .background(Color.White.copy(alpha = 0.07f))
                 .border(1.dp, Color.White.copy(alpha = 0.10f), RoundedCornerShape(20.dp))
-                .padding(horizontal = 16.dp, vertical = 10.dp)
+                .padding(horizontal = 16.dp, vertical = 14.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = trackTitle,
                         color = Color.White,
-                        fontSize = 22.sp,
+                        fontSize = 24.sp,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -292,18 +308,19 @@ fun PlayerScreen(
                     Text(
                         text = artist,
                         color = Color.White.copy(alpha = 0.55f),
-                        fontSize = 15.sp,
+                        fontSize = 16.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
                 AestheticLikeButton(
                     isLiked = isLiked,
-                    onClick = onLikeClick
+                    onClick = onLikeClick,
+                    modifier = Modifier.size(44.dp)
                 )
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             WaveformScrubber(
                 progress        = progress,
@@ -330,32 +347,52 @@ fun PlayerScreen(
             // ── Playback Controls ──────────────────────────────────────────────
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Shuffle
-                IconButton(onClick = onShuffleClick) {
+                IconButton(onClick = onShuffleClick, modifier = Modifier.size(34.dp)) {
                     Icon(
                         Icons.Default.Shuffle,
                         contentDescription = "Shuffle",
                         tint = if (shuffleEnabled) accentPrimary else Color.White.copy(alpha = 0.35f),
-                        modifier = Modifier.size(22.dp)
+                        modifier = Modifier.size(19.dp)
                     )
                 }
 
-                IconButton(onClick = onPreviousClick, modifier = Modifier.size(44.dp)) {
+                // Previous
+                IconButton(onClick = onPreviousClick, modifier = Modifier.size(38.dp)) {
                     Icon(
                         Icons.Default.SkipPrevious,
                         contentDescription = "Previous",
                         tint = Color.White.copy(alpha = 0.85f),
-                        modifier = Modifier.size(32.dp)
+                        modifier = Modifier.size(26.dp)
                     )
                 }
 
+                // Seek back 10 s
+                IconButton(
+                    onClick = {
+                        if (duration > 0) {
+                            val newPos = (currentPosition - 10_000L).coerceAtLeast(0L)
+                            onSeek(newPos.toFloat() / duration)
+                        }
+                    },
+                    modifier = Modifier.size(34.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Replay10,
+                        contentDescription = "-10s",
+                        tint = Color.White.copy(alpha = 0.65f),
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+
+                // Play / Pause
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
-                        .size(56.dp)
+                        .size(52.dp)
                         .shadow(
                             elevation    = 20.dp,
                             shape        = CircleShape,
@@ -370,27 +407,46 @@ fun PlayerScreen(
                             imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                             contentDescription = "Play/Pause",
                             tint = Color.White,
-                            modifier = Modifier.size(34.dp)
+                            modifier = Modifier.size(30.dp)
                         )
                     }
                 }
 
-                IconButton(onClick = onNextClick, modifier = Modifier.size(44.dp)) {
+                // Seek forward 10 s
+                IconButton(
+                    onClick = {
+                        if (duration > 0) {
+                            val newPos = (currentPosition + 10_000L).coerceAtMost(duration)
+                            onSeek(newPos.toFloat() / duration)
+                        }
+                    },
+                    modifier = Modifier.size(34.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Forward10,
+                        contentDescription = "+10s",
+                        tint = Color.White.copy(alpha = 0.65f),
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+
+                // Next
+                IconButton(onClick = onNextClick, modifier = Modifier.size(38.dp)) {
                     Icon(
                         Icons.Default.SkipNext,
                         contentDescription = "Next",
                         tint = Color.White.copy(alpha = 0.85f),
-                        modifier = Modifier.size(32.dp)
+                        modifier = Modifier.size(26.dp)
                     )
                 }
 
                 // Repeat — cycles Off → All → One
-                IconButton(onClick = onRepeatClick) {
+                IconButton(onClick = onRepeatClick, modifier = Modifier.size(34.dp)) {
                     Icon(
                         imageVector = if (repeatMode == 1) Icons.Default.RepeatOne else Icons.Default.Repeat,
                         contentDescription = "Repeat",
                         tint = if (repeatMode != 0) accentPrimary else Color.White.copy(alpha = 0.35f),
-                        modifier = Modifier.size(22.dp)
+                        modifier = Modifier.size(19.dp)
                     )
                 }
             }
@@ -518,8 +574,65 @@ fun PlayerScreen(
                     Spacer(modifier = Modifier.height(10.dp))
                 }
 
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 8.dp),
+                    color = Color.White.copy(alpha = 0.07f)
+                )
+
+                Text(
+                    "CUSTOM",
+                    color = Color.White.copy(alpha = 0.4f),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.5.sp
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+
+                var customMinutes by remember { mutableStateOf("") }
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    OutlinedTextField(
+                        value = customMinutes,
+                        onValueChange = { customMinutes = it.filter { c -> c.isDigit() }.take(3) },
+                        placeholder = { Text("minutes", color = Color.White.copy(alpha = 0.3f), fontSize = 13.sp) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        modifier = Modifier.weight(1f),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            focusedBorderColor = Color(0xFF7C4DFF),
+                            unfocusedBorderColor = Color.White.copy(alpha = 0.15f),
+                            cursorColor = Color(0xFF7C4DFF),
+                            focusedContainerColor = Color.White.copy(alpha = 0.04f),
+                            unfocusedContainerColor = Color.White.copy(alpha = 0.04f)
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    val customMins = customMinutes.toIntOrNull()
+                    Button(
+                        onClick = {
+                            if (customMins != null && customMins > 0) {
+                                onSleepTimer(customMins)
+                                showSleepSheet = false
+                            }
+                        },
+                        enabled = customMins != null && customMins > 0,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF7C4DFF),
+                            disabledContainerColor = Color(0xFF7C4DFF).copy(alpha = 0.25f)
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.height(54.dp)
+                    ) {
+                        Text("Set", fontWeight = FontWeight.Bold, color = Color.White)
+                    }
+                }
+
                 if (sleepTimerActive) {
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
                     TextButton(
                         onClick = { onStopSleepTimer(); showSleepSheet = false },
                         modifier = Modifier.fillMaxWidth()

@@ -43,6 +43,7 @@ fun MainScreen(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
     
+    val currentTrackId by playbackController.currentTrackId.collectAsState()
     val currentTrackTitle by playbackController.currentTrackTitle.collectAsState()
     val currentArtist by playbackController.currentArtist.collectAsState()
     val isPlaying by playbackController.isPlaying.collectAsState()
@@ -65,9 +66,9 @@ fun MainScreen(
     val scope = rememberCoroutineScope()
     var showTagSheet by remember { mutableStateOf(false) }
 
-    // Sync current track path to ViewModel for tagging/liking
-    LaunchedEffect(currentArtworkUri) {
-        viewModel.updateCurrentTrack(currentArtworkUri?.path)
+    // Sync current track to ViewModel using the exposed ID for reliability
+    LaunchedEffect(currentTrackId) {
+        viewModel.updateCurrentTrackById(currentTrackId)
     }
 
     // Show mini player only if a track is selected and we are NOT on the full player screen

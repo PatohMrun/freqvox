@@ -664,7 +664,7 @@ public final class DaggerFreqvoxApplication_HiltComponents_SingletonC {
           return (T) new SleepTimerManager();
 
           case 3: // com.freqvox.playback.FreqvoxEqualizerManager 
-          return (T) PlaybackModule_ProvideEqualizerManagerFactory.provideEqualizerManager();
+          return (T) PlaybackModule_ProvideEqualizerManagerFactory.provideEqualizerManager(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule));
 
           case 4: // com.freqvox.data.repository.TrackRepository 
           return (T) new TrackRepository(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule), singletonCImpl.trackDao(), singletonCImpl.tagDao(), singletonCImpl.playHistoryDao());

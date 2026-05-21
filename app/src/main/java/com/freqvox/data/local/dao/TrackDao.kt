@@ -34,6 +34,9 @@ interface TrackDao {
     @Query("DELETE FROM tracks WHERE id NOT IN (:remainingIds)")
     suspend fun deleteRemovedTracks(remainingIds: List<Long>)
 
+    @Query("DELETE FROM tracks WHERE id = :trackId")
+    suspend fun deleteTrackById(trackId: Long)
+
     @Query("SELECT * FROM tracks ORDER BY playCount DESC LIMIT 50")
     fun getMostPlayedTracks(): Flow<List<TrackEntity>>
 

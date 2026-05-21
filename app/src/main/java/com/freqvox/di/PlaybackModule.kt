@@ -19,8 +19,8 @@ object PlaybackModule {
 
     @Provides
     @Singleton
-    fun provideEqualizerManager(): FreqvoxEqualizerManager {
-        return FreqvoxEqualizerManager()
+    fun provideEqualizerManager(@ApplicationContext context: Context): FreqvoxEqualizerManager {
+        return FreqvoxEqualizerManager(context)
     }
 
     @Provides

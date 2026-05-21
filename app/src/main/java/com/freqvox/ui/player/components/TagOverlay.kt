@@ -9,38 +9,38 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.freqvox.data.local.entities.TagEntity
 
-private val tagEmojis = mapOf(
-    "liked"      to "❤️",
-    "chill"      to "😌",
-    "energetic"  to "⚡",
-    "focus"      to "📚",
-    "hype"       to "🔥",
-    "melancholy" to "💙",
-    "late night" to "🌙",
-    "workout"    to "💪",
-    "drive"      to "🚗",
-    "sleep"      to "😴",
-    "party"      to "🎉",
-    "morning"    to "☀️",
-    "throwback"  to "🕰️",
-    "underrated" to "💎",
-    "sad"        to "😔",
-    "vibes"      to "✨"
+private val tagIcons: Map<String, ImageVector> = mapOf(
+    "liked"      to Icons.Default.Favorite,
+    "chill"      to Icons.Default.AcUnit,
+    "energetic"  to Icons.Default.Bolt,
+    "focus"      to Icons.Default.School,
+    "hype"       to Icons.Default.Whatshot,
+    "melancholy" to Icons.Default.Cloud,
+    "late night" to Icons.Default.Bedtime,
+    "workout"    to Icons.Default.FitnessCenter,
+    "drive"      to Icons.Default.DirectionsCar,
+    "sleep"      to Icons.Default.Hotel,
+    "party"      to Icons.Default.Celebration,
+    "morning"    to Icons.Default.WbSunny,
+    "throwback"  to Icons.Default.History,
+    "underrated" to Icons.Default.Diamond,
+    "sad"        to Icons.Default.SentimentDissatisfied,
+    "vibes"      to Icons.Default.AutoAwesome
 )
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TagOverlay(
     tags: List<TagEntity>,
@@ -92,11 +92,11 @@ fun TagOverlay(
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                items(tags) { tag ->
+                items(tags.distinctBy { it.name.lowercase() }) { tag ->
                     TagChip(
                         tag = tag,
                         isSelected = selectedTagIds.contains(tag.id),
-                        emoji = tagEmojis[tag.name.lowercase()],
+                        icon = tagIcons[tag.name.lowercase()],
                         onClick = { onTagClick(tag) }
                     )
                 }
@@ -109,7 +109,7 @@ fun TagOverlay(
 fun TagChip(
     tag: TagEntity,
     isSelected: Boolean,
-    emoji: String? = null,
+    icon: ImageVector? = null,
     onClick: () -> Unit
 ) {
     val tagColor = Color(tag.color)
@@ -135,9 +135,14 @@ fun TagChip(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center
         ) {
-            if (emoji != null) {
-                Text(text = emoji, fontSize = 16.sp)
-                Spacer(modifier = Modifier.width(6.dp))
+            if (icon != null) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = if (isSelected) tagColor else Color.White.copy(alpha = 0.45f),
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(7.dp))
             }
             Text(
                 text = tag.name.replaceFirstChar { it.uppercase() },

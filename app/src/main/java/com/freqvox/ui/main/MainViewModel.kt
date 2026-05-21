@@ -78,19 +78,17 @@ class MainViewModel @Inject constructor(
             initialValue = emptyList()
         )
 
-    private val _currentTrackPath = MutableStateFlow<String?>(null)
-    
-    @OptIn(ExperimentalCoroutinesApi::class)
-    val currentTrack: StateFlow<TrackEntity?> = _currentTrackPath
-        .map { path -> allTracks.value.find { it.path == path } }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+    private val _currentTrackId = MutableStateFlow<Long?>(null)
+
+    val currentTrack: StateFlow<TrackEntity?> = combine(_currentTrackId, allTracks) { id, tracks ->
+        id?.let { tracks.find { t -> t.id == it } }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    val currentTrackTags: StateFlow<List<TagEntity>> = _currentTrackPath
-        .flatMapLatest { path ->
-            val track = allTracks.value.find { it.path == path }
-            if (track != null) {
-                trackRepository.getTagsForTrack(track.id)
+    val currentTrackTags: StateFlow<List<TagEntity>> = _currentTrackId
+        .flatMapLatest { id ->
+            if (id != null) {
+                trackRepository.getTagsForTrack(id)
             } else {
                 flowOf(emptyList())
             }
@@ -147,7 +145,15 @@ class MainViewModel @Inject constructor(
     }
 
     fun updateCurrentTrack(path: String?) {
-        _currentTrackPath.value = path
+        // Obsolete but kept for backwards compatibility if needed, 
+        // ideally find ID from path and call updateCurrentTrackById
+        allTracks.value.find { it.path == path }?.let {
+            updateCurrentTrackById(it.id)
+        }
+    }
+
+    fun updateCurrentTrackById(id: Long?) {
+        _currentTrackId.value = id
     }
 
     fun onSearchQueryChange(query: String) {
@@ -164,13 +170,8 @@ class MainViewModel @Inject constructor(
     fun toggleLike() {
         val track = currentTrack.value ?: return
         viewModelScope.launch {
-            var likedTag = allTags.value.find { it.name.lowercase() == "liked" }
-            if (likedTag == null) {
-                // Should not happen as per ensureDefaultTags, but safety first
-                trackRepository.scanLibrary() // will trigger ensureDefaultTags
-                likedTag = allTags.value.find { it.name.lowercase() == "liked" }
-            }
-            
+            // Find 'liked' tag case-insensitively
+            val likedTag = allTags.value.find { it.name.equals("liked", ignoreCase = true) }
             if (likedTag != null) {
                 trackRepository.toggleTagForTrack(track.id, likedTag.id)
             }
@@ -192,4 +193,19 @@ class MainViewModel @Inject constructor(
             playlistRepository.createDynamicPlaylist(name, includeTags)
         }
     }
+
+    fun deleteTrack(trackId: Long) {
+        viewModelScope.launch {
+            trackRepository.deleteTrack(trackId)
+        }
+    }
+
+    fun deletePlaylist(playlist: com.freqvox.data.local.entities.PlaylistEntity) {
+        viewModelScope.launch {
+            playlistRepository.deletePlaylist(playlist)
+        }
+    }
+
+    suspend fun getTracksForPlaylist(playlist: com.freqvox.data.local.entities.PlaylistEntity): List<TrackEntity> =
+        playlistRepository.getTracksForPlaylist(playlist)
 }

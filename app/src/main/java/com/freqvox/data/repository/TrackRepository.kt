@@ -52,11 +52,10 @@ class TrackRepository @Inject constructor(
             MediaStore.Audio.Media.ARTIST,
             MediaStore.Audio.Media.ALBUM,
             MediaStore.Audio.Media.DURATION,
-            MediaStore.Audio.Media.DATE_ADDED,
-            MediaStore.Audio.Media.DATA
+            MediaStore.Audio.Media.DATE_ADDED
         )
 
-        val selection = "${MediaStore.Audio.Media.IS_ALARM} == 0 AND ${MediaStore.Audio.Media.IS_NOTIFICATION} == 0 AND ${MediaStore.Audio.Media.IS_RINGTONE} == 0"
+        val selection = "${MediaStore.Audio.Media.DURATION} >= 1000"
         val sortOrder = "${MediaStore.Audio.Media.DATE_ADDED} DESC"
 
         contentResolver.query(
@@ -72,21 +71,29 @@ class TrackRepository @Inject constructor(
             val albumColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM)
             val durationColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
             val dateAddedColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_ADDED)
-            val dataColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA)
 
             while (cursor.moveToNext()) {
                 val id = cursor.getLong(idColumn)
-                val rawTitle = cursor.getString(titleColumn)
+                val rawTitle = cursor.getString(titleColumn) ?: continue
+                if (rawTitle.isBlank()) continue
                 val rawArtist = cursor.getString(artistColumn)
-                val album = cursor.getString(albumColumn)
+                val album = cursor.getString(albumColumn) ?: ""
                 val duration = cursor.getLong(durationColumn)
                 val dateAdded = cursor.getLong(dateAddedColumn)
-                val path = cursor.getString(dataColumn)
+
+                val path = android.content.ContentUris.withAppendedId(
+                    MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id
+                ).toString()
 
                 val cleanedTitle = cleanMetadata(rawTitle)
-                val cleanedArtist = if (rawArtist == "<unknown>") "Unknown Artist" else rawArtist
-                
-                val artworkPath = getOrExtractArtwork(id, path)
+                val cleanedArtist = when {
+                    rawArtist.isNullOrBlank() || rawArtist == "<unknown>" -> "Unknown Artist"
+                    else -> rawArtist
+                }
+
+                // Do NOT extract artwork here — it reads every audio file and takes O(n*fileIO) time.
+                // Preserve any artwork already cached from a previous scan; fill in null for new tracks.
+                val existingArtwork = trackDao.getTrackById(id)?.artworkPath
 
                 tracksInMediaStore.add(
                     TrackEntity(
@@ -97,7 +104,7 @@ class TrackRepository @Inject constructor(
                         duration = duration,
                         dateAdded = dateAdded,
                         path = path,
-                        artworkPath = artworkPath
+                        artworkPath = existingArtwork
                     )
                 )
             }
@@ -107,8 +114,16 @@ class TrackRepository @Inject constructor(
             trackDao.insertTracks(tracksInMediaStore)
             trackDao.deleteRemovedTracks(tracksInMediaStore.map { it.id })
         }
-        
+
         ensureDefaultTags()
+
+        // Extract artwork for tracks that don't have it yet — runs after tracks are visible in UI
+        tracksInMediaStore.filter { it.artworkPath == null }.forEach { track ->
+            val artworkPath = getOrExtractArtwork(track.id)
+            if (artworkPath != null) {
+                trackDao.updateTrack(track.copy(artworkPath = artworkPath))
+            }
+        }
     }
 
     private suspend fun ensureDefaultTags() {
@@ -138,25 +153,27 @@ class TrackRepository @Inject constructor(
         }
     }
 
-    private fun getOrExtractArtwork(trackId: Long, audioPath: String): String? {
+    private fun getOrExtractArtwork(trackId: Long): String? {
         val artworkDir = File(context.cacheDir, "artworks")
         if (!artworkDir.exists()) artworkDir.mkdirs()
-        
+
         val artworkFile = File(artworkDir, "$trackId.jpg")
         if (artworkFile.exists()) return artworkFile.absolutePath
 
         return try {
             val retriever = MediaMetadataRetriever()
-            val contentUri = android.content.ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, trackId)
+            val contentUri = android.content.ContentUris.withAppendedId(
+                MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, trackId
+            )
             retriever.setDataSource(context, contentUri)
             val art = retriever.embeddedPicture
             retriever.release()
 
             if (art != null) {
                 val bitmap = BitmapFactory.decodeByteArray(art, 0, art.size)
-                val out = FileOutputStream(artworkFile)
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 80, out)
-                out.close()
+                FileOutputStream(artworkFile).use { out ->
+                    bitmap.compress(Bitmap.CompressFormat.JPEG, 80, out)
+                }
                 artworkFile.absolutePath
             } else {
                 null
@@ -193,6 +210,10 @@ class TrackRepository @Inject constructor(
 
     suspend fun getSimilarTracks(trackId: Long): List<TrackEntity> {
         return trackDao.getSimilarTracks(trackId)
+    }
+
+    suspend fun deleteTrack(trackId: Long) = withContext(Dispatchers.IO) {
+        trackDao.deleteTrackById(trackId)
     }
 
     suspend fun getTracksByFolder(folderPath: String): List<TrackEntity> {
