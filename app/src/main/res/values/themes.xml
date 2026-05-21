@@ -1,5 +1,15 @@
 <resources>
-    <style name="Theme.Freqvox" parent="android:Theme.Material.Light.NoActionBar">
+    <!-- Base application theme. -->
+    <style name="Theme.Freqvox" parent="Theme.SplashScreen">
+        <!-- Set the splash screen background, animated icon, and animation duration. -->
+        <item name="windowSplashScreenBackground">@color/splash_background</item>
+        <!-- Use windowSplashScreenAnimatedIcon to add a drawable or an animated drawable -->
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_logo</item>
+        <!-- Set the theme of the Activity that directly follows your splash screen. -->
+        <item name="postSplashScreenTheme">@style/Theme.Freqvox.Main</item>
+    </style>
+
+    <style name="Theme.Freqvox.Main" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:statusBarColor">@android:color/transparent</item>
     </style>
 </resources>

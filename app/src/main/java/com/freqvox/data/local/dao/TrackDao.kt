@@ -70,4 +70,7 @@ interface TrackDao {
         )
     """)
     fun getHiddenTracks(recentThreshold: Long): Flow<List<TrackEntity>>
+
+    @Query("SELECT * FROM tracks ORDER BY RANDOM() LIMIT :limit")
+    suspend fun getRandomTracks(limit: Int = 15): List<TrackEntity>
 }

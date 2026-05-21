@@ -22,6 +22,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.freqvox.playback.QueueItem
@@ -141,6 +142,14 @@ fun PlayerScreen(
     var showQueueSheet   by remember { mutableStateOf(false) }
     var showEqSheet      by remember { mutableStateOf(false) }
     var showMoreMenu     by remember { mutableStateOf(false) }
+
+    val queueListState = androidx.compose.foundation.lazy.rememberLazyListState()
+    LaunchedEffect(showQueueSheet, currentQueueIndex) {
+        if (showQueueSheet && queue.isNotEmpty()) {
+            val targetIndex = currentQueueIndex.coerceIn(0, queue.size - 1)
+            queueListState.scrollToItem(targetIndex)
+        }
+    }
 
     Column(
         modifier = modifier
@@ -346,7 +355,9 @@ fun PlayerScreen(
         ) {
             // ── Playback Controls ──────────────────────────────────────────────
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 6.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -655,6 +666,16 @@ fun PlayerScreen(
 
     // ── Queue Sheet ───────────────────────────────────────────────────────────
     if (showQueueSheet) {
+        val queueListState = rememberLazyListState()
+        
+        LaunchedEffect(showQueueSheet, currentQueueIndex) {
+            if (showQueueSheet && queue.isNotEmpty()) {
+                // Scroll to show the active item, with one item above it for context
+                val targetIndex = (currentQueueIndex - 1).coerceAtLeast(0)
+                queueListState.animateScrollToItem(targetIndex)
+            }
+        }
+
         ModalBottomSheet(
             onDismissRequest = { showQueueSheet = false },
             containerColor = Color(0xFF12121A)
@@ -705,6 +726,7 @@ fun PlayerScreen(
                     }
                 } else {
                     LazyColumn(
+                        state = queueListState,
                         contentPadding = PaddingValues(
                             start = 16.dp, end = 16.dp, bottom = 48.dp
                         ),

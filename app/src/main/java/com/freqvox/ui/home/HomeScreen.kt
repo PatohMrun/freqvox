@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -24,6 +25,7 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.ui.text.font.FontWeight
@@ -34,8 +36,15 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.freqvox.data.local.entities.TrackEntity
 import com.freqvox.playback.PlaybackController
 import com.freqvox.ui.main.MainViewModel
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.util.*
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     playbackController: PlaybackController,
@@ -53,7 +62,11 @@ fun HomeScreen(
 
     val greeting = rememberGreeting()
 
-    val feedItems = remember(activeTracks, playHistory, taggedTrackIds) {
+    var refreshTrigger by remember { mutableStateOf(0) }
+    var isRefreshing by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
+    val feedItems = remember(activeTracks, playHistory, taggedTrackIds, refreshTrigger) {
         FeedGenerator.generateFeed(activeTracks, FeedContext(playHistory, taggedTrackIds))
     }
 
@@ -61,7 +74,19 @@ fun HomeScreen(
         ?: activeTracks.find { it.id == playHistory.firstOrNull()?.trackId }
         ?: activeTracks.firstOrNull()
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    PullToRefreshBox(
+        isRefreshing = isRefreshing,
+        onRefresh = {
+            scope.launch {
+                isRefreshing = true
+                delay(300) // Small delay for visual feedback
+                refreshTrigger++
+                isRefreshing = false
+            }
+        },
+        modifier = Modifier.fillMaxSize()
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
         // Feed Illumination Layer: Massively blurred radial gradient from the Hero track
         if (heroTrack != null) {
             val colors = getColorsForTrack(heroTrack.title)
@@ -186,9 +211,10 @@ fun HomeScreen(
                     Spacer(modifier = Modifier.height(32.dp))
                 }
             }
-        }
-    }
+            }
+            }
     } // Close Box
+    } // Close PullToRefreshBox
 }
 
 @Composable
@@ -350,15 +376,17 @@ fun Header(greeting: String, totalSongs: Int, totalDurationMs: Long, modifier: M
                 fontWeight = FontWeight.Medium
             )
         }
-        // Profile Placeholder
+        // Profile Placeholder / Logo
         Surface(
             modifier = Modifier.size(44.dp),
             shape = CircleShape,
             color = Color.White.copy(alpha = 0.1f)
         ) {
-            Box(contentAlignment = Alignment.Center) {
-                Text("F", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-            }
+            Image(
+                painter = painterResource(id = com.freqvox.R.drawable.splash_logo),
+                contentDescription = "App Logo",
+                modifier = Modifier.fillMaxSize()
+            )
         }
     }
 }

@@ -1,5 +1,6 @@
 package com.freqvox.ui.library
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -40,6 +41,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -122,9 +124,11 @@ fun LibraryScreen(
                 shape = CircleShape,
                 color = Color.White.copy(alpha = 0.1f)
             ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Text("F", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                }
+                Image(
+                    painter = painterResource(id = com.freqvox.R.drawable.splash_logo),
+                    contentDescription = "App Logo",
+                    modifier = Modifier.fillMaxSize()
+                )
             }
         }
 
@@ -212,7 +216,7 @@ fun LibraryScreen(
                                 expandedTracks = if (expandedAlbumName == albumName) albumTracks else emptyList(),
                                 currentTrackTitle = currentTrackTitle,
                                 onExpand = { expandedAlbumName = if (expandedAlbumName == albumName) null else albumName },
-                                onPlay = { tracks -> playbackController.playQueue(tracks, 0) }
+                                onPlay = { tracks, startIndex -> playbackController.playQueue(tracks, startIndex) }
                             )
                         }
                     }
@@ -234,7 +238,7 @@ fun LibraryScreen(
                                 expandedTracks = if (expandedArtistName == artistName) artistTracks else emptyList(),
                                 currentTrackTitle = currentTrackTitle,
                                 onExpand = { expandedArtistName = if (expandedArtistName == artistName) null else artistName },
-                                onPlay = { tracks -> playbackController.playQueue(tracks, 0) }
+                                onPlay = { tracks, startIndex -> playbackController.playQueue(tracks, startIndex) }
                             )
                         }
                     }
@@ -262,7 +266,7 @@ fun LibraryScreen(
                                 expandedTracks = if (expandedFolderPath == folderName) folderTracks else emptyList(),
                                 currentTrackTitle = currentTrackTitle,
                                 onExpand = { expandedFolderPath = if (expandedFolderPath == folderName) null else folderName },
-                                onPlay = { tracks -> playbackController.playQueue(tracks, 0) }
+                                onPlay = { tracks, startIndex -> playbackController.playQueue(tracks, startIndex) }
                             )
                         }
                     }
@@ -611,7 +615,7 @@ fun AlbumItem(
     expandedTracks: List<TrackEntity>,
     currentTrackTitle: String = "",
     onExpand: () -> Unit,
-    onPlay: (List<TrackEntity>) -> Unit
+    onPlay: (List<TrackEntity>, Int) -> Unit
 ) {
     Surface(
         modifier = Modifier
@@ -654,7 +658,7 @@ fun AlbumItem(
                 }
                 if (isExpanded) {
                     IconButton(
-                        onClick = { onPlay(expandedTracks) },
+                        onClick = { onPlay(expandedTracks, 0) },
                         enabled = expandedTracks.isNotEmpty()
                     ) {
                         Icon(Icons.Default.PlayArrow, contentDescription = "Play", tint = if (expandedTracks.isNotEmpty()) Color(0xFF7C4DFF) else Color.Gray)
@@ -682,7 +686,7 @@ fun ArtistItem(
     expandedTracks: List<TrackEntity>,
     currentTrackTitle: String = "",
     onExpand: () -> Unit,
-    onPlay: (List<TrackEntity>) -> Unit
+    onPlay: (List<TrackEntity>, Int) -> Unit
 ) {
     Surface(
         modifier = Modifier
@@ -723,7 +727,7 @@ fun ArtistItem(
                 }
                 if (isExpanded) {
                     IconButton(
-                        onClick = { onPlay(expandedTracks) },
+                        onClick = { onPlay(expandedTracks, 0) },
                         enabled = expandedTracks.isNotEmpty()
                     ) {
                         Icon(Icons.Default.PlayArrow, contentDescription = "Play", tint = if (expandedTracks.isNotEmpty()) Color(0xFF7C4DFF) else Color.Gray)
@@ -785,7 +789,7 @@ fun PlaylistsTab(
                     isExpanded = expandedPlaylistId == -1L,
                     expandedTracks = if (expandedPlaylistId == -1L) likedTracks else emptyList(),
                     onExpand = { expandedPlaylistId = if (expandedPlaylistId == -1L) null else -1L },
-                    onPlay = { tracks -> if (tracks.isNotEmpty()) playbackController.playQueue(tracks, 0) },
+                    onPlay = { tracks, startIndex -> if (tracks.isNotEmpty()) playbackController.playQueue(tracks, startIndex) },
                     onDelete = null
                 )
             }
@@ -795,7 +799,7 @@ fun PlaylistsTab(
                     isExpanded = expandedPlaylistId == -2L,
                     expandedTracks = if (expandedPlaylistId == -2L) recentlyPlayed else emptyList(),
                     onExpand = { expandedPlaylistId = if (expandedPlaylistId == -2L) null else -2L },
-                    onPlay = { tracks -> if (tracks.isNotEmpty()) playbackController.playQueue(tracks, 0) },
+                    onPlay = { tracks, startIndex -> if (tracks.isNotEmpty()) playbackController.playQueue(tracks, startIndex) },
                     onDelete = null
                 )
             }
@@ -805,7 +809,7 @@ fun PlaylistsTab(
                     isExpanded = expandedPlaylistId == -3L,
                     expandedTracks = if (expandedPlaylistId == -3L) mostPlayed else emptyList(),
                     onExpand = { expandedPlaylistId = if (expandedPlaylistId == -3L) null else -3L },
-                    onPlay = { tracks -> if (tracks.isNotEmpty()) playbackController.playQueue(tracks, 0) },
+                    onPlay = { tracks, startIndex -> if (tracks.isNotEmpty()) playbackController.playQueue(tracks, startIndex) },
                     onDelete = null
                 )
             }
@@ -815,7 +819,7 @@ fun PlaylistsTab(
                     isExpanded = expandedPlaylistId == -4L,
                     expandedTracks = if (expandedPlaylistId == -4L) leastPlayed else emptyList(),
                     onExpand = { expandedPlaylistId = if (expandedPlaylistId == -4L) null else -4L },
-                    onPlay = { tracks -> if (tracks.isNotEmpty()) playbackController.playQueue(tracks, 0) },
+                    onPlay = { tracks, startIndex -> if (tracks.isNotEmpty()) playbackController.playQueue(tracks, startIndex) },
                     onDelete = null
                 )
             }
@@ -840,7 +844,7 @@ fun PlaylistsTab(
                         onExpand = {
                             expandedPlaylistId = if (expandedPlaylistId == playlist.id) null else playlist.id
                         },
-                        onPlay = { tracks -> if (tracks.isNotEmpty()) playbackController.playQueue(tracks, 0) },
+                        onPlay = { tracks, startIndex -> if (tracks.isNotEmpty()) playbackController.playQueue(tracks, startIndex) },
                         onDelete = { playlistToDelete = playlist }
                     )
                 }
@@ -901,7 +905,7 @@ fun PlaylistItem(
     expandedTracks: List<TrackEntity>,
     currentTrackTitle: String = "",
     onExpand: () -> Unit,
-    onPlay: (List<TrackEntity>) -> Unit,
+    onPlay: (List<TrackEntity>, Int) -> Unit,
     onDelete: (() -> Unit)? = null
 ) {
     val accent = Color(0xFF7C4DFF)
@@ -948,7 +952,7 @@ fun PlaylistItem(
                 }
                 if (isExpanded) {
                     IconButton(
-                        onClick = { onPlay(expandedTracks) },
+                        onClick = { onPlay(expandedTracks, 0) },
                         enabled = expandedTracks.isNotEmpty()
                     ) {
                         Icon(Icons.Default.PlayArrow, contentDescription = "Play", tint = if (expandedTracks.isNotEmpty()) accent else Color.Gray)
@@ -964,7 +968,7 @@ fun PlaylistItem(
             }
 
             if (isExpanded) {
-                ExpandedTrackList(tracks = expandedTracks, onPlay = { tracks -> onPlay(tracks) }, currentTrackTitle = currentTrackTitle)
+                ExpandedTrackList(tracks = expandedTracks, onPlay = { tracks, startIndex -> onPlay(tracks, startIndex) }, currentTrackTitle = currentTrackTitle)
             }
         }
     }
@@ -1080,7 +1084,7 @@ fun FolderItem(
     expandedTracks: List<TrackEntity>,
     currentTrackTitle: String = "",
     onExpand: () -> Unit,
-    onPlay: (List<TrackEntity>) -> Unit
+    onPlay: (List<TrackEntity>, Int) -> Unit
 ) {
     val folderName = path.substringAfterLast("/").takeIf { it.isNotEmpty() } ?: path
     Surface(
@@ -1131,7 +1135,7 @@ fun FolderItem(
                 }
                 if (isExpanded) {
                     IconButton(
-                        onClick = { onPlay(expandedTracks) },
+                        onClick = { onPlay(expandedTracks, 0) },
                         enabled = expandedTracks.isNotEmpty()
                     ) {
                         Icon(Icons.Default.PlayArrow, contentDescription = "Play", tint = if (expandedTracks.isNotEmpty()) Color(0xFF7C4DFF) else Color.Gray)
@@ -1190,7 +1194,7 @@ fun SelectPlaylistDialog(
 @Composable
 fun ExpandedTrackList(
     tracks: List<TrackEntity>,
-    onPlay: (List<TrackEntity>) -> Unit,
+    onPlay: (List<TrackEntity>, Int) -> Unit,
     currentTrackTitle: String = "",
     accent: Color = Color(0xFF7C4DFF)
 ) {
@@ -1204,13 +1208,13 @@ fun ExpandedTrackList(
             fontSize = 13.sp
         )
     } else {
-        tracks.take(100).forEach { track ->
+        tracks.take(100).forEachIndexed { index, track ->
             val isCurrent = track.title == currentTrackTitle
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(8.dp))
-                    .clickable { onPlay(listOf(track)) }
+                    .clickable { onPlay(tracks, index) }
                     .padding(vertical = 12.dp, horizontal = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {

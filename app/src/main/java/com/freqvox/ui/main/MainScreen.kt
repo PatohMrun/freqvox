@@ -4,6 +4,8 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Box
@@ -199,10 +201,10 @@ fun MainScreen(
                 NavHost(
                     navController = navController,
                     startDestination = Screen.Home.route,
-                    enterTransition = { fadeIn(animationSpec = tween(150)) },
-                    exitTransition = { fadeOut(animationSpec = tween(150)) },
-                    popEnterTransition = { fadeIn(animationSpec = tween(150)) },
-                    popExitTransition = { fadeOut(animationSpec = tween(150)) }
+                    enterTransition = { slideInHorizontally(animationSpec = tween(150), initialOffsetX = { 50 }) + fadeIn(animationSpec = tween(150)) },
+                    exitTransition = { slideOutHorizontally(animationSpec = tween(150), targetOffsetX = { -50 }) + fadeOut(animationSpec = tween(150)) },
+                    popEnterTransition = { slideInHorizontally(animationSpec = tween(150), initialOffsetX = { -50 }) + fadeIn(animationSpec = tween(150)) },
+                    popExitTransition = { slideOutHorizontally(animationSpec = tween(150), targetOffsetX = { 50 }) + fadeOut(animationSpec = tween(150)) }
                 ) {
                     composable(Screen.Home.route) {
                         HomeScreen(
@@ -220,9 +222,7 @@ fun MainScreen(
                     }
                     composable(Screen.Search.route) { 
                         SearchScreen(
-                            onTrackClick = { track ->
-                                playbackController.playMediaUri(track.path, track.title, track.artist, track.id.toString(), track.artworkPath)
-                            },
+                            playbackController = playbackController,
                             focusTrigger = searchFocusTrigger,
                             onFocusConsumed = { searchFocusTrigger = 0L }
                         ) 

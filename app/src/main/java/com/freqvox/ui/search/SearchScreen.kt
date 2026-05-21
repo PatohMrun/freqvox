@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
@@ -19,17 +20,20 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.freqvox.data.local.entities.TrackEntity
+import com.freqvox.playback.PlaybackController
 import com.freqvox.ui.library.LibraryTrackItem
 import com.freqvox.ui.main.MainViewModel
 
 @Composable
 fun SearchScreen(
-    onTrackClick: (TrackEntity) -> Unit,
+    playbackController: PlaybackController,
     focusTrigger: Long = 0L,
     onFocusConsumed: () -> Unit = {},
     viewModel: MainViewModel = hiltViewModel()
@@ -37,11 +41,32 @@ fun SearchScreen(
     val searchQuery by viewModel.searchQuery.collectAsState()
     val searchResults by viewModel.searchResults.collectAsState()
     val allTags by viewModel.allTags.collectAsState()
+    
+    val currentTrackTitle by playbackController.currentTrackTitle.collectAsState()
+    val isPlaying by playbackController.isPlaying.collectAsState()
+    
     val focusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
 
+    // Keep a local TextFieldValue to control cursor position
+    var textFieldValue by remember {
+        mutableStateOf(TextFieldValue(text = searchQuery, selection = TextRange(searchQuery.length)))
+    }
+
+    // Sync external query changes (e.g. from Clear button or Tags) to the local TextFieldValue
+    LaunchedEffect(searchQuery) {
+        if (searchQuery != textFieldValue.text) {
+            textFieldValue = textFieldValue.copy(
+                text = searchQuery,
+                selection = TextRange(searchQuery.length)
+            )
+        }
+    }
+
     LaunchedEffect(focusTrigger) {
         if (focusTrigger > 0L) {
+            // Force cursor to the end when focused programmatically
+            textFieldValue = textFieldValue.copy(selection = TextRange(textFieldValue.text.length))
             focusRequester.requestFocus()
             keyboardController?.show()
             onFocusConsumed()
@@ -62,8 +87,11 @@ fun SearchScreen(
         )
 
         OutlinedTextField(
-            value = searchQuery,
-            onValueChange = { viewModel.onSearchQueryChange(it) },
+            value = textFieldValue,
+            onValueChange = { 
+                textFieldValue = it
+                viewModel.onSearchQueryChange(it.text) 
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 24.dp)
@@ -134,9 +162,20 @@ fun SearchScreen(
                     Text("No results found for \"$searchQuery\"", color = Color.Gray)
                 }
             } else {
-                LazyColumn {
-                    items(searchResults) { track ->
-                        LibraryTrackItem(track = track, onClick = { onTrackClick(track) })
+                LazyColumn(contentPadding = PaddingValues(bottom = 120.dp)) {
+                    itemsIndexed(searchResults) { index, track ->
+                        LibraryTrackItem(
+                            track = track,
+                            isCurrentTrack = track.title == currentTrackTitle,
+                            isPlaying = isPlaying,
+                            onClick = {
+                                if (track.title == currentTrackTitle) {
+                                    playbackController.togglePlayPause()
+                                } else {
+                                    playbackController.playQueue(searchResults, index)
+                                }
+                            }
+                        )
                     }
                 }
             }

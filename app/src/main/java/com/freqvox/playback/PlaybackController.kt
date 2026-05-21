@@ -88,6 +88,8 @@ class PlaybackController(
     private var historyAccumulated: Long = 0L   // ms of confirmed listen time
     private var historySegmentStart: Long = 0L  // start of current un-paused segment
 
+    private var isFetchingAutoplay = false
+
     init {
         startPositionPolling()
     }
@@ -161,7 +163,14 @@ class PlaybackController(
                 logPlayTime()
                 insertHistoryRecord()
                 updateMetadata(mediaItem)
-                _currentQueueIndex.value = mediaController?.currentMediaItemIndex?.coerceAtLeast(0) ?: 0
+                
+                val controller = mediaController
+                if (controller != null) {
+                    _currentQueueIndex.value = controller.currentMediaItemIndex.coerceAtLeast(0)
+                    checkAndAppendTracksIfNeeded(controller)
+                } else {
+                    _currentQueueIndex.value = 0
+                }
             }
 
             override fun onTimelineChanged(timeline: androidx.media3.common.Timeline, reason: Int) {
@@ -180,6 +189,10 @@ class PlaybackController(
                     if (dur != androidx.media3.common.C.TIME_UNSET) {
                         _duration.value = dur
                     }
+                } else if (playbackState == Player.STATE_ENDED) {
+                    val controller = mediaController ?: return
+                    // As a fallback, try to append if we hit the end
+                    checkAndAppendTracksIfNeeded(controller)
                 }
             }
 
@@ -199,6 +212,50 @@ class PlaybackController(
                 )
             }
         })
+    }
+
+    private fun checkAndAppendTracksIfNeeded(controller: MediaController) {
+        if (controller.repeatMode != Player.REPEAT_MODE_OFF) return
+        
+        val currentIndex = controller.currentMediaItemIndex
+        val totalItems = controller.mediaItemCount
+        
+        if (totalItems - currentIndex <= 3 && !isFetchingAutoplay) {
+            isFetchingAutoplay = true
+            scope.launch(Dispatchers.IO) {
+                try {
+                    val nextBatch = trackDao.getRandomTracks(15)
+                    if (nextBatch.isNotEmpty()) {
+                        withContext(Dispatchers.Main) {
+                            val newItems = nextBatch.map { track ->
+                                val extras = android.os.Bundle().apply {
+                                    putBoolean("isAutoAppended", true)
+                                }
+                                val meta = MediaMetadata.Builder()
+                                    .setTitle(track.title)
+                                    .setArtist(track.artist)
+                                    .setExtras(extras)
+                                track.artworkPath?.let { meta.setArtworkUri(Uri.parse("file://$it")) }
+                                MediaItem.Builder()
+                                    .setMediaId(track.id.toString())
+                                    .setUri(track.path)
+                                    .setMediaMetadata(meta.build())
+                                    .build()
+                            }
+                            controller.addMediaItems(newItems)
+                            
+                            if (controller.playbackState == Player.STATE_ENDED) {
+                                controller.seekToDefaultPosition(totalItems)
+                                controller.prepare()
+                                controller.play()
+                            }
+                        }
+                    }
+                } finally {
+                    isFetchingAutoplay = false
+                }
+            }
+        }
     }
 
     private fun updateMetadata(mediaItem: MediaItem?) {
@@ -352,6 +409,27 @@ class PlaybackController(
             2 -> 1   // ALL → ONE
             else -> 0 // ONE → OFF
         }
+
+        // If turning ON repeat, strip out auto-appended tracks so the user loops their intended original queue.
+        // We only do this if they haven't actually reached the auto-appended section yet.
+        if (new != 0) {
+            val currentItem = controller.currentMediaItem
+            val isPlayingAutoAppended = currentItem?.mediaMetadata?.extras?.getBoolean("isAutoAppended") == true
+            
+            if (!isPlayingAutoAppended) {
+                val itemsToRemove = mutableListOf<Int>()
+                for (i in controller.mediaItemCount - 1 downTo 0) {
+                    val item = controller.getMediaItemAt(i)
+                    if (item.mediaMetadata.extras?.getBoolean("isAutoAppended") == true) {
+                        itemsToRemove.add(i)
+                    }
+                }
+                itemsToRemove.forEach { index ->
+                    controller.removeMediaItem(index)
+                }
+            }
+        }
+
         controller.repeatMode = new
         _repeatMode.value = new
     }

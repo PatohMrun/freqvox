@@ -182,150 +182,148 @@ object FeedGenerator {
         val energeticTracks  = tagTracks("energetic")
 
         // ── Assemble feed ─────────────────────────────────────────────────────
-        val feed = mutableListOf<FeedItem>()
+        val feedOptions = mutableListOf<FeedItem>()
 
-        // 1. Liked
-        if (likedTracks.isNotEmpty())
-            feed.add(FeedItem.HorizontalCarousel("Your Favorites", likedTracks, Icons.Default.Favorite))
+        fun createDynamicSection(title: String, tracksList: List<TrackEntity>, icon: ImageVector? = null): FeedItem {
+            val options = mutableListOf<FeedItem>()
+            if (tracksList.size >= 2) options.add(FeedItem.HorizontalCarousel(title, tracksList, icon))
+            if (tracksList.size >= 4) {
+                options.add(FeedItem.Grid(title, tracksList.take(4), icon))
+                options.add(FeedItem.VerticalList(title, tracksList.take(5), icon))
+            }
+            if (tracksList.size >= 6) options.add(FeedItem.DoubleHorizontalCarousel(title, tracksList, icon))
+            
+            return options.randomOrNull() ?: FeedItem.HorizontalCarousel(title, tracksList, icon)
+        }
 
-        // 2. Heavy rotation
-        if (heavyRotation.size >= 4)
-            feed.add(FeedItem.HorizontalCarousel("Heavy Rotation", heavyRotation, Icons.Default.Autorenew))
+        // Spotlight
+        tracks.filter { it.playCount > 0 }.maxByOrNull { it.playCount }?.let {
+            feedOptions.add(FeedItem.Spotlight(it))
+        }
 
-        // 3. Recently played
-        if (recentlyPlayed.size >= 3)
-            feed.add(FeedItem.VerticalList("Recently Played", recentlyPlayed.take(5), Icons.Default.History))
+        // Featured discovery banner
+        (discovery.firstOrNull() ?: neverHeard.firstOrNull())?.let {
+            feedOptions.add(FeedItem.FeaturedBanner(it))
+        }
 
-        // 4. Rising fast
-        if (risingFast.size >= 3)
-            feed.add(FeedItem.HorizontalCarousel("Rising Fast", risingFast, Icons.Default.TrendingUp))
-
-        // 5. Time-contextual slot
+        // Time-contextual slot
         when {
             isMorning && morningTracks.size >= 4 ->
-                feed.add(FeedItem.HorizontalCarousel("Morning Mix", morningTracks, Icons.Default.LightMode))
+                feedOptions.add(FeedItem.HorizontalCarousel("Morning Mix", morningTracks, Icons.Default.LightMode))
             isMorning && morningTagged.size >= 3 ->
-                feed.add(FeedItem.HorizontalCarousel("Morning Mix", morningTagged, Icons.Default.LightMode))
+                feedOptions.add(FeedItem.HorizontalCarousel("Morning Mix", morningTagged, Icons.Default.LightMode))
             isLateNight && lateNightTracks.size >= 4 ->
-                feed.add(FeedItem.HorizontalCarousel("Late Night", lateNightTracks, Icons.Default.Bedtime))
+                feedOptions.add(FeedItem.HorizontalCarousel("Late Night", lateNightTracks, Icons.Default.Bedtime))
             isLateNight && lateNightTagged.size >= 3 ->
-                feed.add(FeedItem.HorizontalCarousel("Late Night", lateNightTagged, Icons.Default.Bedtime))
+                feedOptions.add(FeedItem.HorizontalCarousel("Late Night", lateNightTagged, Icons.Default.Bedtime))
             isEvening && eveningTracks.size >= 4 ->
-                feed.add(FeedItem.HorizontalCarousel("Evening Wind Down", eveningTracks, Icons.Default.NightsStay))
+                feedOptions.add(FeedItem.HorizontalCarousel("Evening Wind Down", eveningTracks, Icons.Default.NightsStay))
         }
 
-        // 6. Spotlight
-        tracks.filter { it.playCount > 0 }.maxByOrNull { it.playCount }?.let {
-            feed.add(FeedItem.Spotlight(it))
-        }
+        // Liked
+        if (likedTracks.isNotEmpty())
+            feedOptions.add(FeedItem.HorizontalCarousel("Your Favorites", likedTracks, Icons.Default.Favorite))
 
-        // 7. Workout
-        if (workoutTracks.size >= 3)
-            feed.add(FeedItem.HorizontalCarousel("Workout Mode", workoutTracks, Icons.Default.FitnessCenter))
-        else if (energeticTracks.size >= 3)
-            feed.add(FeedItem.HorizontalCarousel("High Energy", energeticTracks, Icons.Default.Bolt))
+        // Heavy rotation
+        if (heavyRotation.size >= 4)
+            feedOptions.add(FeedItem.HorizontalCarousel("Heavy Rotation", heavyRotation, Icons.Default.Autorenew))
 
-        // 8. Recently added
+        // Recently played
+        if (recentlyPlayed.size >= 3)
+            feedOptions.add(FeedItem.VerticalList("Recently Played", recentlyPlayed.take(5), Icons.Default.History))
+
+        // Recently added
         if (recentlyAdded.size >= 4)
-            feed.add(FeedItem.HorizontalCarousel("Recently Added", recentlyAdded, Icons.Default.NewReleases))
+            feedOptions.add(FeedItem.HorizontalCarousel("Recently Added", recentlyAdded, Icons.Default.NewReleases))
 
-        // 9. Chill
-        if (chillTracks.size >= 3)
-            feed.add(FeedItem.HorizontalCarousel("Chill Session", chillTracks, Icons.Default.SelfImprovement))
-
-        // 10. Fresh inbox
-        if (freshInbox.size >= 3 && freshInbox != neverHeard)
-            feed.add(FeedItem.HorizontalCarousel("Inbox", freshInbox, Icons.Default.MoveToInbox))
-
-        // 11. Comeback
-        if (comeback.size >= 2)
-            feed.add(FeedItem.Grid("Comeback", comeback.take(4), Icons.Default.Celebration))
-
-        // 12. Forgotten gems
-        if (forgottenGems.size >= 2)
-            feed.add(FeedItem.Grid("Forgotten Gems", forgottenGems.take(4), Icons.Default.Diamond))
-
-        // 13. Always finish these
+        // Always finish these
         if (highCompletion.size >= 4)
-            feed.add(FeedItem.HorizontalCarousel("Always Finish These", highCompletion, Icons.Default.DoneAll))
+            feedOptions.add(FeedItem.HorizontalCarousel("Always Finish These", highCompletion, Icons.Default.DoneAll))
 
-        // 14. Deep cuts
+        // Rising fast
+        if (risingFast.size >= 3)
+            feedOptions.add(createDynamicSection("Rising Fast", risingFast, Icons.Default.TrendingUp))
+
+
+        // Workout / Energy
+        if (workoutTracks.size >= 3)
+            feedOptions.add(createDynamicSection("Workout Mode", workoutTracks, Icons.Default.FitnessCenter))
+        else if (energeticTracks.size >= 3)
+            feedOptions.add(createDynamicSection("High Energy", energeticTracks, Icons.Default.Bolt))
+
+        // Chill
+        if (chillTracks.size >= 3)
+            feedOptions.add(createDynamicSection("Chill Session", chillTracks, Icons.Default.SelfImprovement))
+
+        // Inbox
+        if (freshInbox.size >= 3 && freshInbox != neverHeard)
+            feedOptions.add(createDynamicSection("Inbox", freshInbox, Icons.Default.MoveToInbox))
+
+        // Comeback
+        if (comeback.size >= 2)
+            feedOptions.add(FeedItem.Grid("Comeback", comeback.take(4), Icons.Default.Celebration))
+
+        // Forgotten gems
+        if (forgottenGems.size >= 2)
+            feedOptions.add(FeedItem.Grid("Forgotten Gems", forgottenGems.take(4), Icons.Default.Diamond))
+
+        // Deep cuts
         if (deepCuts.size >= 2)
-            feed.add(FeedItem.VerticalList("Deep Cuts", deepCuts.take(5), Icons.Default.AllInclusive))
+            feedOptions.add(createDynamicSection("Deep Cuts", deepCuts, Icons.Default.AllInclusive))
 
-        // 15. Quick hits
-        when {
-            quickHits.size >= 6 -> feed.add(FeedItem.DoubleHorizontalCarousel("Quick Hits", quickHits, Icons.Default.Timer))
-            quickHits.size >= 3 -> feed.add(FeedItem.HorizontalCarousel("Quick Hits", quickHits, Icons.Default.Timer))
-        }
+        // Quick hits
+        if (quickHits.size >= 3)
+            feedOptions.add(createDynamicSection("Quick Hits", quickHits, Icons.Default.Timer))
 
-        // 16. Focus / study
+        // Focus
         if (focusTracks.size >= 3)
-            feed.add(FeedItem.HorizontalCarousel("Focus Mode", focusTracks, Icons.Default.MenuBook))
+            feedOptions.add(createDynamicSection("Focus Mode", focusTracks, Icons.Default.MenuBook))
 
-        // 17. Drive
+        // Drive
         if (driveTracks.size >= 3)
-            feed.add(FeedItem.HorizontalCarousel("Drive Mode", driveTracks, Icons.Default.DirectionsCar))
+            feedOptions.add(createDynamicSection("Drive Mode", driveTracks, Icons.Default.DirectionsCar))
 
-        // 18. Sleep
+        // Sleep
         if (sleepTracks.size >= 3)
-            feed.add(FeedItem.HorizontalCarousel("Sleep", sleepTracks, Icons.Default.Nightlight))
+            feedOptions.add(createDynamicSection("Sleep", sleepTracks, Icons.Default.Nightlight))
 
-        // 19. Weekend
+        // Weekend
         if (isWeekend) {
             val weekendMix = (weekendTracks + tagTracks("party", "hype")).distinctBy { it.id }
             if (weekendMix.size >= 4)
-                feed.add(FeedItem.HorizontalCarousel("Weekend Mood", weekendMix.take(15), Icons.Default.Nightlife))
+                feedOptions.add(createDynamicSection("Weekend Mood", weekendMix.take(15), Icons.Default.Nightlife))
         }
 
-        // 20. Commute
+        // Commute
         if (isCommute && commuteTracks.size >= 4)
-            feed.add(FeedItem.HorizontalCarousel("Commute Vibes", commuteTracks, Icons.Default.DirectionsBus))
+            feedOptions.add(createDynamicSection("Commute Vibes", commuteTracks, Icons.Default.DirectionsBus))
 
-        // 21. Hype
-        if (hypeTracks.size >= 3)
-            feed.add(FeedItem.HorizontalCarousel("Hype", hypeTracks, Icons.Default.Whatshot))
+        // Moods / Tags
+        if (hypeTracks.size >= 3) feedOptions.add(createDynamicSection("Hype", hypeTracks, Icons.Default.Whatshot))
+        if (melancholyTracks.size >= 3) feedOptions.add(createDynamicSection("Melancholy", melancholyTracks, Icons.Default.Cloud))
+        if (throwbackTracks.size >= 3) feedOptions.add(createDynamicSection("Throwback", throwbackTracks, Icons.Default.Update))
+        if (underratedTracks.size >= 3) feedOptions.add(createDynamicSection("Underrated", underratedTracks, Icons.Default.Grade))
+        if (vibeTracks.size >= 3) feedOptions.add(createDynamicSection("The Vibe", vibeTracks, Icons.Default.AutoAwesome))
+        if (guiltyPleasures.size >= 3) feedOptions.add(createDynamicSection("Guilty Pleasures", guiltyPleasures, Icons.Default.Psychology))
 
-        // 22. Melancholy
-        if (melancholyTracks.size >= 3)
-            feed.add(FeedItem.HorizontalCarousel("Melancholy", melancholyTracks, Icons.Default.Cloud))
-
-        // 23. Throwback
-        if (throwbackTracks.size >= 3)
-            feed.add(FeedItem.HorizontalCarousel("Throwback", throwbackTracks, Icons.Default.Update))
-
-        // 24. Underrated
-        if (underratedTracks.size >= 3)
-            feed.add(FeedItem.HorizontalCarousel("Underrated", underratedTracks, Icons.Default.Grade))
-
-        // 25. The vibe
-        if (vibeTracks.size >= 3)
-            feed.add(FeedItem.HorizontalCarousel("The Vibe", vibeTracks, Icons.Default.AutoAwesome))
-
-        // 26. Guilty pleasures
-        if (guiltyPleasures.size >= 3)
-            feed.add(FeedItem.HorizontalCarousel("Guilty Pleasures", guiltyPleasures, Icons.Default.Psychology))
-
-        // 27. Buried treasures
+        // Buried treasures
         if (buriedTreasures.size >= 2)
-            feed.add(FeedItem.Grid("Buried Treasures", buriedTreasures.take(4), Icons.Default.AutoGraph))
+            feedOptions.add(FeedItem.Grid("Buried Treasures", buriedTreasures.take(4), Icons.Default.AutoGraph))
 
-        // 28. Epic journeys
+        // Epic journeys
         if (epicTracks.size >= 2)
-            feed.add(FeedItem.VerticalList("Epic Journeys", epicTracks.take(5), Icons.Default.Explore))
+            feedOptions.add(createDynamicSection("Epic Journeys", epicTracks, Icons.Default.Explore))
 
-        // 29. Interludes & skits
+        // Interludes
         if (interludes.size >= 3)
-            feed.add(FeedItem.HorizontalCarousel("Interludes & Skits", interludes, Icons.Default.ChatBubbleOutline))
+            feedOptions.add(createDynamicSection("Interludes & Skits", interludes, Icons.Default.ChatBubbleOutline))
 
-        // 30. Featured discovery banner
-        (discovery.firstOrNull() ?: neverHeard.firstOrNull())?.let {
-            feed.add(FeedItem.FeaturedBanner(it))
-        }
-
-        // 31. Never heard
+        // Never heard
         if (neverHeard.size >= 2)
-            feed.add(FeedItem.Grid("Never Heard", neverHeard.take(4), Icons.Default.QuestionMark))
+            feedOptions.add(FeedItem.Grid("Never Heard", neverHeard.take(4), Icons.Default.QuestionMark))
+
+        // Assemble final feed (fully shuffled)
+        val feed = feedOptions.shuffled().toMutableList()
 
         // Fill remaining tracks not yet shown
         val usedIds = feed.flatMap { item ->
