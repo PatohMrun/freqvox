@@ -211,11 +211,11 @@ fun HomeScreen(
                     Spacer(modifier = Modifier.height(32.dp))
                 }
             }
-            }
-            }
+            } // Close when
+    } // Close LazyColumn
     } // Close Box
     } // Close PullToRefreshBox
-}
+} // Close HomeScreen
 
 @Composable
 fun GridFeedBlock(tracks: List<TrackEntity>, onClick: (TrackEntity) -> Unit, modifier: Modifier = Modifier) {

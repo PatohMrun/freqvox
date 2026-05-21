@@ -88,10 +88,31 @@ class TrackRepository @Inject constructor(
                     MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id
                 ).toString()
 
-                val cleanedTitle = cleanMetadata(rawTitle)
-                val cleanedArtist = when {
+                var finalTitle = cleanMetadata(rawTitle)
+                var finalArtist = when {
                     rawArtist.isNullOrBlank() || rawArtist == "<unknown>" -> "Unknown Artist"
                     else -> rawArtist
+                }
+
+                // Heuristic 1: Extract from "Artist - Title" filename format
+                if (finalArtist == "Unknown Artist" && finalTitle.contains(" - ")) {
+                    val parts = finalTitle.split(" - ", limit = 2)
+                    if (parts.size == 2) {
+                        finalArtist = parts[0].trim()
+                        finalTitle = parts[1].trim()
+                    }
+                }
+
+                // Heuristic 2: Extract from parent folder name
+                if (finalArtist == "Unknown Artist") {
+                    val folderName = java.io.File(rawDataPath).parentFile?.name
+                    if (!folderName.isNullOrBlank() && 
+                        !folderName.equals("Music", ignoreCase = true) && 
+                        !folderName.equals("Download", ignoreCase = true) &&
+                        !folderName.equals("Downloads", ignoreCase = true) &&
+                        !folderName.equals("Audio", ignoreCase = true)) {
+                        finalArtist = folderName
+                    }
                 }
 
                 // Do NOT extract artwork here — it reads every audio file and takes O(n*fileIO) time.
@@ -101,8 +122,8 @@ class TrackRepository @Inject constructor(
                 tracksInMediaStore.add(
                     TrackEntity(
                         id = id,
-                        title = cleanedTitle,
-                        artist = cleanedArtist,
+                        title = finalTitle,
+                        artist = finalArtist,
                         album = album,
                         duration = duration,
                         dateAdded = dateAdded,

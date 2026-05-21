@@ -186,6 +186,7 @@ fun LibraryScreen(
                             track = track,
                             isCurrentTrack = currentTrackTitle == track.title,
                             isPlaying = isPlaying,
+                            modifier = Modifier.animateItem(),
                             onClick = {
                                 if (currentTrackTitle == track.title) {
                                     playbackController.togglePlayPause()
@@ -465,6 +466,7 @@ fun LibraryTrackItem(
     track: TrackEntity,
     isCurrentTrack: Boolean = false,
     isPlaying: Boolean = false,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit,
     onDelete: (() -> Unit)? = null,
     onAddToPlaylist: (() -> Unit)? = null
@@ -505,7 +507,7 @@ fun LibraryTrackItem(
     }
 
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
             .background(
