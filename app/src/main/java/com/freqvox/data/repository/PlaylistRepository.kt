@@ -29,12 +29,27 @@ class PlaylistRepository @Inject constructor(
         )
     }
 
+    suspend fun createManualPlaylist(name: String) {
+        playlistDao.insertPlaylist(
+            PlaylistEntity(name = name, type = "manual")
+        )
+    }
+
+    suspend fun addTrackToPlaylist(playlistId: Long, trackId: Long) {
+        playlistDao.insertPlaylistTrack(
+            com.freqvox.data.local.entities.PlaylistTrackCrossRef(
+                playlistId = playlistId,
+                trackId = trackId,
+                orderIndex = 0 // Future work: Handle correct orderIndex
+            )
+        )
+    }
+
     suspend fun getTracksForPlaylist(playlist: PlaylistEntity): List<TrackEntity> {
         if (playlist.type == "manual") {
-            // TODO: Implement manual playlist membership
-            return emptyList()
+            return playlistDao.getTracksForPlaylist(playlist.id).first()
         }
-        
+
         // Execute dynamic query
         val allTracks = trackRepository.allTracks.first()
         val query = parseQuery(playlist.queryJson) ?: return emptyList()

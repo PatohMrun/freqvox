@@ -190,6 +190,14 @@ class PlaybackController(
             override fun onRepeatModeChanged(repeatMode: Int) {
                 _repeatMode.value = repeatMode
             }
+
+            override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+                android.util.Log.e(
+                    "PlaybackController",
+                    "Playback error: ${error.errorCodeName} — ${error.cause?.message ?: error.message}",
+                    error
+                )
+            }
         })
     }
 

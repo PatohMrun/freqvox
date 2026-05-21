@@ -4,6 +4,7 @@ import com.freqvox.di.DatabaseModule;
 import com.freqvox.di.PlaybackModule;
 import com.freqvox.playback.FreqvoxPlaybackService_GeneratedInjector;
 import com.freqvox.ui.main.MainViewModel_HiltModules;
+import com.freqvox.ui.radio.RadioViewModel_HiltModules;
 import dagger.Binds;
 import dagger.Component;
 import dagger.Module;
@@ -161,7 +162,8 @@ public final class FreqvoxApplication_HiltComponents {
           ViewModelCBuilderModule.class,
           HiltWrapper_ActivityRetainedComponentManager_LifecycleModule.class,
           HiltWrapper_SavedStateHandleModule.class,
-          MainViewModel_HiltModules.KeyModule.class
+          MainViewModel_HiltModules.KeyModule.class,
+          RadioViewModel_HiltModules.KeyModule.class
       }
   )
   @ActivityRetainedScoped
@@ -198,7 +200,8 @@ public final class FreqvoxApplication_HiltComponents {
   @Subcomponent(
       modules = {
           HiltWrapper_HiltViewModelFactory_ViewModelModule.class,
-          MainViewModel_HiltModules.BindsModule.class
+          MainViewModel_HiltModules.BindsModule.class,
+          RadioViewModel_HiltModules.BindsModule.class
       }
   )
   @ViewModelScoped

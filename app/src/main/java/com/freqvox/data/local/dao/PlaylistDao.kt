@@ -18,4 +18,18 @@ interface PlaylistDao {
 
     @Query("SELECT * FROM playlists WHERE id = :id")
     suspend fun getPlaylistById(id: Long): PlaylistEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertPlaylistTrack(crossRef: com.freqvox.data.local.entities.PlaylistTrackCrossRef)
+
+    @Delete
+    suspend fun deletePlaylistTrack(crossRef: com.freqvox.data.local.entities.PlaylistTrackCrossRef)
+
+    @Query("""
+        SELECT tracks.* FROM tracks 
+        INNER JOIN playlist_tracks ON tracks.id = playlist_tracks.trackId 
+        WHERE playlist_tracks.playlistId = :playlistId 
+        ORDER BY playlist_tracks.orderIndex ASC, playlist_tracks.addedAt DESC
+    """)
+    fun getTracksForPlaylist(playlistId: Long): Flow<List<TrackEntity>>
 }

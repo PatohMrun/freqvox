@@ -11,7 +11,8 @@ data class TrackEntity(
     val album: String,
     val duration: Long,
     val dateAdded: Long,
-    val path: String,
+    val path: String, // content URI for playback
+    val folderPath: String, // actual filesystem path for grouping
     val artworkPath: String? = null,
     val playCount: Int = 0,
     val lastPlayed: Long? = null,

@@ -27,6 +27,8 @@ import com.freqvox.playback.PlaybackController;
 import com.freqvox.playback.SleepTimerManager;
 import com.freqvox.ui.main.MainViewModel;
 import com.freqvox.ui.main.MainViewModel_HiltModules;
+import com.freqvox.ui.radio.RadioViewModel;
+import com.freqvox.ui.radio.RadioViewModel_HiltModules;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import dagger.hilt.android.ActivityRetainedLifecycle;
@@ -388,7 +390,7 @@ public final class DaggerFreqvoxApplication_HiltComponents_SingletonC {
 
     @Override
     public Map<Class<?>, Boolean> getViewModelKeys() {
-      return LazyClassKeyMap.<Boolean>of(ImmutableMap.<String, Boolean>of(LazyClassKeyProvider.com_freqvox_ui_main_MainViewModel, MainViewModel_HiltModules.KeyModule.provide()));
+      return LazyClassKeyMap.<Boolean>of(ImmutableMap.<String, Boolean>of(LazyClassKeyProvider.com_freqvox_ui_main_MainViewModel, MainViewModel_HiltModules.KeyModule.provide(), LazyClassKeyProvider.com_freqvox_ui_radio_RadioViewModel, RadioViewModel_HiltModules.KeyModule.provide()));
     }
 
     @Override
@@ -413,7 +415,12 @@ public final class DaggerFreqvoxApplication_HiltComponents_SingletonC {
 
     @IdentifierNameString
     private static final class LazyClassKeyProvider {
+      static String com_freqvox_ui_radio_RadioViewModel = "com.freqvox.ui.radio.RadioViewModel";
+
       static String com_freqvox_ui_main_MainViewModel = "com.freqvox.ui.main.MainViewModel";
+
+      @KeepFieldType
+      RadioViewModel com_freqvox_ui_radio_RadioViewModel2;
 
       @KeepFieldType
       MainViewModel com_freqvox_ui_main_MainViewModel2;
@@ -429,6 +436,8 @@ public final class DaggerFreqvoxApplication_HiltComponents_SingletonC {
 
     private Provider<MainViewModel> mainViewModelProvider;
 
+    private Provider<RadioViewModel> radioViewModelProvider;
+
     private ViewModelCImpl(SingletonCImpl singletonCImpl,
         ActivityRetainedCImpl activityRetainedCImpl, SavedStateHandle savedStateHandleParam,
         ViewModelLifecycle viewModelLifecycleParam) {
@@ -443,11 +452,12 @@ public final class DaggerFreqvoxApplication_HiltComponents_SingletonC {
     private void initialize(final SavedStateHandle savedStateHandleParam,
         final ViewModelLifecycle viewModelLifecycleParam) {
       this.mainViewModelProvider = new SwitchingProvider<>(singletonCImpl, activityRetainedCImpl, viewModelCImpl, 0);
+      this.radioViewModelProvider = new SwitchingProvider<>(singletonCImpl, activityRetainedCImpl, viewModelCImpl, 1);
     }
 
     @Override
     public Map<Class<?>, javax.inject.Provider<ViewModel>> getHiltViewModelMap() {
-      return LazyClassKeyMap.<javax.inject.Provider<ViewModel>>of(ImmutableMap.<String, javax.inject.Provider<ViewModel>>of(LazyClassKeyProvider.com_freqvox_ui_main_MainViewModel, ((Provider) mainViewModelProvider)));
+      return LazyClassKeyMap.<javax.inject.Provider<ViewModel>>of(ImmutableMap.<String, javax.inject.Provider<ViewModel>>of(LazyClassKeyProvider.com_freqvox_ui_main_MainViewModel, ((Provider) mainViewModelProvider), LazyClassKeyProvider.com_freqvox_ui_radio_RadioViewModel, ((Provider) radioViewModelProvider)));
     }
 
     @Override
@@ -459,8 +469,13 @@ public final class DaggerFreqvoxApplication_HiltComponents_SingletonC {
     private static final class LazyClassKeyProvider {
       static String com_freqvox_ui_main_MainViewModel = "com.freqvox.ui.main.MainViewModel";
 
+      static String com_freqvox_ui_radio_RadioViewModel = "com.freqvox.ui.radio.RadioViewModel";
+
       @KeepFieldType
       MainViewModel com_freqvox_ui_main_MainViewModel2;
+
+      @KeepFieldType
+      RadioViewModel com_freqvox_ui_radio_RadioViewModel2;
     }
 
     private static final class SwitchingProvider<T> implements Provider<T> {
@@ -486,6 +501,9 @@ public final class DaggerFreqvoxApplication_HiltComponents_SingletonC {
         switch (id) {
           case 0: // com.freqvox.ui.main.MainViewModel 
           return (T) new MainViewModel(singletonCImpl.trackRepositoryProvider.get(), singletonCImpl.playlistRepositoryProvider.get());
+
+          case 1: // com.freqvox.ui.radio.RadioViewModel 
+          return (T) new RadioViewModel(ApplicationContextModule_ProvideContextFactory.provideContext(singletonCImpl.applicationContextModule));
 
           default: throw new AssertionError(id);
         }

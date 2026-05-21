@@ -27,6 +27,9 @@ import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.QueueMusic
 import androidx.compose.material.icons.filled.SwapVert
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.PlaylistAdd
+import androidx.compose.material.icons.filled.PlaylistPlay
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -80,6 +83,11 @@ fun LibraryScreen(
     val tabOrder = remember { mutableStateListOf(*LibraryTab.values()) }
     var selectedTab by remember { mutableStateOf(LibraryTab.Songs) }
     var sortOrder by remember { mutableStateOf(SortOrder.Default) }
+    var trackToAdd by remember { mutableStateOf<TrackEntity?>(null) }
+    
+    var expandedAlbumName by remember { mutableStateOf<String?>(null) }
+    var expandedArtistName by remember { mutableStateOf<String?>(null) }
+    var expandedFolderPath by remember { mutableStateOf<String?>(null) }
 
     Column(
         modifier = Modifier.fillMaxSize()
@@ -181,7 +189,8 @@ fun LibraryScreen(
                                     playbackController.playQueue(sortedTracks, index)
                                 }
                             },
-                            onDelete = { viewModel.deleteTrack(track.id) }
+                            onDelete = { viewModel.deleteTrack(track.id) },
+                            onAddToPlaylist = { trackToAdd = track }
                         )
                     }
                 }
@@ -199,7 +208,11 @@ fun LibraryScreen(
                                 artist = albumTracks.first().artist,
                                 trackCount = albumTracks.size,
                                 representativeTrack = albumTracks.first(),
-                                onClick = { playbackController.playQueue(albumTracks, 0) }
+                                isExpanded = expandedAlbumName == albumName,
+                                expandedTracks = if (expandedAlbumName == albumName) albumTracks else emptyList(),
+                                currentTrackTitle = currentTrackTitle,
+                                onExpand = { expandedAlbumName = if (expandedAlbumName == albumName) null else albumName },
+                                onPlay = { tracks -> playbackController.playQueue(tracks, 0) }
                             )
                         }
                     }
@@ -217,7 +230,11 @@ fun LibraryScreen(
                                 name = artistName,
                                 trackCount = artistTracks.size,
                                 representativeTrack = artistTracks.first(),
-                                onClick = { playbackController.playQueue(artistTracks, 0) }
+                                isExpanded = expandedArtistName == artistName,
+                                expandedTracks = if (expandedArtistName == artistName) artistTracks else emptyList(),
+                                currentTrackTitle = currentTrackTitle,
+                                onExpand = { expandedArtistName = if (expandedArtistName == artistName) null else artistName },
+                                onPlay = { tracks -> playbackController.playQueue(tracks, 0) }
                             )
                         }
                     }
@@ -225,7 +242,12 @@ fun LibraryScreen(
 
                 LibraryTab.Folders -> {
                     val folders = remember(sortedTracks) {
-                        sortedTracks.groupBy { File(it.path).parentFile?.name ?: "Root" }
+                        sortedTracks.groupBy { track ->
+                            track.folderPath
+                                .replace("/storage/emulated/0/", "Internal Storage/")
+                                .replace("/storage/emulated/1/", "SD Card/")
+                                .replace("/storage/emulated/", "Storage ")
+                        }
                     }
                     LazyColumn(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -234,9 +256,13 @@ fun LibraryScreen(
                         items(folders.keys.toList()) { folderName ->
                             val folderTracks = folders[folderName]!!
                             FolderItem(
-                                name = folderName,
+                                path = folderName,
                                 trackCount = folderTracks.size,
-                                onClick = { playbackController.playQueue(folderTracks, 0) }
+                                isExpanded = expandedFolderPath == folderName,
+                                expandedTracks = if (expandedFolderPath == folderName) folderTracks else emptyList(),
+                                currentTrackTitle = currentTrackTitle,
+                                onExpand = { expandedFolderPath = if (expandedFolderPath == folderName) null else folderName },
+                                onPlay = { tracks -> playbackController.playQueue(tracks, 0) }
                             )
                         }
                     }
@@ -250,6 +276,17 @@ fun LibraryScreen(
                 )
             }
         }
+    }
+
+    trackToAdd?.let { track ->
+        SelectPlaylistDialog(
+            playlists = allPlaylists.filter { it.type == "manual" },
+            onSelect = { playlist ->
+                viewModel.addTrackToPlaylist(playlist.id, track.id)
+                trackToAdd = null
+            },
+            onDismiss = { trackToAdd = null }
+        )
     }
 }
 
@@ -425,10 +462,12 @@ fun LibraryTrackItem(
     isCurrentTrack: Boolean = false,
     isPlaying: Boolean = false,
     onClick: () -> Unit,
-    onDelete: (() -> Unit)? = null
+    onDelete: (() -> Unit)? = null,
+    onAddToPlaylist: (() -> Unit)? = null
 ) {
     val accent = Color(0xFF7C4DFF)
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var showMenu by remember { mutableStateOf(false) }
 
     if (showDeleteDialog) {
         AlertDialog(
@@ -509,89 +548,196 @@ fun LibraryTrackItem(
                 overflow = TextOverflow.Ellipsis
             )
         }
-        Icon(
-            imageVector = if (isCurrentTrack && isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-            contentDescription = null,
-            tint = if (isCurrentTrack) accent else Color.White.copy(alpha = 0.25f),
-            modifier = Modifier.size(24.dp)
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                imageVector = if (isCurrentTrack && isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                contentDescription = null,
+                tint = if (isCurrentTrack) accent else Color.White.copy(alpha = 0.25f),
+                modifier = Modifier.size(24.dp)
+            )
+            
+            Box {
+                IconButton(onClick = { showMenu = true }) {
+                    Icon(
+                        imageVector = Icons.Default.MoreVert,
+                        contentDescription = "More options",
+                        tint = Color.White.copy(alpha = 0.5f),
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                
+                DropdownMenu(
+                    expanded = showMenu,
+                    onDismissRequest = { showMenu = false },
+                    modifier = Modifier.background(Color(0xFF1E1E2E))
+                ) {
+                    if (onAddToPlaylist != null) {
+                        DropdownMenuItem(
+                            text = { Text("Add to Playlist", color = Color.White) },
+                            onClick = { 
+                                showMenu = false
+                                onAddToPlaylist.invoke()
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Default.PlaylistAdd, contentDescription = null, tint = Color.White)
+                            }
+                        )
+                    }
+                    if (onDelete != null) {
+                        DropdownMenuItem(
+                            text = { Text("Remove from Library", color = Color(0xFFFF4D7C)) },
+                            onClick = { 
+                                showMenu = false
+                                showDeleteDialog = true
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Default.Delete, contentDescription = null, tint = Color(0xFFFF4D7C))
+                            }
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
 @Composable
-fun AlbumItem(name: String, artist: String, trackCount: Int, representativeTrack: TrackEntity, onClick: () -> Unit) {
-    Row(
+fun AlbumItem(
+    name: String, 
+    artist: String, 
+    trackCount: Int, 
+    representativeTrack: TrackEntity, 
+    isExpanded: Boolean,
+    expandedTracks: List<TrackEntity>,
+    currentTrackTitle: String = "",
+    onExpand: () -> Unit,
+    onPlay: (List<TrackEntity>) -> Unit
+) {
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(Color.White.copy(alpha = 0.04f))
-            .clickable(onClick = onClick)
-            .padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .clickable(onClick = onExpand),
+        color = Color.White.copy(alpha = 0.04f),
+        shape = RoundedCornerShape(16.dp)
     ) {
-        Surface(
-            modifier = Modifier.size(56.dp),
-            shape = RoundedCornerShape(12.dp),
-            color = Color.Transparent
-        ) {
-            ProceduralArtwork(track = representativeTrack, modifier = Modifier.fillMaxSize())
-        }
-        Spacer(modifier = Modifier.width(14.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = name,
-                color = Color.White,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(
-                text = "$artist • $trackCount tracks",
-                color = Color.White.copy(alpha = 0.5f),
-                fontSize = 13.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+        Column(modifier = Modifier.padding(12.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Surface(
+                    modifier = Modifier.size(56.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    color = Color.Transparent
+                ) {
+                    ProceduralArtwork(track = representativeTrack, modifier = Modifier.fillMaxSize())
+                }
+                Spacer(modifier = Modifier.width(14.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = name,
+                        color = Color.White,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "$artist • $trackCount tracks",
+                        color = Color.White.copy(alpha = 0.5f),
+                        fontSize = 13.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                if (isExpanded) {
+                    IconButton(
+                        onClick = { onPlay(expandedTracks) },
+                        enabled = expandedTracks.isNotEmpty()
+                    ) {
+                        Icon(Icons.Default.PlayArrow, contentDescription = "Play", tint = if (expandedTracks.isNotEmpty()) Color(0xFF7C4DFF) else Color.Gray)
+                    }
+                }
+                Icon(
+                    imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.KeyboardArrowDown,
+                    contentDescription = if (isExpanded) "Collapse" else "Expand",
+                    tint = Color.White.copy(alpha = 0.4f)
+                )
+            }
+            if (isExpanded) {
+                ExpandedTrackList(tracks = expandedTracks, onPlay = onPlay, currentTrackTitle = currentTrackTitle)
+            }
         }
     }
 }
 
 @Composable
-fun ArtistItem(name: String, trackCount: Int, representativeTrack: TrackEntity, onClick: () -> Unit) {
-    Row(
+fun ArtistItem(
+    name: String, 
+    trackCount: Int, 
+    representativeTrack: TrackEntity, 
+    isExpanded: Boolean,
+    expandedTracks: List<TrackEntity>,
+    currentTrackTitle: String = "",
+    onExpand: () -> Unit,
+    onPlay: (List<TrackEntity>) -> Unit
+) {
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(Color.White.copy(alpha = 0.04f))
-            .clickable(onClick = onClick)
-            .padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .clickable(onClick = onExpand),
+        color = Color.White.copy(alpha = 0.04f),
+        shape = RoundedCornerShape(16.dp)
     ) {
-        Surface(
-            modifier = Modifier.size(56.dp),
+        Column(modifier = Modifier.padding(12.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Surface(
+                    modifier = Modifier.size(56.dp),
             shape = CircleShape,
             color = Color.Transparent
         ) {
             ProceduralArtwork(track = representativeTrack, modifier = Modifier.fillMaxSize())
         }
-        Spacer(modifier = Modifier.width(14.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = name,
-                color = Color.White,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(
-                text = "$trackCount tracks",
-                color = Color.White.copy(alpha = 0.5f),
-                fontSize = 13.sp
-            )
+                Spacer(modifier = Modifier.width(14.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = name,
+                        color = Color.White,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "$trackCount tracks",
+                        color = Color.White.copy(alpha = 0.5f),
+                        fontSize = 13.sp
+                    )
+                }
+                if (isExpanded) {
+                    IconButton(
+                        onClick = { onPlay(expandedTracks) },
+                        enabled = expandedTracks.isNotEmpty()
+                    ) {
+                        Icon(Icons.Default.PlayArrow, contentDescription = "Play", tint = if (expandedTracks.isNotEmpty()) Color(0xFF7C4DFF) else Color.Gray)
+                    }
+                }
+                Icon(
+                    imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.KeyboardArrowDown,
+                    contentDescription = if (isExpanded) "Collapse" else "Expand",
+                    tint = Color.White.copy(alpha = 0.4f)
+                )
+            }
+            if (isExpanded) {
+                ExpandedTrackList(tracks = expandedTracks, onPlay = onPlay, currentTrackTitle = currentTrackTitle)
+            }
         }
     }
 }
@@ -607,28 +753,85 @@ fun PlaylistsTab(
     var playlistToDelete by remember { mutableStateOf<PlaylistEntity?>(null) }
     var expandedPlaylistId by remember { mutableStateOf<Long?>(null) }
     var expandedTracks by remember { mutableStateOf<List<TrackEntity>>(emptyList()) }
+    
+    // Virtual Playlists Data
+    val allTracks by viewModel.allTracks.collectAsState()
+    val taggedTrackIds by viewModel.taggedTrackIds.collectAsState()
+    
+    val likedTrackIds = taggedTrackIds["liked"] ?: emptySet()
+    val likedTracks = remember(allTracks, likedTrackIds) { allTracks.filter { it.id in likedTrackIds } }
+    val recentlyPlayed = remember(allTracks) { allTracks.filter { it.lastPlayed != null }.sortedByDescending { it.lastPlayed }.take(50) }
+    val mostPlayed = remember(allTracks) { allTracks.filter { it.playCount > 0 }.sortedByDescending { it.playCount }.take(50) }
+    val leastPlayed = remember(allTracks) { allTracks.filter { it.playCount > 0 }.sortedBy { it.playCount }.take(50) }
 
     LaunchedEffect(expandedPlaylistId, playlists) {
-        val pid = expandedPlaylistId ?: return@LaunchedEffect
-        val playlist = playlists.find { it.id == pid } ?: return@LaunchedEffect
+        if (expandedPlaylistId == null || expandedPlaylistId!! < 0L) return@LaunchedEffect
+        val playlist = playlists.find { it.id == expandedPlaylistId } ?: return@LaunchedEffect
         expandedTracks = viewModel.getTracksForPlaylist(playlist)
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        if (playlists.isEmpty()) {
-            Column(
-                modifier = Modifier.align(Alignment.Center),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text("No playlists yet", color = Color.Gray, fontSize = 16.sp, fontWeight = FontWeight.Medium)
-                Spacer(modifier = Modifier.height(6.dp))
-                Text("Tap + to create one from tags", color = Color.Gray.copy(alpha = 0.55f), fontSize = 13.sp)
+        LazyColumn(
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 120.dp)
+        ) {
+            // Virtual Playlists Section
+            item {
+                Text("Standard Collections", color = Color.White.copy(alpha = 0.5f), fontSize = 13.sp, modifier = Modifier.padding(start = 8.dp, top = 8.dp, bottom = 4.dp))
             }
-        } else {
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 120.dp)
-            ) {
+            item {
+                PlaylistItem(
+                    playlist = PlaylistEntity(id = -1, name = "Liked Songs", type = "virtual"),
+                    isExpanded = expandedPlaylistId == -1L,
+                    expandedTracks = if (expandedPlaylistId == -1L) likedTracks else emptyList(),
+                    onExpand = { expandedPlaylistId = if (expandedPlaylistId == -1L) null else -1L },
+                    onPlay = { tracks -> if (tracks.isNotEmpty()) playbackController.playQueue(tracks, 0) },
+                    onDelete = null
+                )
+            }
+            item {
+                PlaylistItem(
+                    playlist = PlaylistEntity(id = -2, name = "Recently Played", type = "virtual"),
+                    isExpanded = expandedPlaylistId == -2L,
+                    expandedTracks = if (expandedPlaylistId == -2L) recentlyPlayed else emptyList(),
+                    onExpand = { expandedPlaylistId = if (expandedPlaylistId == -2L) null else -2L },
+                    onPlay = { tracks -> if (tracks.isNotEmpty()) playbackController.playQueue(tracks, 0) },
+                    onDelete = null
+                )
+            }
+            item {
+                PlaylistItem(
+                    playlist = PlaylistEntity(id = -3, name = "Most Played", type = "virtual"),
+                    isExpanded = expandedPlaylistId == -3L,
+                    expandedTracks = if (expandedPlaylistId == -3L) mostPlayed else emptyList(),
+                    onExpand = { expandedPlaylistId = if (expandedPlaylistId == -3L) null else -3L },
+                    onPlay = { tracks -> if (tracks.isNotEmpty()) playbackController.playQueue(tracks, 0) },
+                    onDelete = null
+                )
+            }
+            item {
+                PlaylistItem(
+                    playlist = PlaylistEntity(id = -4, name = "Least Played", type = "virtual"),
+                    isExpanded = expandedPlaylistId == -4L,
+                    expandedTracks = if (expandedPlaylistId == -4L) leastPlayed else emptyList(),
+                    onExpand = { expandedPlaylistId = if (expandedPlaylistId == -4L) null else -4L },
+                    onPlay = { tracks -> if (tracks.isNotEmpty()) playbackController.playQueue(tracks, 0) },
+                    onDelete = null
+                )
+            }
+
+            // Custom Playlists Section
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("Your Playlists", color = Color.White.copy(alpha = 0.5f), fontSize = 13.sp, modifier = Modifier.padding(start = 8.dp, bottom = 4.dp))
+            }
+            if (playlists.isEmpty()) {
+                item {
+                    Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                        Text("No custom playlists yet", color = Color.Gray, fontSize = 14.sp)
+                    }
+                }
+            } else {
                 items(playlists, key = { it.id }) { playlist ->
                     PlaylistItem(
                         playlist = playlist,
@@ -659,7 +862,11 @@ fun PlaylistsTab(
     if (showCreateDialog) {
         CreatePlaylistDialog(
             allTags = allTags.distinctBy { it.name.lowercase() },
-            onCreate = { name, tagIds ->
+            onCreateManual = { name ->
+                viewModel.createManualPlaylist(name)
+                showCreateDialog = false
+            },
+            onCreateSmart = { name, tagIds ->
                 viewModel.createDynamicPlaylist(name, tagIds)
                 showCreateDialog = false
             },
@@ -692,9 +899,10 @@ fun PlaylistItem(
     playlist: PlaylistEntity,
     isExpanded: Boolean,
     expandedTracks: List<TrackEntity>,
+    currentTrackTitle: String = "",
     onExpand: () -> Unit,
     onPlay: (List<TrackEntity>) -> Unit,
-    onDelete: () -> Unit
+    onDelete: (() -> Unit)? = null
 ) {
     val accent = Color(0xFF7C4DFF)
 
@@ -703,7 +911,7 @@ fun PlaylistItem(
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
             .pointerInput(Unit) {
-                detectTapGestures(onTap = { onExpand() }, onLongPress = { onDelete() })
+                detectTapGestures(onTap = { onExpand() }, onLongPress = { onDelete?.invoke() })
             },
         color = Color.White.copy(alpha = 0.04f),
         shape = RoundedCornerShape(16.dp)
@@ -756,61 +964,22 @@ fun PlaylistItem(
             }
 
             if (isExpanded) {
-                Spacer(modifier = Modifier.height(10.dp))
-                HorizontalDivider(color = Color.White.copy(alpha = 0.07f), thickness = 1.dp)
-                Spacer(modifier = Modifier.height(10.dp))
-                if (expandedTracks.isEmpty()) {
-                    Text(
-                        text = "No tracks match this playlist's tags",
-                        color = Color.White.copy(alpha = 0.35f),
-                        fontSize = 13.sp
-                    )
-                } else {
-                    expandedTracks.take(5).forEach { track ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = track.title,
-                                color = Color.White.copy(alpha = 0.85f),
-                                fontSize = 13.sp,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.weight(1f)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = track.artist,
-                                color = Color.White.copy(alpha = 0.4f),
-                                fontSize = 12.sp,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.widthIn(max = 120.dp)
-                            )
-                        }
-                    }
-                    if (expandedTracks.size > 5) {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "+ ${expandedTracks.size - 5} more",
-                            color = accent.copy(alpha = 0.7f),
-                            fontSize = 12.sp
-                        )
-                    }
-                }
+                ExpandedTrackList(tracks = expandedTracks, onPlay = { tracks -> onPlay(tracks) }, currentTrackTitle = currentTrackTitle)
             }
         }
     }
 }
 
+
 @Composable
 fun CreatePlaylistDialog(
     allTags: List<TagEntity>,
-    onCreate: (String, List<Long>) -> Unit,
+    onCreateManual: (String) -> Unit,
+    onCreateSmart: (String, List<Long>) -> Unit,
     onDismiss: () -> Unit
 ) {
     var name by remember { mutableStateOf("") }
+    var isSmartPlaylist by remember { mutableStateOf(false) }
     val selectedTagIds = remember { mutableStateListOf<Long>() }
     val accent = Color(0xFF7C4DFF)
 
@@ -837,79 +1006,98 @@ fun CreatePlaylistDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(14.dp))
-                Text(
-                    "Include tracks tagged with:",
-                    color = Color.White.copy(alpha = 0.55f),
-                    fontSize = 12.sp
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                    modifier = Modifier.heightIn(max = 200.dp)
-                ) {
-                    gridItems(allTags) { tag ->
-                        val isSelected = selectedTagIds.contains(tag.id)
-                        FilterChip(
-                            selected = isSelected,
-                            onClick = {
-                                if (isSelected) selectedTagIds.remove(tag.id)
-                                else selectedTagIds.add(tag.id)
-                            },
-                            label = {
-                                Text(
-                                    tag.name.replaceFirstChar { it.uppercase() },
-                                    fontSize = 12.sp,
-                                    maxLines = 1
-                                )
-                            },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = Color(tag.color).copy(alpha = 0.22f),
-                                selectedLabelColor = Color.White,
-                                containerColor = Color.White.copy(alpha = 0.06f),
-                                labelColor = Color.White.copy(alpha = 0.6f)
-                            ),
-                            border = FilterChipDefaults.filterChipBorder(
-                                enabled = true,
+                
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Switch(
+                        checked = isSmartPlaylist,
+                        onCheckedChange = { isSmartPlaylist = it },
+                        colors = SwitchDefaults.colors(checkedThumbColor = accent, checkedTrackColor = accent.copy(alpha = 0.5f))
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Smart Playlist (Auto-updates via Tags)", color = Color.White.copy(alpha = 0.7f), fontSize = 13.sp)
+                }
+
+                if (isSmartPlaylist) {
+                    Spacer(modifier = Modifier.height(14.dp))
+                    Text("Include tracks tagged with:", color = Color.White.copy(alpha = 0.55f), fontSize = 12.sp)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(2),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier.heightIn(max = 200.dp)
+                    ) {
+                        gridItems(allTags) { tag ->
+                            val isSelected = selectedTagIds.contains(tag.id)
+                            FilterChip(
                                 selected = isSelected,
-                                selectedBorderColor = Color(tag.color).copy(alpha = 0.6f),
-                                borderColor = Color.White.copy(alpha = 0.1f)
+                                onClick = {
+                                    if (isSelected) selectedTagIds.remove(tag.id)
+                                    else selectedTagIds.add(tag.id)
+                                },
+                                label = { Text(tag.name.replaceFirstChar { it.uppercase() }, fontSize = 12.sp, maxLines = 1) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = Color(tag.color).copy(alpha = 0.22f),
+                                    selectedLabelColor = Color.White,
+                                    containerColor = Color.White.copy(alpha = 0.06f),
+                                    labelColor = Color.White.copy(alpha = 0.6f)
+                                ),
+                                border = FilterChipDefaults.filterChipBorder(
+                                    enabled = true, selected = isSelected,
+                                    selectedBorderColor = Color(tag.color).copy(alpha = 0.6f),
+                                    borderColor = Color.White.copy(alpha = 0.1f)
+                                )
                             )
-                        )
+                        }
                     }
                 }
             }
         },
         confirmButton = {
             TextButton(
-                onClick = { if (name.isNotBlank()) onCreate(name.trim(), selectedTagIds.toList()) },
+                onClick = { 
+                    if (name.isNotBlank()) {
+                        if (isSmartPlaylist) onCreateSmart(name.trim(), selectedTagIds.toList())
+                        else onCreateManual(name.trim())
+                    }
+                },
                 enabled = name.isNotBlank()
             ) {
                 Text("Create", color = if (name.isNotBlank()) accent else Color.Gray, fontWeight = FontWeight.SemiBold)
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel", color = Color.White.copy(alpha = 0.6f))
-            }
+            TextButton(onClick = onDismiss) { Text("Cancel", color = Color.White.copy(alpha = 0.6f)) }
         }
     )
 }
 
 @Composable
-fun FolderItem(name: String, trackCount: Int, onClick: () -> Unit) {
-    Row(
+fun FolderItem(
+    path: String, 
+    trackCount: Int, 
+    isExpanded: Boolean,
+    expandedTracks: List<TrackEntity>,
+    currentTrackTitle: String = "",
+    onExpand: () -> Unit,
+    onPlay: (List<TrackEntity>) -> Unit
+) {
+    val folderName = path.substringAfterLast("/").takeIf { it.isNotEmpty() } ?: path
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(Color.White.copy(alpha = 0.04f))
-            .clickable(onClick = onClick)
-            .padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .clickable(onClick = onExpand),
+        color = Color.White.copy(alpha = 0.04f),
+        shape = RoundedCornerShape(16.dp)
     ) {
-        Surface(
-            modifier = Modifier.size(56.dp),
+        Column(modifier = Modifier.padding(12.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Surface(
+                    modifier = Modifier.size(56.dp),
             shape = RoundedCornerShape(12.dp),
             color = Color.White.copy(alpha = 0.07f)
         ) {
@@ -922,21 +1110,136 @@ fun FolderItem(name: String, trackCount: Int, onClick: () -> Unit) {
                 )
             }
         }
-        Spacer(modifier = Modifier.width(14.dp))
-        Column(modifier = Modifier.weight(1f)) {
+                Spacer(modifier = Modifier.width(14.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = folderName,
+                        color = Color.White,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "$trackCount tracks",
+                        color = Color.White.copy(alpha = 0.5f),
+                        fontSize = 13.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                if (isExpanded) {
+                    IconButton(
+                        onClick = { onPlay(expandedTracks) },
+                        enabled = expandedTracks.isNotEmpty()
+                    ) {
+                        Icon(Icons.Default.PlayArrow, contentDescription = "Play", tint = if (expandedTracks.isNotEmpty()) Color(0xFF7C4DFF) else Color.Gray)
+                    }
+                }
+                Icon(
+                    imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.KeyboardArrowDown,
+                    contentDescription = if (isExpanded) "Collapse" else "Expand",
+                    tint = Color.White.copy(alpha = 0.4f)
+                )
+            }
+            if (isExpanded) {
+                ExpandedTrackList(tracks = expandedTracks, onPlay = onPlay, currentTrackTitle = currentTrackTitle)
+            }
+        }
+    }
+}
+
+@Composable
+fun SelectPlaylistDialog(
+    playlists: List<PlaylistEntity>,
+    onSelect: (PlaylistEntity) -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = Color(0xFF1E1E2E),
+        title = { Text("Add to Playlist", color = Color.White, fontWeight = FontWeight.SemiBold) },
+        text = {
+            if (playlists.isEmpty()) {
+                Text("You don't have any standard playlists yet.", color = Color.Gray, fontSize = 14.sp)
+            } else {
+                LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 300.dp)) {
+                    items(playlists) { playlist ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onSelect(playlist) }
+                                .padding(vertical = 12.dp, horizontal = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.PlaylistPlay, contentDescription = null, tint = Color.White.copy(alpha = 0.5f))
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(playlist.name, color = Color.White, fontSize = 15.sp)
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Close", color = Color.White.copy(alpha = 0.6f)) }
+        }
+    )
+}
+
+@Composable
+fun ExpandedTrackList(
+    tracks: List<TrackEntity>,
+    onPlay: (List<TrackEntity>) -> Unit,
+    currentTrackTitle: String = "",
+    accent: Color = Color(0xFF7C4DFF)
+) {
+    Spacer(modifier = Modifier.height(10.dp))
+    HorizontalDivider(color = Color.White.copy(alpha = 0.07f), thickness = 1.dp)
+    Spacer(modifier = Modifier.height(10.dp))
+    if (tracks.isEmpty()) {
+        Text(
+            text = "No tracks inside.",
+            color = Color.White.copy(alpha = 0.35f),
+            fontSize = 13.sp
+        )
+    } else {
+        tracks.take(100).forEach { track ->
+            val isCurrent = track.title == currentTrackTitle
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable { onPlay(listOf(track)) }
+                    .padding(vertical = 12.dp, horizontal = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = track.title,
+                    color = if (isCurrent) accent else Color.White.copy(alpha = 0.85f),
+                    fontSize = 13.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = track.artist,
+                    color = if (isCurrent) accent.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.4f),
+                    fontSize = 12.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.widthIn(max = 120.dp)
+                )
+            }
+        }
+        if (tracks.size > 100) {
+            Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = name,
-                color = Color.White,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(
-                text = "$trackCount tracks",
-                color = Color.White.copy(alpha = 0.5f),
-                fontSize = 13.sp
+                text = "+ ${tracks.size - 100} more (Play group to hear all)",
+                color = accent.copy(alpha = 0.7f),
+                fontSize = 12.sp,
+                modifier = Modifier.padding(horizontal = 8.dp)
             )
         }
     }

@@ -46,18 +46,21 @@ public final class FreqvoxDatabase_Impl extends FreqvoxDatabase {
   @Override
   @NonNull
   protected SupportSQLiteOpenHelper createOpenHelper(@NonNull final DatabaseConfiguration config) {
-    final SupportSQLiteOpenHelper.Callback _openCallback = new RoomOpenHelper(config, new RoomOpenHelper.Delegate(1) {
+    final SupportSQLiteOpenHelper.Callback _openCallback = new RoomOpenHelper(config, new RoomOpenHelper.Delegate(3) {
       @Override
       public void createAllTables(@NonNull final SupportSQLiteDatabase db) {
-        db.execSQL("CREATE TABLE IF NOT EXISTS `tracks` (`id` INTEGER NOT NULL, `title` TEXT NOT NULL, `artist` TEXT NOT NULL, `album` TEXT NOT NULL, `duration` INTEGER NOT NULL, `dateAdded` INTEGER NOT NULL, `path` TEXT NOT NULL, `artworkPath` TEXT, `playCount` INTEGER NOT NULL, `lastPlayed` INTEGER, `totalPlayTime` INTEGER NOT NULL, `skipCount` INTEGER NOT NULL, PRIMARY KEY(`id`))");
+        db.execSQL("CREATE TABLE IF NOT EXISTS `tracks` (`id` INTEGER NOT NULL, `title` TEXT NOT NULL, `artist` TEXT NOT NULL, `album` TEXT NOT NULL, `duration` INTEGER NOT NULL, `dateAdded` INTEGER NOT NULL, `path` TEXT NOT NULL, `folderPath` TEXT NOT NULL, `artworkPath` TEXT, `playCount` INTEGER NOT NULL, `lastPlayed` INTEGER, `totalPlayTime` INTEGER NOT NULL, `skipCount` INTEGER NOT NULL, PRIMARY KEY(`id`))");
         db.execSQL("CREATE TABLE IF NOT EXISTS `tags` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `color` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL)");
         db.execSQL("CREATE TABLE IF NOT EXISTS `track_tags` (`trackId` INTEGER NOT NULL, `tagId` INTEGER NOT NULL, `assignedAt` INTEGER NOT NULL, PRIMARY KEY(`trackId`, `tagId`))");
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_track_tags_tagId` ON `track_tags` (`tagId`)");
         db.execSQL("CREATE TABLE IF NOT EXISTS `play_history` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `trackId` INTEGER NOT NULL, `playedAt` INTEGER NOT NULL, `durationPlayed` INTEGER NOT NULL, `completed` INTEGER NOT NULL)");
         db.execSQL("CREATE TABLE IF NOT EXISTS `skip_history` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `trackId` INTEGER NOT NULL, `skippedAt` INTEGER NOT NULL)");
         db.execSQL("CREATE TABLE IF NOT EXISTS `playlists` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `type` TEXT NOT NULL, `queryJson` TEXT, `createdAt` INTEGER NOT NULL)");
+        db.execSQL("CREATE TABLE IF NOT EXISTS `playlist_tracks` (`playlistId` INTEGER NOT NULL, `trackId` INTEGER NOT NULL, `orderIndex` INTEGER NOT NULL, `addedAt` INTEGER NOT NULL, PRIMARY KEY(`playlistId`, `trackId`), FOREIGN KEY(`playlistId`) REFERENCES `playlists`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`trackId`) REFERENCES `tracks`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )");
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_playlist_tracks_playlistId` ON `playlist_tracks` (`playlistId`)");
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_playlist_tracks_trackId` ON `playlist_tracks` (`trackId`)");
         db.execSQL("CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)");
-        db.execSQL("INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'c585d3fe4d4edd6a54990411c72ec675')");
+        db.execSQL("INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'a717b3bcff5c14f67a75c36a881fff96')");
       }
 
       @Override
@@ -68,6 +71,7 @@ public final class FreqvoxDatabase_Impl extends FreqvoxDatabase {
         db.execSQL("DROP TABLE IF EXISTS `play_history`");
         db.execSQL("DROP TABLE IF EXISTS `skip_history`");
         db.execSQL("DROP TABLE IF EXISTS `playlists`");
+        db.execSQL("DROP TABLE IF EXISTS `playlist_tracks`");
         final List<? extends RoomDatabase.Callback> _callbacks = mCallbacks;
         if (_callbacks != null) {
           for (RoomDatabase.Callback _callback : _callbacks) {
@@ -89,6 +93,7 @@ public final class FreqvoxDatabase_Impl extends FreqvoxDatabase {
       @Override
       public void onOpen(@NonNull final SupportSQLiteDatabase db) {
         mDatabase = db;
+        db.execSQL("PRAGMA foreign_keys = ON");
         internalInitInvalidationTracker(db);
         final List<? extends RoomDatabase.Callback> _callbacks = mCallbacks;
         if (_callbacks != null) {
@@ -111,7 +116,7 @@ public final class FreqvoxDatabase_Impl extends FreqvoxDatabase {
       @NonNull
       public RoomOpenHelper.ValidationResult onValidateSchema(
           @NonNull final SupportSQLiteDatabase db) {
-        final HashMap<String, TableInfo.Column> _columnsTracks = new HashMap<String, TableInfo.Column>(12);
+        final HashMap<String, TableInfo.Column> _columnsTracks = new HashMap<String, TableInfo.Column>(13);
         _columnsTracks.put("id", new TableInfo.Column("id", "INTEGER", true, 1, null, TableInfo.CREATED_FROM_ENTITY));
         _columnsTracks.put("title", new TableInfo.Column("title", "TEXT", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
         _columnsTracks.put("artist", new TableInfo.Column("artist", "TEXT", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
@@ -119,6 +124,7 @@ public final class FreqvoxDatabase_Impl extends FreqvoxDatabase {
         _columnsTracks.put("duration", new TableInfo.Column("duration", "INTEGER", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
         _columnsTracks.put("dateAdded", new TableInfo.Column("dateAdded", "INTEGER", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
         _columnsTracks.put("path", new TableInfo.Column("path", "TEXT", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsTracks.put("folderPath", new TableInfo.Column("folderPath", "TEXT", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
         _columnsTracks.put("artworkPath", new TableInfo.Column("artworkPath", "TEXT", false, 0, null, TableInfo.CREATED_FROM_ENTITY));
         _columnsTracks.put("playCount", new TableInfo.Column("playCount", "INTEGER", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
         _columnsTracks.put("lastPlayed", new TableInfo.Column("lastPlayed", "INTEGER", false, 0, null, TableInfo.CREATED_FROM_ENTITY));
@@ -204,9 +210,27 @@ public final class FreqvoxDatabase_Impl extends FreqvoxDatabase {
                   + " Expected:\n" + _infoPlaylists + "\n"
                   + " Found:\n" + _existingPlaylists);
         }
+        final HashMap<String, TableInfo.Column> _columnsPlaylistTracks = new HashMap<String, TableInfo.Column>(4);
+        _columnsPlaylistTracks.put("playlistId", new TableInfo.Column("playlistId", "INTEGER", true, 1, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsPlaylistTracks.put("trackId", new TableInfo.Column("trackId", "INTEGER", true, 2, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsPlaylistTracks.put("orderIndex", new TableInfo.Column("orderIndex", "INTEGER", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsPlaylistTracks.put("addedAt", new TableInfo.Column("addedAt", "INTEGER", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        final HashSet<TableInfo.ForeignKey> _foreignKeysPlaylistTracks = new HashSet<TableInfo.ForeignKey>(2);
+        _foreignKeysPlaylistTracks.add(new TableInfo.ForeignKey("playlists", "CASCADE", "NO ACTION", Arrays.asList("playlistId"), Arrays.asList("id")));
+        _foreignKeysPlaylistTracks.add(new TableInfo.ForeignKey("tracks", "CASCADE", "NO ACTION", Arrays.asList("trackId"), Arrays.asList("id")));
+        final HashSet<TableInfo.Index> _indicesPlaylistTracks = new HashSet<TableInfo.Index>(2);
+        _indicesPlaylistTracks.add(new TableInfo.Index("index_playlist_tracks_playlistId", false, Arrays.asList("playlistId"), Arrays.asList("ASC")));
+        _indicesPlaylistTracks.add(new TableInfo.Index("index_playlist_tracks_trackId", false, Arrays.asList("trackId"), Arrays.asList("ASC")));
+        final TableInfo _infoPlaylistTracks = new TableInfo("playlist_tracks", _columnsPlaylistTracks, _foreignKeysPlaylistTracks, _indicesPlaylistTracks);
+        final TableInfo _existingPlaylistTracks = TableInfo.read(db, "playlist_tracks");
+        if (!_infoPlaylistTracks.equals(_existingPlaylistTracks)) {
+          return new RoomOpenHelper.ValidationResult(false, "playlist_tracks(com.freqvox.data.local.entities.PlaylistTrackCrossRef).\n"
+                  + " Expected:\n" + _infoPlaylistTracks + "\n"
+                  + " Found:\n" + _existingPlaylistTracks);
+        }
         return new RoomOpenHelper.ValidationResult(true, null);
       }
-    }, "c585d3fe4d4edd6a54990411c72ec675", "ddbb0938855a0fc2bbee88ab146294a3");
+    }, "a717b3bcff5c14f67a75c36a881fff96", "e848e86392eb9df6db75e0c3f0a58822");
     final SupportSQLiteOpenHelper.Configuration _sqliteConfig = SupportSQLiteOpenHelper.Configuration.builder(config.context).name(config.name).callback(_openCallback).build();
     final SupportSQLiteOpenHelper _helper = config.sqliteOpenHelperFactory.create(_sqliteConfig);
     return _helper;
@@ -217,24 +241,35 @@ public final class FreqvoxDatabase_Impl extends FreqvoxDatabase {
   protected InvalidationTracker createInvalidationTracker() {
     final HashMap<String, String> _shadowTablesMap = new HashMap<String, String>(0);
     final HashMap<String, Set<String>> _viewTables = new HashMap<String, Set<String>>(0);
-    return new InvalidationTracker(this, _shadowTablesMap, _viewTables, "tracks","tags","track_tags","play_history","skip_history","playlists");
+    return new InvalidationTracker(this, _shadowTablesMap, _viewTables, "tracks","tags","track_tags","play_history","skip_history","playlists","playlist_tracks");
   }
 
   @Override
   public void clearAllTables() {
     super.assertNotMainThread();
     final SupportSQLiteDatabase _db = super.getOpenHelper().getWritableDatabase();
+    final boolean _supportsDeferForeignKeys = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP;
     try {
+      if (!_supportsDeferForeignKeys) {
+        _db.execSQL("PRAGMA foreign_keys = FALSE");
+      }
       super.beginTransaction();
+      if (_supportsDeferForeignKeys) {
+        _db.execSQL("PRAGMA defer_foreign_keys = TRUE");
+      }
       _db.execSQL("DELETE FROM `tracks`");
       _db.execSQL("DELETE FROM `tags`");
       _db.execSQL("DELETE FROM `track_tags`");
       _db.execSQL("DELETE FROM `play_history`");
       _db.execSQL("DELETE FROM `skip_history`");
       _db.execSQL("DELETE FROM `playlists`");
+      _db.execSQL("DELETE FROM `playlist_tracks`");
       super.setTransactionSuccessful();
     } finally {
       super.endTransaction();
+      if (!_supportsDeferForeignKeys) {
+        _db.execSQL("PRAGMA foreign_keys = TRUE");
+      }
       _db.query("PRAGMA wal_checkpoint(FULL)").close();
       if (!_db.inTransaction()) {
         _db.execSQL("VACUUM");

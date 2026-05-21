@@ -254,6 +254,7 @@ public final class TagDao_Impl implements TagDao {
             final int _cursorIndexOfDuration = CursorUtil.getColumnIndexOrThrow(_cursor, "duration");
             final int _cursorIndexOfDateAdded = CursorUtil.getColumnIndexOrThrow(_cursor, "dateAdded");
             final int _cursorIndexOfPath = CursorUtil.getColumnIndexOrThrow(_cursor, "path");
+            final int _cursorIndexOfFolderPath = CursorUtil.getColumnIndexOrThrow(_cursor, "folderPath");
             final int _cursorIndexOfArtworkPath = CursorUtil.getColumnIndexOrThrow(_cursor, "artworkPath");
             final int _cursorIndexOfPlayCount = CursorUtil.getColumnIndexOrThrow(_cursor, "playCount");
             final int _cursorIndexOfLastPlayed = CursorUtil.getColumnIndexOrThrow(_cursor, "lastPlayed");
@@ -292,6 +293,12 @@ public final class TagDao_Impl implements TagDao {
               } else {
                 _tmpPath = _cursor.getString(_cursorIndexOfPath);
               }
+              final String _tmpFolderPath;
+              if (_cursor.isNull(_cursorIndexOfFolderPath)) {
+                _tmpFolderPath = null;
+              } else {
+                _tmpFolderPath = _cursor.getString(_cursorIndexOfFolderPath);
+              }
               final String _tmpArtworkPath;
               if (_cursor.isNull(_cursorIndexOfArtworkPath)) {
                 _tmpArtworkPath = null;
@@ -310,7 +317,7 @@ public final class TagDao_Impl implements TagDao {
               _tmpTotalPlayTime = _cursor.getLong(_cursorIndexOfTotalPlayTime);
               final int _tmpSkipCount;
               _tmpSkipCount = _cursor.getInt(_cursorIndexOfSkipCount);
-              _item = new TrackEntity(_tmpId,_tmpTitle,_tmpArtist,_tmpAlbum,_tmpDuration,_tmpDateAdded,_tmpPath,_tmpArtworkPath,_tmpPlayCount,_tmpLastPlayed,_tmpTotalPlayTime,_tmpSkipCount);
+              _item = new TrackEntity(_tmpId,_tmpTitle,_tmpArtist,_tmpAlbum,_tmpDuration,_tmpDateAdded,_tmpPath,_tmpFolderPath,_tmpArtworkPath,_tmpPlayCount,_tmpLastPlayed,_tmpTotalPlayTime,_tmpSkipCount);
               _result.add(_item);
             }
             __db.setTransactionSuccessful();

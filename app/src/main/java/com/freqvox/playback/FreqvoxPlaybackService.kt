@@ -4,10 +4,14 @@ import android.app.PendingIntent
 import android.content.Intent
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
+import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import dagger.hilt.android.AndroidEntryPoint
+import okhttp3.ConnectionSpec
+import okhttp3.OkHttpClient
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -20,9 +24,22 @@ class FreqvoxPlaybackService : MediaSessionService() {
     override fun onCreate() {
         super.onCreate()
         
+        // COMPATIBLE_TLS allows TLS 1.0/1.1 so older African CDNs (iono.fm, etc.) can connect.
+        // CLEARTEXT covers plain HTTP streams (some Kenyan stations).
+        val okHttpClient = OkHttpClient.Builder()
+            .connectionSpecs(listOf(ConnectionSpec.COMPATIBLE_TLS, ConnectionSpec.CLEARTEXT))
+            .followRedirects(true)
+            .followSslRedirects(true)
+            .build()
+
+        val dataSourceFactory = OkHttpDataSource.Factory(okHttpClient)
+            .setUserAgent("Freqvox/1.0 (Android)")
+
         val player = ExoPlayer.Builder(this)
+            .setMediaSourceFactory(DefaultMediaSourceFactory(dataSourceFactory))
             .setAudioAttributes(AudioAttributes.DEFAULT, true)
             .setHandleAudioBecomingNoisy(true)
+            .setWakeMode(C.WAKE_MODE_NETWORK)
             .build()
             
         // Setup MediaSession with Activity deep link

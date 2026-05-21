@@ -7,14 +7,18 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -26,10 +30,23 @@ import com.freqvox.ui.main.MainViewModel
 @Composable
 fun SearchScreen(
     onTrackClick: (TrackEntity) -> Unit,
+    focusTrigger: Long = 0L,
+    onFocusConsumed: () -> Unit = {},
     viewModel: MainViewModel = hiltViewModel()
 ) {
     val searchQuery by viewModel.searchQuery.collectAsState()
     val searchResults by viewModel.searchResults.collectAsState()
+    val allTags by viewModel.allTags.collectAsState()
+    val focusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
+
+    LaunchedEffect(focusTrigger) {
+        if (focusTrigger > 0L) {
+            focusRequester.requestFocus()
+            keyboardController?.show()
+            onFocusConsumed()
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -49,30 +66,68 @@ fun SearchScreen(
             onValueChange = { viewModel.onSearchQueryChange(it) },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 24.dp),
-            placeholder = { Text("Search songs, artists, albums...", color = Color.Gray) },
+                .padding(bottom = 24.dp)
+                .focusRequester(focusRequester),
+            placeholder = { Text("What do you want to listen to?", color = Color.Gray) },
             leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color.Gray) },
+            trailingIcon = {
+                if (searchQuery.isNotEmpty()) {
+                    IconButton(onClick = { viewModel.onSearchQueryChange("") }) {
+                        Icon(Icons.Default.Clear, contentDescription = "Clear search", tint = Color.Gray)
+                    }
+                }
+            },
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = Color(0xFF7C4DFF),
-                unfocusedBorderColor = Color(0xFF1A1A26),
-                focusedContainerColor = Color(0xFF12121A),
-                unfocusedContainerColor = Color(0xFF12121A),
+                unfocusedBorderColor = Color(0xFF1E1E2E),
+                focusedContainerColor = Color(0xFF1E1E2E),
+                unfocusedContainerColor = Color(0xFF1E1E2E),
                 focusedTextColor = Color.White,
                 unfocusedTextColor = Color.White
             ),
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(50), // Pill shaped
             singleLine = true
         )
 
         if (searchQuery.isBlank()) {
             Text(
-                text = "Genres",
+                text = "Browse by Tag",
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.White,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
-            GenreGrid()
+            
+            if (allTags.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxWidth().padding(top = 40.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            Icons.Default.Search, 
+                            contentDescription = null, 
+                            tint = Color.White.copy(alpha = 0.2f),
+                            modifier = Modifier.size(64.dp)
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = "No tags yet.",
+                            color = Color.White.copy(alpha = 0.7f),
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Tag your songs to easily find them here.",
+                            color = Color.White.copy(alpha = 0.4f),
+                            fontSize = 14.sp
+                        )
+                    }
+                }
+            } else {
+                TagsGrid(tags = allTags, onTagClick = { viewModel.onSearchQueryChange(it) })
+            }
         } else {
             if (searchResults.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -90,24 +145,19 @@ fun SearchScreen(
 }
 
 @Composable
-fun GenreGrid() {
-    val genres = listOf(
-        "Electronic" to Color(0xFF6B3FA0),
-        "Ambient" to Color(0xFF4DFFB4),
-        "Hip-Hop" to Color(0xFFFF4D7C),
-        "R&B" to Color(0xFF7C4DFF),
-        "Rock" to Color(0xFFFFA726),
-        "Classical" to Color(0xFF42A5F5),
-        "Afrobeats" to Color(0xFF66BB6A),
-        "Jazz" to Color(0xFFEF5350)
-    )
-
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        for (i in genres.indices step 2) {
+fun TagsGrid(tags: List<com.freqvox.data.local.entities.TagEntity>, onTagClick: (String) -> Unit) {
+    LazyColumn(
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(bottom = 120.dp)
+    ) {
+        val rows = tags.chunked(2)
+        items(rows) { rowTags ->
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                GenreCard(genres[i].first, genres[i].second, Modifier.weight(1f))
-                if (i + 1 < genres.size) {
-                    GenreCard(genres[i + 1].first, genres[i + 1].second, Modifier.weight(1f))
+                TagCard(rowTags[0].name, Color(rowTags[0].color), Modifier.weight(1f), onTagClick = { onTagClick(rowTags[0].name) })
+                if (rowTags.size > 1) {
+                    TagCard(rowTags[1].name, Color(rowTags[1].color), Modifier.weight(1f), onTagClick = { onTagClick(rowTags[1].name) })
+                } else {
+                    Spacer(modifier = Modifier.weight(1f))
                 }
             }
         }
@@ -115,25 +165,36 @@ fun GenreGrid() {
 }
 
 @Composable
-fun GenreCard(name: String, color: Color, modifier: Modifier = Modifier) {
-    Surface(
-        modifier = modifier.height(100.dp),
-        shape = RoundedCornerShape(14.dp),
-        color = color.copy(alpha = 0.2f),
-        border = CardDefaults.outlinedCardBorder()
+fun TagCard(name: String, baseColor: Color, modifier: Modifier = Modifier, onTagClick: () -> Unit = {}) {
+    val gradient = Brush.linearGradient(
+        colors = listOf(
+            baseColor,
+            baseColor.copy(alpha = 0.5f)
+        )
+    )
+
+    Box(
+        modifier = modifier
+            .height(110.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(gradient)
+            .clickable { onTagClick() },
     ) {
+        // Decorative overlay
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp),
-            contentAlignment = Alignment.BottomStart
-        ) {
-            Text(
-                text = name,
-                color = Color.White,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold
-            )
-        }
+                .background(Color.Black.copy(alpha = 0.2f))
+        )
+        
+        Text(
+            text = name.replaceFirstChar { if (it.isLowerCase()) it.titlecase(java.util.Locale.ROOT) else it.toString() },
+            color = Color.White,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(16.dp)
+        )
     }
 }

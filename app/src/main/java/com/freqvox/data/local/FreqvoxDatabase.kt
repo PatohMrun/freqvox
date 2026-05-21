@@ -15,9 +15,10 @@ import com.freqvox.data.local.entities.*
         TrackTagCrossRef::class,
         PlayHistoryEntity::class,
         SkipHistoryEntity::class,
-        PlaylistEntity::class
+        PlaylistEntity::class,
+        PlaylistTrackCrossRef::class
     ],
-    version = 1,
+    version = 3,
     exportSchema = false
 )
 abstract class FreqvoxDatabase : RoomDatabase() {

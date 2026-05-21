@@ -1,9 +1,9 @@
 -- Merging decision tree log ---
 manifest
-ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:2:1-36:12
-INJECTED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:2:1-36:12
-INJECTED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:2:1-36:12
-INJECTED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:2:1-36:12
+ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:2:1-39:12
+INJECTED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:2:1-39:12
+INJECTED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:2:1-39:12
+INJECTED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:2:1-39:12
 MERGED from [androidx.hilt:hilt-navigation-compose:1.2.0] /home/mrunphotography/.gradle/caches/8.11.1/transforms/cd11bb1d4851c645657146ec65ce1331/transformed/hilt-navigation-compose-1.2.0/AndroidManifest.xml:2:1-7:12
 MERGED from [androidx.hilt:hilt-navigation:1.2.0] /home/mrunphotography/.gradle/caches/8.11.1/transforms/2298d7e193ceb7bbe85f5773ed8502d7/transformed/hilt-navigation-1.2.0/AndroidManifest.xml:2:1-7:12
 MERGED from [androidx.navigation:navigation-common:2.8.7] /home/mrunphotography/.gradle/caches/8.11.1/transforms/6d2030d71b5629396791cb2196a9818a/transformed/navigation-common-2.8.7/AndroidManifest.xml:17:1-22:12
@@ -29,14 +29,16 @@ MERGED from [com.google.accompanist:accompanist-drawablepainter:0.32.0] /home/mr
 MERGED from [com.google.dagger:hilt-android:2.51.1] /home/mrunphotography/.gradle/caches/8.11.1/transforms/90295832e67cbe316bfd72ef2de5d355/transformed/hilt-android-2.51.1/AndroidManifest.xml:16:1-19:12
 MERGED from [androidx.fragment:fragment:1.5.1] /home/mrunphotography/.gradle/caches/8.11.1/transforms/6f07350282c5043ace53fbbab94ee21d/transformed/fragment-1.5.1/AndroidManifest.xml:17:1-24:12
 MERGED from [androidx.activity:activity:1.10.0] /home/mrunphotography/.gradle/caches/8.11.1/transforms/861eaccdd2b37baad959fd707b9ac592/transformed/activity-1.10.0/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.media3:media3-datasource-okhttp:1.5.1] /home/mrunphotography/.gradle/caches/8.11.1/transforms/c726954a11cd31cd46d112e4f4a2156b/transformed/media3-datasource-okhttp-1.5.1/AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.media3:media3-session:1.5.1] /home/mrunphotography/.gradle/caches/8.11.1/transforms/893ed5834ae27f27f804c96015aff02d/transformed/media3-session-1.5.1/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.media3:media3-datasource:1.5.1] /home/mrunphotography/.gradle/caches/8.11.1/transforms/a5596a28b88b46b1365e4977fee9e9f7/transformed/media3-datasource-1.5.1/AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.media3:media3-ui:1.5.1] /home/mrunphotography/.gradle/caches/8.11.1/transforms/859e9aa018e4be3f698c9590d1e30d59/transformed/media3-ui-1.5.1/AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.media3:media3-extractor:1.5.1] /home/mrunphotography/.gradle/caches/8.11.1/transforms/96fc47c9a206090c51987fe97a00aae0/transformed/media3-extractor-1.5.1/AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.media3:media3-container:1.5.1] /home/mrunphotography/.gradle/caches/8.11.1/transforms/a5195d8eb779ff58ff2c527d41783479/transformed/media3-container-1.5.1/AndroidManifest.xml:17:1-22:12
-MERGED from [androidx.media3:media3-datasource:1.5.1] /home/mrunphotography/.gradle/caches/8.11.1/transforms/a5596a28b88b46b1365e4977fee9e9f7/transformed/media3-datasource-1.5.1/AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.media3:media3-decoder:1.5.1] /home/mrunphotography/.gradle/caches/8.11.1/transforms/cc9e6cf175ee7e682071c2119c6316a4/transformed/media3-decoder-1.5.1/AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.media3:media3-database:1.5.1] /home/mrunphotography/.gradle/caches/8.11.1/transforms/1ba84b75f655fd0385ac2057f2f10928/transformed/media3-database-1.5.1/AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.media3:media3-common:1.5.1] /home/mrunphotography/.gradle/caches/8.11.1/transforms/ef1b46959d85129fc05cd05a2f0b8c6c/transformed/media3-common-1.5.1/AndroidManifest.xml:17:1-24:12
+MERGED from [androidx.media3:media3-exoplayer-hls:1.5.1] /home/mrunphotography/.gradle/caches/8.11.1/transforms/9b55f53b219048a62e70976014337b09/transformed/media3-exoplayer-hls-1.5.1/AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.media3:media3-exoplayer:1.5.1] /home/mrunphotography/.gradle/caches/8.11.1/transforms/b8c03fe92a76727519e99f046a90b451/transformed/media3-exoplayer-1.5.1/AndroidManifest.xml:17:1-24:12
 MERGED from [androidx.media:media:1.7.0] /home/mrunphotography/.gradle/caches/8.11.1/transforms/caad5d8cd4543be49eac5087d64ba894/transformed/media-1.7.0/AndroidManifest.xml:2:1-7:12
 MERGED from [androidx.recyclerview:recyclerview:1.3.0] /home/mrunphotography/.gradle/caches/8.11.1/transforms/cd60d9e6e6fa755c0fbbd3fcc9bcd0fb/transformed/recyclerview-1.3.0/AndroidManifest.xml:17:1-22:12
@@ -104,27 +106,35 @@ MERGED from [com.google.dagger:dagger-lint-aar:2.51.1] /home/mrunphotography/.gr
 		INJECTED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml
 	xmlns:android
 		ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:2:11-69
+uses-permission#android.permission.INTERNET
+ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:5:5-67
+	android:name
+		ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:5:22-64
+uses-permission#android.permission.WAKE_LOCK
+ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:6:5-68
+	android:name
+		ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:6:22-65
 uses-permission#android.permission.READ_MEDIA_AUDIO
-ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:5:5-75
+ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:7:5-75
 	android:name
-		ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:5:22-72
+		ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:7:22-72
 uses-permission#android.permission.READ_EXTERNAL_STORAGE
-ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:6:5-107
+ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:8:5-107
 	android:maxSdkVersion
-		ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:6:78-104
+		ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:8:78-104
 	android:name
-		ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:6:22-77
+		ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:8:22-77
 uses-permission#android.permission.FOREGROUND_SERVICE
-ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:7:5-77
+ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:9:5-77
 	android:name
-		ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:7:22-74
+		ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:9:22-74
 uses-permission#android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK
-ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:8:5-92
+ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:10:5-92
 	android:name
-		ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:8:22-89
+		ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:10:22-89
 application
-ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:10:5-35:19
-INJECTED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:10:5-35:19
+ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:12:5-38:19
+INJECTED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:12:5-38:19
 MERGED from [androidx.emoji2:emoji2:1.3.0] /home/mrunphotography/.gradle/caches/8.11.1/transforms/e9a26f80a61c8554adc725da41368465/transformed/emoji2-1.3.0/AndroidManifest.xml:23:5-33:19
 MERGED from [androidx.emoji2:emoji2:1.3.0] /home/mrunphotography/.gradle/caches/8.11.1/transforms/e9a26f80a61c8554adc725da41368465/transformed/emoji2-1.3.0/AndroidManifest.xml:23:5-33:19
 MERGED from [androidx.core:core:1.15.0] /home/mrunphotography/.gradle/caches/8.11.1/transforms/736be50b473d47c173659c4ee130cb00/transformed/core-1.15.0/AndroidManifest.xml:28:5-89
@@ -144,49 +154,51 @@ MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] /home/mrunp
 	android:appComponentFactory
 		ADDED from [androidx.core:core:1.15.0] /home/mrunphotography/.gradle/caches/8.11.1/transforms/736be50b473d47c173659c4ee130cb00/transformed/core-1.15.0/AndroidManifest.xml:28:18-86
 	android:supportsRtl
-		ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:14:9-35
+		ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:16:9-35
 	android:label
-		ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:13:9-41
+		ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:15:9-41
 	tools:targetApi
-		ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:16:9-29
+		ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:19:9-29
 	android:allowBackup
-		ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:12:9-35
+		ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:14:9-35
 	android:theme
-		ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:15:9-45
+		ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:17:9-45
+	android:networkSecurityConfig
+		ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:18:9-69
 	android:name
-		ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:11:9-43
+		ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:13:9-43
 service#com.freqvox.playback.FreqvoxPlaybackService
-ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:17:9-24:19
+ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:20:9-27:19
 	android:exported
-		ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:20:13-36
+		ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:23:13-36
 	android:foregroundServiceType
-		ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:19:13-58
+		ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:22:13-58
 	android:name
-		ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:18:13-60
+		ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:21:13-60
 intent-filter#action:name:androidx.media3.session.MediaSessionService
-ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:21:13-23:29
+ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:24:13-26:29
 action#androidx.media3.session.MediaSessionService
-ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:22:17-85
+ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:25:17-85
 	android:name
-		ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:22:25-83
+		ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:25:25-83
 activity#com.freqvox.MainActivity
-ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:26:9-34:20
+ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:29:9-37:20
 	android:exported
-		ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:28:13-36
+		ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:31:13-36
 	android:theme
-		ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:29:13-49
+		ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:32:13-49
 	android:name
-		ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:27:13-41
+		ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:30:13-41
 intent-filter#action:name:android.intent.action.MAIN+category:name:android.intent.category.LAUNCHER
-ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:30:13-33:29
+ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:33:13-36:29
 action#android.intent.action.MAIN
-ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:31:17-69
+ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:34:17-69
 	android:name
-		ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:31:25-66
+		ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:34:25-66
 category#android.intent.category.LAUNCHER
-ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:32:17-77
+ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:35:17-77
 	android:name
-		ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:32:27-74
+		ADDED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml:35:27-74
 uses-sdk
 INJECTED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml reason: use-sdk injection requested
 INJECTED from /home/mrunphotography/PROJECTS/me/freqvox/app/src/main/AndroidManifest.xml
@@ -241,22 +253,26 @@ MERGED from [androidx.fragment:fragment:1.5.1] /home/mrunphotography/.gradle/cac
 MERGED from [androidx.fragment:fragment:1.5.1] /home/mrunphotography/.gradle/caches/8.11.1/transforms/6f07350282c5043ace53fbbab94ee21d/transformed/fragment-1.5.1/AndroidManifest.xml:20:5-22:41
 MERGED from [androidx.activity:activity:1.10.0] /home/mrunphotography/.gradle/caches/8.11.1/transforms/861eaccdd2b37baad959fd707b9ac592/transformed/activity-1.10.0/AndroidManifest.xml:20:5-44
 MERGED from [androidx.activity:activity:1.10.0] /home/mrunphotography/.gradle/caches/8.11.1/transforms/861eaccdd2b37baad959fd707b9ac592/transformed/activity-1.10.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.media3:media3-datasource-okhttp:1.5.1] /home/mrunphotography/.gradle/caches/8.11.1/transforms/c726954a11cd31cd46d112e4f4a2156b/transformed/media3-datasource-okhttp-1.5.1/AndroidManifest.xml:20:5-44
+MERGED from [androidx.media3:media3-datasource-okhttp:1.5.1] /home/mrunphotography/.gradle/caches/8.11.1/transforms/c726954a11cd31cd46d112e4f4a2156b/transformed/media3-datasource-okhttp-1.5.1/AndroidManifest.xml:20:5-44
 MERGED from [androidx.media3:media3-session:1.5.1] /home/mrunphotography/.gradle/caches/8.11.1/transforms/893ed5834ae27f27f804c96015aff02d/transformed/media3-session-1.5.1/AndroidManifest.xml:20:5-44
 MERGED from [androidx.media3:media3-session:1.5.1] /home/mrunphotography/.gradle/caches/8.11.1/transforms/893ed5834ae27f27f804c96015aff02d/transformed/media3-session-1.5.1/AndroidManifest.xml:20:5-44
+MERGED from [androidx.media3:media3-datasource:1.5.1] /home/mrunphotography/.gradle/caches/8.11.1/transforms/a5596a28b88b46b1365e4977fee9e9f7/transformed/media3-datasource-1.5.1/AndroidManifest.xml:20:5-44
+MERGED from [androidx.media3:media3-datasource:1.5.1] /home/mrunphotography/.gradle/caches/8.11.1/transforms/a5596a28b88b46b1365e4977fee9e9f7/transformed/media3-datasource-1.5.1/AndroidManifest.xml:20:5-44
 MERGED from [androidx.media3:media3-ui:1.5.1] /home/mrunphotography/.gradle/caches/8.11.1/transforms/859e9aa018e4be3f698c9590d1e30d59/transformed/media3-ui-1.5.1/AndroidManifest.xml:20:5-44
 MERGED from [androidx.media3:media3-ui:1.5.1] /home/mrunphotography/.gradle/caches/8.11.1/transforms/859e9aa018e4be3f698c9590d1e30d59/transformed/media3-ui-1.5.1/AndroidManifest.xml:20:5-44
 MERGED from [androidx.media3:media3-extractor:1.5.1] /home/mrunphotography/.gradle/caches/8.11.1/transforms/96fc47c9a206090c51987fe97a00aae0/transformed/media3-extractor-1.5.1/AndroidManifest.xml:20:5-44
 MERGED from [androidx.media3:media3-extractor:1.5.1] /home/mrunphotography/.gradle/caches/8.11.1/transforms/96fc47c9a206090c51987fe97a00aae0/transformed/media3-extractor-1.5.1/AndroidManifest.xml:20:5-44
 MERGED from [androidx.media3:media3-container:1.5.1] /home/mrunphotography/.gradle/caches/8.11.1/transforms/a5195d8eb779ff58ff2c527d41783479/transformed/media3-container-1.5.1/AndroidManifest.xml:20:5-44
 MERGED from [androidx.media3:media3-container:1.5.1] /home/mrunphotography/.gradle/caches/8.11.1/transforms/a5195d8eb779ff58ff2c527d41783479/transformed/media3-container-1.5.1/AndroidManifest.xml:20:5-44
-MERGED from [androidx.media3:media3-datasource:1.5.1] /home/mrunphotography/.gradle/caches/8.11.1/transforms/a5596a28b88b46b1365e4977fee9e9f7/transformed/media3-datasource-1.5.1/AndroidManifest.xml:20:5-44
-MERGED from [androidx.media3:media3-datasource:1.5.1] /home/mrunphotography/.gradle/caches/8.11.1/transforms/a5596a28b88b46b1365e4977fee9e9f7/transformed/media3-datasource-1.5.1/AndroidManifest.xml:20:5-44
 MERGED from [androidx.media3:media3-decoder:1.5.1] /home/mrunphotography/.gradle/caches/8.11.1/transforms/cc9e6cf175ee7e682071c2119c6316a4/transformed/media3-decoder-1.5.1/AndroidManifest.xml:20:5-44
 MERGED from [androidx.media3:media3-decoder:1.5.1] /home/mrunphotography/.gradle/caches/8.11.1/transforms/cc9e6cf175ee7e682071c2119c6316a4/transformed/media3-decoder-1.5.1/AndroidManifest.xml:20:5-44
 MERGED from [androidx.media3:media3-database:1.5.1] /home/mrunphotography/.gradle/caches/8.11.1/transforms/1ba84b75f655fd0385ac2057f2f10928/transformed/media3-database-1.5.1/AndroidManifest.xml:20:5-44
 MERGED from [androidx.media3:media3-database:1.5.1] /home/mrunphotography/.gradle/caches/8.11.1/transforms/1ba84b75f655fd0385ac2057f2f10928/transformed/media3-database-1.5.1/AndroidManifest.xml:20:5-44
 MERGED from [androidx.media3:media3-common:1.5.1] /home/mrunphotography/.gradle/caches/8.11.1/transforms/ef1b46959d85129fc05cd05a2f0b8c6c/transformed/media3-common-1.5.1/AndroidManifest.xml:20:5-44
 MERGED from [androidx.media3:media3-common:1.5.1] /home/mrunphotography/.gradle/caches/8.11.1/transforms/ef1b46959d85129fc05cd05a2f0b8c6c/transformed/media3-common-1.5.1/AndroidManifest.xml:20:5-44
+MERGED from [androidx.media3:media3-exoplayer-hls:1.5.1] /home/mrunphotography/.gradle/caches/8.11.1/transforms/9b55f53b219048a62e70976014337b09/transformed/media3-exoplayer-hls-1.5.1/AndroidManifest.xml:20:5-44
+MERGED from [androidx.media3:media3-exoplayer-hls:1.5.1] /home/mrunphotography/.gradle/caches/8.11.1/transforms/9b55f53b219048a62e70976014337b09/transformed/media3-exoplayer-hls-1.5.1/AndroidManifest.xml:20:5-44
 MERGED from [androidx.media3:media3-exoplayer:1.5.1] /home/mrunphotography/.gradle/caches/8.11.1/transforms/b8c03fe92a76727519e99f046a90b451/transformed/media3-exoplayer-1.5.1/AndroidManifest.xml:20:5-44
 MERGED from [androidx.media3:media3-exoplayer:1.5.1] /home/mrunphotography/.gradle/caches/8.11.1/transforms/b8c03fe92a76727519e99f046a90b451/transformed/media3-exoplayer-1.5.1/AndroidManifest.xml:20:5-44
 MERGED from [androidx.media:media:1.7.0] /home/mrunphotography/.gradle/caches/8.11.1/transforms/caad5d8cd4543be49eac5087d64ba894/transformed/media-1.7.0/AndroidManifest.xml:5:5-44

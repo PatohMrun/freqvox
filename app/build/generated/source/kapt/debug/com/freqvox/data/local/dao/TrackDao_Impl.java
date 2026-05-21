@@ -56,7 +56,7 @@ public final class TrackDao_Impl implements TrackDao {
       @Override
       @NonNull
       protected String createQuery() {
-        return "INSERT OR REPLACE INTO `tracks` (`id`,`title`,`artist`,`album`,`duration`,`dateAdded`,`path`,`artworkPath`,`playCount`,`lastPlayed`,`totalPlayTime`,`skipCount`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)";
+        return "INSERT OR REPLACE INTO `tracks` (`id`,`title`,`artist`,`album`,`duration`,`dateAdded`,`path`,`folderPath`,`artworkPath`,`playCount`,`lastPlayed`,`totalPlayTime`,`skipCount`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)";
       }
 
       @Override
@@ -85,19 +85,24 @@ public final class TrackDao_Impl implements TrackDao {
         } else {
           statement.bindString(7, entity.getPath());
         }
-        if (entity.getArtworkPath() == null) {
+        if (entity.getFolderPath() == null) {
           statement.bindNull(8);
         } else {
-          statement.bindString(8, entity.getArtworkPath());
+          statement.bindString(8, entity.getFolderPath());
         }
-        statement.bindLong(9, entity.getPlayCount());
-        if (entity.getLastPlayed() == null) {
-          statement.bindNull(10);
+        if (entity.getArtworkPath() == null) {
+          statement.bindNull(9);
         } else {
-          statement.bindLong(10, entity.getLastPlayed());
+          statement.bindString(9, entity.getArtworkPath());
         }
-        statement.bindLong(11, entity.getTotalPlayTime());
-        statement.bindLong(12, entity.getSkipCount());
+        statement.bindLong(10, entity.getPlayCount());
+        if (entity.getLastPlayed() == null) {
+          statement.bindNull(11);
+        } else {
+          statement.bindLong(11, entity.getLastPlayed());
+        }
+        statement.bindLong(12, entity.getTotalPlayTime());
+        statement.bindLong(13, entity.getSkipCount());
       }
     };
     this.__insertionAdapterOfSkipHistoryEntity = new EntityInsertionAdapter<SkipHistoryEntity>(__db) {
@@ -119,7 +124,7 @@ public final class TrackDao_Impl implements TrackDao {
       @Override
       @NonNull
       protected String createQuery() {
-        return "UPDATE OR ABORT `tracks` SET `id` = ?,`title` = ?,`artist` = ?,`album` = ?,`duration` = ?,`dateAdded` = ?,`path` = ?,`artworkPath` = ?,`playCount` = ?,`lastPlayed` = ?,`totalPlayTime` = ?,`skipCount` = ? WHERE `id` = ?";
+        return "UPDATE OR ABORT `tracks` SET `id` = ?,`title` = ?,`artist` = ?,`album` = ?,`duration` = ?,`dateAdded` = ?,`path` = ?,`folderPath` = ?,`artworkPath` = ?,`playCount` = ?,`lastPlayed` = ?,`totalPlayTime` = ?,`skipCount` = ? WHERE `id` = ?";
       }
 
       @Override
@@ -148,20 +153,25 @@ public final class TrackDao_Impl implements TrackDao {
         } else {
           statement.bindString(7, entity.getPath());
         }
-        if (entity.getArtworkPath() == null) {
+        if (entity.getFolderPath() == null) {
           statement.bindNull(8);
         } else {
-          statement.bindString(8, entity.getArtworkPath());
+          statement.bindString(8, entity.getFolderPath());
         }
-        statement.bindLong(9, entity.getPlayCount());
-        if (entity.getLastPlayed() == null) {
-          statement.bindNull(10);
+        if (entity.getArtworkPath() == null) {
+          statement.bindNull(9);
         } else {
-          statement.bindLong(10, entity.getLastPlayed());
+          statement.bindString(9, entity.getArtworkPath());
         }
-        statement.bindLong(11, entity.getTotalPlayTime());
-        statement.bindLong(12, entity.getSkipCount());
-        statement.bindLong(13, entity.getId());
+        statement.bindLong(10, entity.getPlayCount());
+        if (entity.getLastPlayed() == null) {
+          statement.bindNull(11);
+        } else {
+          statement.bindLong(11, entity.getLastPlayed());
+        }
+        statement.bindLong(12, entity.getTotalPlayTime());
+        statement.bindLong(13, entity.getSkipCount());
+        statement.bindLong(14, entity.getId());
       }
     };
     this.__preparedStmtOfDeleteTrackById = new SharedSQLiteStatement(__db) {
@@ -356,6 +366,7 @@ public final class TrackDao_Impl implements TrackDao {
           final int _cursorIndexOfDuration = CursorUtil.getColumnIndexOrThrow(_cursor, "duration");
           final int _cursorIndexOfDateAdded = CursorUtil.getColumnIndexOrThrow(_cursor, "dateAdded");
           final int _cursorIndexOfPath = CursorUtil.getColumnIndexOrThrow(_cursor, "path");
+          final int _cursorIndexOfFolderPath = CursorUtil.getColumnIndexOrThrow(_cursor, "folderPath");
           final int _cursorIndexOfArtworkPath = CursorUtil.getColumnIndexOrThrow(_cursor, "artworkPath");
           final int _cursorIndexOfPlayCount = CursorUtil.getColumnIndexOrThrow(_cursor, "playCount");
           final int _cursorIndexOfLastPlayed = CursorUtil.getColumnIndexOrThrow(_cursor, "lastPlayed");
@@ -394,6 +405,12 @@ public final class TrackDao_Impl implements TrackDao {
             } else {
               _tmpPath = _cursor.getString(_cursorIndexOfPath);
             }
+            final String _tmpFolderPath;
+            if (_cursor.isNull(_cursorIndexOfFolderPath)) {
+              _tmpFolderPath = null;
+            } else {
+              _tmpFolderPath = _cursor.getString(_cursorIndexOfFolderPath);
+            }
             final String _tmpArtworkPath;
             if (_cursor.isNull(_cursorIndexOfArtworkPath)) {
               _tmpArtworkPath = null;
@@ -412,7 +429,7 @@ public final class TrackDao_Impl implements TrackDao {
             _tmpTotalPlayTime = _cursor.getLong(_cursorIndexOfTotalPlayTime);
             final int _tmpSkipCount;
             _tmpSkipCount = _cursor.getInt(_cursorIndexOfSkipCount);
-            _item = new TrackEntity(_tmpId,_tmpTitle,_tmpArtist,_tmpAlbum,_tmpDuration,_tmpDateAdded,_tmpPath,_tmpArtworkPath,_tmpPlayCount,_tmpLastPlayed,_tmpTotalPlayTime,_tmpSkipCount);
+            _item = new TrackEntity(_tmpId,_tmpTitle,_tmpArtist,_tmpAlbum,_tmpDuration,_tmpDateAdded,_tmpPath,_tmpFolderPath,_tmpArtworkPath,_tmpPlayCount,_tmpLastPlayed,_tmpTotalPlayTime,_tmpSkipCount);
             _result.add(_item);
           }
           return _result;
@@ -445,6 +462,7 @@ public final class TrackDao_Impl implements TrackDao {
           final int _cursorIndexOfDuration = CursorUtil.getColumnIndexOrThrow(_cursor, "duration");
           final int _cursorIndexOfDateAdded = CursorUtil.getColumnIndexOrThrow(_cursor, "dateAdded");
           final int _cursorIndexOfPath = CursorUtil.getColumnIndexOrThrow(_cursor, "path");
+          final int _cursorIndexOfFolderPath = CursorUtil.getColumnIndexOrThrow(_cursor, "folderPath");
           final int _cursorIndexOfArtworkPath = CursorUtil.getColumnIndexOrThrow(_cursor, "artworkPath");
           final int _cursorIndexOfPlayCount = CursorUtil.getColumnIndexOrThrow(_cursor, "playCount");
           final int _cursorIndexOfLastPlayed = CursorUtil.getColumnIndexOrThrow(_cursor, "lastPlayed");
@@ -483,6 +501,12 @@ public final class TrackDao_Impl implements TrackDao {
             } else {
               _tmpPath = _cursor.getString(_cursorIndexOfPath);
             }
+            final String _tmpFolderPath;
+            if (_cursor.isNull(_cursorIndexOfFolderPath)) {
+              _tmpFolderPath = null;
+            } else {
+              _tmpFolderPath = _cursor.getString(_cursorIndexOfFolderPath);
+            }
             final String _tmpArtworkPath;
             if (_cursor.isNull(_cursorIndexOfArtworkPath)) {
               _tmpArtworkPath = null;
@@ -501,7 +525,7 @@ public final class TrackDao_Impl implements TrackDao {
             _tmpTotalPlayTime = _cursor.getLong(_cursorIndexOfTotalPlayTime);
             final int _tmpSkipCount;
             _tmpSkipCount = _cursor.getInt(_cursorIndexOfSkipCount);
-            _item = new TrackEntity(_tmpId,_tmpTitle,_tmpArtist,_tmpAlbum,_tmpDuration,_tmpDateAdded,_tmpPath,_tmpArtworkPath,_tmpPlayCount,_tmpLastPlayed,_tmpTotalPlayTime,_tmpSkipCount);
+            _item = new TrackEntity(_tmpId,_tmpTitle,_tmpArtist,_tmpAlbum,_tmpDuration,_tmpDateAdded,_tmpPath,_tmpFolderPath,_tmpArtworkPath,_tmpPlayCount,_tmpLastPlayed,_tmpTotalPlayTime,_tmpSkipCount);
             _result.add(_item);
           }
           return _result;
@@ -538,6 +562,7 @@ public final class TrackDao_Impl implements TrackDao {
           final int _cursorIndexOfDuration = CursorUtil.getColumnIndexOrThrow(_cursor, "duration");
           final int _cursorIndexOfDateAdded = CursorUtil.getColumnIndexOrThrow(_cursor, "dateAdded");
           final int _cursorIndexOfPath = CursorUtil.getColumnIndexOrThrow(_cursor, "path");
+          final int _cursorIndexOfFolderPath = CursorUtil.getColumnIndexOrThrow(_cursor, "folderPath");
           final int _cursorIndexOfArtworkPath = CursorUtil.getColumnIndexOrThrow(_cursor, "artworkPath");
           final int _cursorIndexOfPlayCount = CursorUtil.getColumnIndexOrThrow(_cursor, "playCount");
           final int _cursorIndexOfLastPlayed = CursorUtil.getColumnIndexOrThrow(_cursor, "lastPlayed");
@@ -575,6 +600,12 @@ public final class TrackDao_Impl implements TrackDao {
             } else {
               _tmpPath = _cursor.getString(_cursorIndexOfPath);
             }
+            final String _tmpFolderPath;
+            if (_cursor.isNull(_cursorIndexOfFolderPath)) {
+              _tmpFolderPath = null;
+            } else {
+              _tmpFolderPath = _cursor.getString(_cursorIndexOfFolderPath);
+            }
             final String _tmpArtworkPath;
             if (_cursor.isNull(_cursorIndexOfArtworkPath)) {
               _tmpArtworkPath = null;
@@ -593,7 +624,7 @@ public final class TrackDao_Impl implements TrackDao {
             _tmpTotalPlayTime = _cursor.getLong(_cursorIndexOfTotalPlayTime);
             final int _tmpSkipCount;
             _tmpSkipCount = _cursor.getInt(_cursorIndexOfSkipCount);
-            _result = new TrackEntity(_tmpId,_tmpTitle,_tmpArtist,_tmpAlbum,_tmpDuration,_tmpDateAdded,_tmpPath,_tmpArtworkPath,_tmpPlayCount,_tmpLastPlayed,_tmpTotalPlayTime,_tmpSkipCount);
+            _result = new TrackEntity(_tmpId,_tmpTitle,_tmpArtist,_tmpAlbum,_tmpDuration,_tmpDateAdded,_tmpPath,_tmpFolderPath,_tmpArtworkPath,_tmpPlayCount,_tmpLastPlayed,_tmpTotalPlayTime,_tmpSkipCount);
           } else {
             _result = null;
           }
@@ -623,6 +654,7 @@ public final class TrackDao_Impl implements TrackDao {
           final int _cursorIndexOfDuration = CursorUtil.getColumnIndexOrThrow(_cursor, "duration");
           final int _cursorIndexOfDateAdded = CursorUtil.getColumnIndexOrThrow(_cursor, "dateAdded");
           final int _cursorIndexOfPath = CursorUtil.getColumnIndexOrThrow(_cursor, "path");
+          final int _cursorIndexOfFolderPath = CursorUtil.getColumnIndexOrThrow(_cursor, "folderPath");
           final int _cursorIndexOfArtworkPath = CursorUtil.getColumnIndexOrThrow(_cursor, "artworkPath");
           final int _cursorIndexOfPlayCount = CursorUtil.getColumnIndexOrThrow(_cursor, "playCount");
           final int _cursorIndexOfLastPlayed = CursorUtil.getColumnIndexOrThrow(_cursor, "lastPlayed");
@@ -661,6 +693,12 @@ public final class TrackDao_Impl implements TrackDao {
             } else {
               _tmpPath = _cursor.getString(_cursorIndexOfPath);
             }
+            final String _tmpFolderPath;
+            if (_cursor.isNull(_cursorIndexOfFolderPath)) {
+              _tmpFolderPath = null;
+            } else {
+              _tmpFolderPath = _cursor.getString(_cursorIndexOfFolderPath);
+            }
             final String _tmpArtworkPath;
             if (_cursor.isNull(_cursorIndexOfArtworkPath)) {
               _tmpArtworkPath = null;
@@ -679,7 +717,7 @@ public final class TrackDao_Impl implements TrackDao {
             _tmpTotalPlayTime = _cursor.getLong(_cursorIndexOfTotalPlayTime);
             final int _tmpSkipCount;
             _tmpSkipCount = _cursor.getInt(_cursorIndexOfSkipCount);
-            _item = new TrackEntity(_tmpId,_tmpTitle,_tmpArtist,_tmpAlbum,_tmpDuration,_tmpDateAdded,_tmpPath,_tmpArtworkPath,_tmpPlayCount,_tmpLastPlayed,_tmpTotalPlayTime,_tmpSkipCount);
+            _item = new TrackEntity(_tmpId,_tmpTitle,_tmpArtist,_tmpAlbum,_tmpDuration,_tmpDateAdded,_tmpPath,_tmpFolderPath,_tmpArtworkPath,_tmpPlayCount,_tmpLastPlayed,_tmpTotalPlayTime,_tmpSkipCount);
             _result.add(_item);
           }
           return _result;
@@ -728,6 +766,7 @@ public final class TrackDao_Impl implements TrackDao {
           final int _cursorIndexOfDuration = CursorUtil.getColumnIndexOrThrow(_cursor, "duration");
           final int _cursorIndexOfDateAdded = CursorUtil.getColumnIndexOrThrow(_cursor, "dateAdded");
           final int _cursorIndexOfPath = CursorUtil.getColumnIndexOrThrow(_cursor, "path");
+          final int _cursorIndexOfFolderPath = CursorUtil.getColumnIndexOrThrow(_cursor, "folderPath");
           final int _cursorIndexOfArtworkPath = CursorUtil.getColumnIndexOrThrow(_cursor, "artworkPath");
           final int _cursorIndexOfPlayCount = CursorUtil.getColumnIndexOrThrow(_cursor, "playCount");
           final int _cursorIndexOfLastPlayed = CursorUtil.getColumnIndexOrThrow(_cursor, "lastPlayed");
@@ -766,6 +805,12 @@ public final class TrackDao_Impl implements TrackDao {
             } else {
               _tmpPath = _cursor.getString(_cursorIndexOfPath);
             }
+            final String _tmpFolderPath;
+            if (_cursor.isNull(_cursorIndexOfFolderPath)) {
+              _tmpFolderPath = null;
+            } else {
+              _tmpFolderPath = _cursor.getString(_cursorIndexOfFolderPath);
+            }
             final String _tmpArtworkPath;
             if (_cursor.isNull(_cursorIndexOfArtworkPath)) {
               _tmpArtworkPath = null;
@@ -784,7 +829,7 @@ public final class TrackDao_Impl implements TrackDao {
             _tmpTotalPlayTime = _cursor.getLong(_cursorIndexOfTotalPlayTime);
             final int _tmpSkipCount;
             _tmpSkipCount = _cursor.getInt(_cursorIndexOfSkipCount);
-            _item = new TrackEntity(_tmpId,_tmpTitle,_tmpArtist,_tmpAlbum,_tmpDuration,_tmpDateAdded,_tmpPath,_tmpArtworkPath,_tmpPlayCount,_tmpLastPlayed,_tmpTotalPlayTime,_tmpSkipCount);
+            _item = new TrackEntity(_tmpId,_tmpTitle,_tmpArtist,_tmpAlbum,_tmpDuration,_tmpDateAdded,_tmpPath,_tmpFolderPath,_tmpArtworkPath,_tmpPlayCount,_tmpLastPlayed,_tmpTotalPlayTime,_tmpSkipCount);
             _result.add(_item);
           }
           return _result;
@@ -824,6 +869,7 @@ public final class TrackDao_Impl implements TrackDao {
           final int _cursorIndexOfDuration = CursorUtil.getColumnIndexOrThrow(_cursor, "duration");
           final int _cursorIndexOfDateAdded = CursorUtil.getColumnIndexOrThrow(_cursor, "dateAdded");
           final int _cursorIndexOfPath = CursorUtil.getColumnIndexOrThrow(_cursor, "path");
+          final int _cursorIndexOfFolderPath = CursorUtil.getColumnIndexOrThrow(_cursor, "folderPath");
           final int _cursorIndexOfArtworkPath = CursorUtil.getColumnIndexOrThrow(_cursor, "artworkPath");
           final int _cursorIndexOfPlayCount = CursorUtil.getColumnIndexOrThrow(_cursor, "playCount");
           final int _cursorIndexOfLastPlayed = CursorUtil.getColumnIndexOrThrow(_cursor, "lastPlayed");
@@ -862,6 +908,12 @@ public final class TrackDao_Impl implements TrackDao {
             } else {
               _tmpPath = _cursor.getString(_cursorIndexOfPath);
             }
+            final String _tmpFolderPath;
+            if (_cursor.isNull(_cursorIndexOfFolderPath)) {
+              _tmpFolderPath = null;
+            } else {
+              _tmpFolderPath = _cursor.getString(_cursorIndexOfFolderPath);
+            }
             final String _tmpArtworkPath;
             if (_cursor.isNull(_cursorIndexOfArtworkPath)) {
               _tmpArtworkPath = null;
@@ -880,7 +932,7 @@ public final class TrackDao_Impl implements TrackDao {
             _tmpTotalPlayTime = _cursor.getLong(_cursorIndexOfTotalPlayTime);
             final int _tmpSkipCount;
             _tmpSkipCount = _cursor.getInt(_cursorIndexOfSkipCount);
-            _item = new TrackEntity(_tmpId,_tmpTitle,_tmpArtist,_tmpAlbum,_tmpDuration,_tmpDateAdded,_tmpPath,_tmpArtworkPath,_tmpPlayCount,_tmpLastPlayed,_tmpTotalPlayTime,_tmpSkipCount);
+            _item = new TrackEntity(_tmpId,_tmpTitle,_tmpArtist,_tmpAlbum,_tmpDuration,_tmpDateAdded,_tmpPath,_tmpFolderPath,_tmpArtworkPath,_tmpPlayCount,_tmpLastPlayed,_tmpTotalPlayTime,_tmpSkipCount);
             _result.add(_item);
           }
           return _result;

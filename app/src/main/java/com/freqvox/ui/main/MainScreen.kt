@@ -65,6 +65,7 @@ fun MainScreen(
     val sheetState = rememberModalBottomSheetState()
     val scope = rememberCoroutineScope()
     var showTagSheet by remember { mutableStateOf(false) }
+    var searchFocusTrigger by remember { mutableStateOf(0L) }
 
     // Sync current track to ViewModel using the exposed ID for reliability
     LaunchedEffect(currentTrackId) {
@@ -163,12 +164,17 @@ fun MainScreen(
                                 label = { Text(screen.title) },
                                 selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
                                 onClick = {
-                                    navController.navigate(screen.route) {
-                                        popUpTo(navController.graph.findStartDestination().id) {
-                                            saveState = true
+                                    val isCurrentlySelected = currentDestination?.hierarchy?.any { it.route == screen.route } == true
+                                    if (isCurrentlySelected && screen.route == Screen.Search.route) {
+                                        searchFocusTrigger = System.currentTimeMillis()
+                                    } else {
+                                        navController.navigate(screen.route) {
+                                            popUpTo(navController.graph.findStartDestination().id) {
+                                                saveState = true
+                                            }
+                                            launchSingleTop = true
+                                            restoreState = true
                                         }
-                                        launchSingleTop = true
-                                        restoreState = true
                                     }
                                 },
                                 colors = NavigationBarItemDefaults.colors(
@@ -206,9 +212,13 @@ fun MainScreen(
                         )
                     }
                     composable(Screen.Search.route) { 
-                        SearchScreen(onTrackClick = { track ->
-                            playbackController.playMediaUri(track.path, track.title, track.artist, track.id.toString(), track.artworkPath)
-                        }) 
+                        SearchScreen(
+                            onTrackClick = { track ->
+                                playbackController.playMediaUri(track.path, track.title, track.artist, track.id.toString(), track.artworkPath)
+                            },
+                            focusTrigger = searchFocusTrigger,
+                            onFocusConsumed = { searchFocusTrigger = 0L }
+                        ) 
                     }
                     composable(Screen.Library.route) {
                         LibraryScreen(
@@ -223,10 +233,13 @@ fun MainScreen(
                             }
                         )
                     }
-                    composable(Screen.Radio.route) { 
-                        RadioScreen(onStationClick = { station ->
-                            playbackController.playMediaUri(station.url, station.name, "Radio", station.url)
-                        }) 
+                    composable(Screen.Radio.route) {
+                        RadioScreen(
+                            playbackController = playbackController,
+                            onStationClick = { station ->
+                                playbackController.playMediaUri(station.url, station.name, "Radio", station.url)
+                            }
+                        )
                     }
                     composable(Screen.Player.route) {
                         PlayerScreen(

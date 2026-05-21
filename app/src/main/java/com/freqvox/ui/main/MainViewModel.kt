@@ -102,14 +102,16 @@ class MainViewModel @Inject constructor(
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
-    val searchResults: StateFlow<List<TrackEntity>> = combine(activeTracks, _searchQuery) { tracks, query ->
+    val searchResults: StateFlow<List<TrackEntity>> = combine(activeTracks, _searchQuery, taggedTrackIds) { tracks, query, tags ->
         if (query.isBlank()) {
             emptyList()
         } else {
+            val matchingIds = tags.filterKeys { it.contains(query, ignoreCase = true) }.values.flatten().toSet()
             tracks.filter { track ->
                 track.title.contains(query, ignoreCase = true) ||
                 track.artist.contains(query, ignoreCase = true) ||
-                track.album.contains(query, ignoreCase = true)
+                track.album.contains(query, ignoreCase = true) ||
+                matchingIds.contains(track.id)
             }
         }
     }.stateIn(
@@ -191,6 +193,18 @@ class MainViewModel @Inject constructor(
     fun createDynamicPlaylist(name: String, includeTags: List<Long>) {
         viewModelScope.launch {
             playlistRepository.createDynamicPlaylist(name, includeTags)
+        }
+    }
+
+    fun createManualPlaylist(name: String) {
+        viewModelScope.launch {
+            playlistRepository.createManualPlaylist(name)
+        }
+    }
+
+    fun addTrackToPlaylist(playlistId: Long, trackId: Long) {
+        viewModelScope.launch {
+            playlistRepository.addTrackToPlaylist(playlistId, trackId)
         }
     }
 

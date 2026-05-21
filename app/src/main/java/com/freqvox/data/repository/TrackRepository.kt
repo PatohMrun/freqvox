@@ -52,7 +52,8 @@ class TrackRepository @Inject constructor(
             MediaStore.Audio.Media.ARTIST,
             MediaStore.Audio.Media.ALBUM,
             MediaStore.Audio.Media.DURATION,
-            MediaStore.Audio.Media.DATE_ADDED
+            MediaStore.Audio.Media.DATE_ADDED,
+            MediaStore.Audio.Media.DATA
         )
 
         val selection = "${MediaStore.Audio.Media.DURATION} >= 1000"
@@ -71,6 +72,7 @@ class TrackRepository @Inject constructor(
             val albumColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM)
             val durationColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
             val dateAddedColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_ADDED)
+            val dataColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA)
 
             while (cursor.moveToNext()) {
                 val id = cursor.getLong(idColumn)
@@ -80,6 +82,7 @@ class TrackRepository @Inject constructor(
                 val album = cursor.getString(albumColumn) ?: ""
                 val duration = cursor.getLong(durationColumn)
                 val dateAdded = cursor.getLong(dateAddedColumn)
+                val rawDataPath = cursor.getString(dataColumn) ?: ""
 
                 val path = android.content.ContentUris.withAppendedId(
                     MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id
@@ -104,6 +107,7 @@ class TrackRepository @Inject constructor(
                         duration = duration,
                         dateAdded = dateAdded,
                         path = path,
+                        folderPath = java.io.File(rawDataPath).parent ?: "Unknown",
                         artworkPath = existingArtwork
                     )
                 )
