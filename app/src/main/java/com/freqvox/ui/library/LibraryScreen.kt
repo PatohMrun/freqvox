@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.QueueMusic
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlaylistAdd
@@ -74,6 +75,7 @@ enum class SortOrder(val label: String) {
 fun LibraryScreen(
     playbackController: PlaybackController,
     onTrackClick: (TrackEntity) -> Unit,
+    onSearchClick: () -> Unit,
     viewModel: MainViewModel = hiltViewModel()
 ) {
     val tracks by viewModel.allTracks.collectAsState()
@@ -119,16 +121,26 @@ fun LibraryScreen(
                     fontWeight = FontWeight.Medium
                 )
             }
-            Surface(
-                modifier = Modifier.size(44.dp),
-                shape = CircleShape,
-                color = Color.White.copy(alpha = 0.1f)
-            ) {
-                Image(
-                    painter = painterResource(id = com.freqvox.R.drawable.splash_logo),
-                    contentDescription = "App Logo",
-                    modifier = Modifier.fillMaxSize()
-                )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onSearchClick) {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = "Search",
+                        tint = Color.White
+                    )
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Surface(
+                    modifier = Modifier.size(44.dp),
+                    shape = CircleShape,
+                    color = Color.White.copy(alpha = 0.1f)
+                ) {
+                    Image(
+                        painter = painterResource(id = com.freqvox.R.drawable.splash_logo),
+                        contentDescription = "App Logo",
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
             }
         }
 

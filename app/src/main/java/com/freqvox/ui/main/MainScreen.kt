@@ -217,6 +217,13 @@ fun MainScreen(
                                     val startIndex = contextTracks.indexOf(track).coerceAtLeast(0)
                                     playbackController.playQueue(contextTracks, startIndex)
                                 }
+                            },
+                            onSearchClick = {
+                                navController.navigate(Screen.Search.route) {
+                                    popUpTo(navController.graph.startDestinationId) { saveState = true }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
                             }
                         )
                     }
@@ -236,6 +243,13 @@ fun MainScreen(
                                     playbackController.togglePlayPause()
                                 } else {
                                     playbackController.playMediaUri(track.path, track.title, track.artist, track.id.toString(), track.artworkPath)
+                                }
+                            },
+                            onSearchClick = {
+                                navController.navigate(Screen.Search.route) {
+                                    popUpTo(navController.graph.startDestinationId) { saveState = true }
+                                    launchSingleTop = true
+                                    restoreState = true
                                 }
                             }
                         )
@@ -294,6 +308,9 @@ fun MainScreen(
                             selectedTagIds = currentTrackTags.map { it.id },
                             onTagClick = { tag ->
                                 viewModel.toggleTagForCurrentTrack(tag.id)
+                            },
+                            onCreateCustomTag = { name ->
+                                viewModel.createCustomTag(name)
                             },
                             onClose = {
                                 scope.launch { sheetState.hide() }.invokeOnCompletion {

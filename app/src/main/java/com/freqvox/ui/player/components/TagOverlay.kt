@@ -12,6 +12,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -46,8 +50,50 @@ fun TagOverlay(
     tags: List<TagEntity>,
     selectedTagIds: List<Long>,
     onTagClick: (TagEntity) -> Unit,
+    onCreateCustomTag: (String) -> Unit,
     onClose: () -> Unit
 ) {
+    var showNewTagDialog by remember { mutableStateOf(false) }
+    var newTagName by remember { mutableStateOf("") }
+
+    if (showNewTagDialog) {
+        AlertDialog(
+            onDismissRequest = { showNewTagDialog = false },
+            containerColor = Color(0xFF1E1E2E),
+            title = { Text("New Custom Tag", color = Color.White) },
+            text = {
+                OutlinedTextField(
+                    value = newTagName,
+                    onValueChange = { newTagName = it.take(20) },
+                    placeholder = { Text("Tag name (e.g. studying)", color = Color.Gray) },
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Color(0xFF7C4DFF),
+                        unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White
+                    )
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    if (newTagName.isNotBlank()) {
+                        onCreateCustomTag(newTagName.trim())
+                    }
+                    showNewTagDialog = false
+                    newTagName = ""
+                }) {
+                    Text("Create", color = Color(0xFF7C4DFF))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showNewTagDialog = false }) {
+                    Text("Cancel", color = Color.Gray)
+                }
+            }
+        )
+    }
+
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -96,9 +142,39 @@ fun TagOverlay(
                     TagChip(
                         tag = tag,
                         isSelected = selectedTagIds.contains(tag.id),
-                        icon = tagIcons[tag.name.lowercase()],
+                        icon = tagIcons[tag.name.lowercase()] ?: Icons.Default.Label,
                         onClick = { onTagClick(tag) }
                     )
+                }
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp)
+                            .clip(RoundedCornerShape(26.dp))
+                            .background(Color.White.copy(alpha = 0.05f))
+                            .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(26.dp))
+                            .clickable { showNewTagDialog = true },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                Icons.Default.Add,
+                                contentDescription = "Add Custom Tag",
+                                tint = Color.White.copy(alpha = 0.6f),
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                "Custom Tag",
+                                color = Color.White.copy(alpha = 0.6f),
+                                fontSize = 14.sp
+                            )
+                        }
+                    }
                 }
             }
         }

@@ -9,10 +9,12 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -49,6 +51,7 @@ import java.util.*
 fun HomeScreen(
     playbackController: PlaybackController,
     onTrackClick: (TrackEntity, List<TrackEntity>) -> Unit,
+    onSearchClick: () -> Unit,
     viewModel: MainViewModel = hiltViewModel()
 ) {
     val activeTracks by viewModel.activeTracks.collectAsState()
@@ -114,6 +117,7 @@ fun HomeScreen(
                 greeting = greeting,
                 totalSongs = totalSongs,
                 totalDurationMs = totalDuration,
+                onSearchClick = onSearchClick,
                 modifier = Modifier.padding(horizontal = 24.dp)
             )
             Spacer(modifier = Modifier.height(32.dp))
@@ -331,14 +335,14 @@ fun SpotlightFeedBlock(track: TrackEntity, onClick: () -> Unit, modifier: Modifi
                 fontWeight = FontWeight.Black
             )
             
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
                 Text(
                     text = track.title,
                     color = Color.White,
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    modifier = Modifier.basicMarquee()
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
@@ -346,7 +350,7 @@ fun SpotlightFeedBlock(track: TrackEntity, onClick: () -> Unit, modifier: Modifi
                     color = Color.White.copy(alpha = 0.5f),
                     fontSize = 16.sp,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    modifier = Modifier.basicMarquee()
                 )
             }
         }
@@ -354,7 +358,7 @@ fun SpotlightFeedBlock(track: TrackEntity, onClick: () -> Unit, modifier: Modifi
 }
 
 @Composable
-fun Header(greeting: String, totalSongs: Int, totalDurationMs: Long, modifier: Modifier = Modifier) {
+fun Header(greeting: String, totalSongs: Int, totalDurationMs: Long, onSearchClick: () -> Unit, modifier: Modifier = Modifier) {
     val hours = totalDurationMs / (1000 * 60 * 60)
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -376,17 +380,27 @@ fun Header(greeting: String, totalSongs: Int, totalDurationMs: Long, modifier: M
                 fontWeight = FontWeight.Medium
             )
         }
-        // Profile Placeholder / Logo
-        Surface(
-            modifier = Modifier.size(44.dp),
-            shape = CircleShape,
-            color = Color.White.copy(alpha = 0.1f)
-        ) {
-            Image(
-                painter = painterResource(id = com.freqvox.R.drawable.splash_logo),
-                contentDescription = "App Logo",
-                modifier = Modifier.fillMaxSize()
-            )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onSearchClick) {
+                Icon(
+                    imageVector = Icons.Default.Search,
+                    contentDescription = "Search",
+                    tint = Color.White
+                )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            // Profile Placeholder / Logo
+            Surface(
+                modifier = Modifier.size(44.dp),
+                shape = CircleShape,
+                color = Color.White.copy(alpha = 0.1f)
+            ) {
+                Image(
+                    painter = painterResource(id = com.freqvox.R.drawable.splash_logo),
+                    contentDescription = "App Logo",
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
         }
     }
 }
@@ -462,7 +476,7 @@ fun HeroFeedCard(track: TrackEntity, onClick: () -> Unit, modifier: Modifier = M
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    modifier = Modifier.basicMarquee()
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
@@ -470,7 +484,7 @@ fun HeroFeedCard(track: TrackEntity, onClick: () -> Unit, modifier: Modifier = M
                     color = Color.White.copy(alpha = 0.7f),
                     fontSize = 16.sp,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    modifier = Modifier.basicMarquee()
                 )
             }
         }
@@ -516,7 +530,7 @@ fun FeedTrackCard(
                 fontSize = 16.sp,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                modifier = Modifier.basicMarquee()
             )
             Spacer(modifier = Modifier.height(2.dp))
             Text(
@@ -524,7 +538,7 @@ fun FeedTrackCard(
                 color = Color.White.copy(alpha = 0.5f),
                 fontSize = 14.sp,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                modifier = Modifier.basicMarquee()
             )
         }
         Icon(
@@ -574,7 +588,6 @@ fun QuickPicksRow(
             Column(
                 modifier = Modifier
                     .width(130.dp)
-                    .clip(RoundedCornerShape(16.dp))
                     .clickable { onTrackClick(track, queueContext) }
             ) {
                 Surface(
@@ -591,14 +604,14 @@ fun QuickPicksRow(
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    modifier = Modifier.basicMarquee()
                 )
                 Text(
                     text = track.artist,
                     color = Color.White.copy(alpha = 0.5f),
                     fontSize = 12.sp,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    modifier = Modifier.basicMarquee()
                 )
             }
         }
@@ -754,14 +767,14 @@ fun FeaturedBannerBlock(track: TrackEntity, onClick: () -> Unit, modifier: Modif
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    modifier = Modifier.basicMarquee()
                 )
                 Text(
                     text = track.artist,
                     color = Color.White.copy(alpha = 0.6f),
                     fontSize = 14.sp,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    modifier = Modifier.basicMarquee()
                 )
             }
             

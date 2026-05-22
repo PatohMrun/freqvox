@@ -22,6 +22,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -158,6 +160,7 @@ fun PlayerScreen(
             .fillMaxSize()
             .statusBarsPadding()
             .navigationBarsPadding()
+            .verticalScroll(rememberScrollState())
             .padding(horizontal = 24.dp)
             .animateContentSize(),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -531,6 +534,7 @@ fun PlayerScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .imePadding()
                     .padding(horizontal = 24.dp)
                     .padding(bottom = 32.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
@@ -610,7 +614,7 @@ fun PlayerScreen(
                     OutlinedTextField(
                         value = customMinutes,
                         onValueChange = { customMinutes = it.filter { c -> c.isDigit() }.take(3) },
-                        placeholder = { Text("minutes", color = Color.White.copy(alpha = 0.3f), fontSize = 13.sp) },
+                        placeholder = { Text("Minutes", color = Color.White.copy(alpha = 0.3f), fontSize = 13.sp) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true,
                         modifier = Modifier.weight(1f),

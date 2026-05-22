@@ -41,6 +41,7 @@ class MainViewModel @Inject constructor(
     )
 
     val allTags: StateFlow<List<TagEntity>> = trackRepository.allTags
+        .map { tags -> tags.distinctBy { it.name.lowercase() } }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
@@ -106,11 +107,21 @@ class MainViewModel @Inject constructor(
         if (query.isBlank()) {
             emptyList()
         } else {
-            val matchingIds = tags.filterKeys { it.contains(query, ignoreCase = true) }.values.flatten().toSet()
+            val normalizedQuery = query.replace(Regex("[^A-Za-z0-9]"), "").lowercase()
+            
+            // Allow exact matches on tag names first
+            val matchingIds = tags.filterKeys { 
+                it.replace(Regex("[^A-Za-z0-9]"), "").lowercase().contains(normalizedQuery)
+            }.values.flatten().toSet()
+            
             tracks.filter { track ->
-                track.title.contains(query, ignoreCase = true) ||
-                track.artist.contains(query, ignoreCase = true) ||
-                track.album.contains(query, ignoreCase = true) ||
+                val normTitle = track.title.replace(Regex("[^A-Za-z0-9]"), "").lowercase()
+                val normArtist = track.artist.replace(Regex("[^A-Za-z0-9]"), "").lowercase()
+                val normAlbum = track.album.replace(Regex("[^A-Za-z0-9]"), "").lowercase()
+                
+                normTitle.contains(normalizedQuery) ||
+                normArtist.contains(normalizedQuery) ||
+                normAlbum.contains(normalizedQuery) ||
                 matchingIds.contains(track.id)
             }
         }
@@ -222,4 +233,14 @@ class MainViewModel @Inject constructor(
 
     suspend fun getTracksForPlaylist(playlist: com.freqvox.data.local.entities.PlaylistEntity): List<TrackEntity> =
         playlistRepository.getTracksForPlaylist(playlist)
+
+    fun createCustomTag(name: String) {
+        if (name.isBlank()) return
+        viewModelScope.launch {
+            // Generate a random vibrant color for the new tag
+            val colors = listOf(0xFF7C4DFF, 0xFF4DFFB4, 0xFFFF4D7C, 0xFF42A5F5, 0xFFFF6D00, 0xFFFFA726, 0xFFE040FB)
+            val randomColor = colors.random().toInt()
+            trackRepository.createCustomTag(name.trim(), randomColor)
+        }
+    }
 }

@@ -88,10 +88,26 @@ class TrackRepository @Inject constructor(
                     MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id
                 ).toString()
 
-                var finalTitle = cleanMetadata(rawTitle)
+                var finalTitle = cleanMetadata(rawTitle).replace("_", " ")
                 var finalArtist = when {
                     rawArtist.isNullOrBlank() || rawArtist == "<unknown>" -> "Unknown Artist"
                     else -> rawArtist
+                }
+
+                // Explicit Fallback: If MediaStore failed to read the metadata, try extracting it directly
+                if (finalArtist == "Unknown Artist") {
+                    try {
+                        val retriever = android.media.MediaMetadataRetriever()
+                        retriever.setDataSource(context, android.net.Uri.parse(path))
+                        val embeddedArtist = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_ARTIST)
+                        val embeddedTitle = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_TITLE)
+                        
+                        if (!embeddedArtist.isNullOrBlank()) finalArtist = embeddedArtist
+                        if (!embeddedTitle.isNullOrBlank()) finalTitle = embeddedTitle
+                        retriever.release()
+                    } catch (e: Exception) {
+                        // Ignore extraction errors
+                    }
                 }
 
                 // Heuristic 1: Extract from "Artist - Title" filename format
@@ -243,5 +259,12 @@ class TrackRepository @Inject constructor(
 
     suspend fun getTracksByFolder(folderPath: String): List<TrackEntity> {
         return allTracks.first().filter { it.path.startsWith(folderPath) }
+    }
+
+    suspend fun createCustomTag(name: String, color: Int) {
+        val existingNames = tagDao.getAllTags().first().map { it.name.lowercase() }.toSet()
+        if (name.lowercase() !in existingNames) {
+            tagDao.insertTag(TagEntity(name = name.lowercase(), color = color))
+        }
     }
 }
