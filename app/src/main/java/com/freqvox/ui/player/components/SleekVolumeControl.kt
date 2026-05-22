@@ -61,41 +61,34 @@ fun SleekVolumeControl(
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val w = size.width
                 val h = size.height
-                val trackHeight = 2.dp.toPx()
+                val segments = 24
+                val spacing = 3.dp.toPx()
+                val segmentWidth = (w - (spacing * (segments - 1))) / segments
+                val maxSegmentHeight = h * 0.6f
+                val minSegmentHeight = 2.dp.toPx()
                 val centerY = h / 2f
                 
-                // Inactive Track
-                drawRoundRect(
-                    color = Color.White.copy(alpha = 0.08f),
-                    topLeft = Offset(0f, centerY - trackHeight / 2),
-                    size = Size(w, trackHeight),
-                    cornerRadius = CornerRadius(trackHeight / 2)
-                )
-                
-                // Active Track with Gradient
-                val activeWidth = w * volume
-                if (activeWidth > 0) {
+                for (i in 0 until segments) {
+                    val fraction = i / (segments - 1).toFloat()
+                    val isActive = fraction <= volume
+                    
+                    // Frequency bars get slightly taller towards the right
+                    val segmentHeight = minSegmentHeight + (maxSegmentHeight - minSegmentHeight) * fraction
+                    
+                    val xPos = i * (segmentWidth + spacing)
+                    
+                    val color = if (isActive) {
+                        // Lerp between primary and secondary accent based on position
+                        androidx.compose.ui.graphics.lerp(accentPrimary, accentSecondary, fraction)
+                    } else {
+                        Color.White.copy(alpha = 0.08f)
+                    }
+                    
                     drawRoundRect(
-                        brush = Brush.horizontalGradient(
-                            colors = listOf(accentPrimary, accentSecondary)
-                        ),
-                        topLeft = Offset(0f, centerY - trackHeight / 2),
-                        size = Size(activeWidth, trackHeight),
-                        cornerRadius = CornerRadius(trackHeight / 2)
-                    )
-                    
-                    // Subtle Glow "Thumb" - just a small circle at the end of the active track
-                    drawCircle(
-                        color = Color.White,
-                        radius = 3.dp.toPx(),
-                        center = Offset(activeWidth, centerY)
-                    )
-                    
-                    // Extra faint outer glow
-                    drawCircle(
-                        color = accentSecondary.copy(alpha = 0.3f),
-                        radius = 6.dp.toPx(),
-                        center = Offset(activeWidth, centerY)
+                        color = color,
+                        topLeft = Offset(xPos, centerY - segmentHeight / 2),
+                        size = Size(segmentWidth, segmentHeight),
+                        cornerRadius = CornerRadius(segmentWidth / 2)
                     )
                 }
             }
