@@ -290,6 +290,7 @@ fun MainScreen(
                                 currentQueueIndex = currentQueueIndex,
                                 onQueueItemClick = { index -> playbackController.jumpToQueueItem(index) },
                                 onQueueItemRemove = { index -> playbackController.removeFromQueue(index) },
+                                onQueueItemMove = { from, to -> playbackController.moveQueueItem(from, to) },
                                 onTagSwipeUp = { showTagSheet = true },
                                 equalizerManager = playbackController.equalizerManager,
                                 currentTrack = currentTrack

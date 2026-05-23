@@ -483,6 +483,12 @@ class PlaybackController(
         mediaController?.removeMediaItem(index)
     }
 
+    fun moveQueueItem(fromIndex: Int, toIndex: Int) {
+        val controller = mediaController ?: return
+        controller.moveMediaItem(fromIndex, toIndex)
+        refreshQueue()
+    }
+
     fun jumpToQueueItem(index: Int) {
         val controller = mediaController ?: return
         controller.seekTo(index, 0L)

@@ -16,6 +16,7 @@ import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
@@ -44,13 +45,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.freqvox.data.local.entities.TrackEntity
@@ -65,6 +72,8 @@ import com.freqvox.ui.theme.dynamic.LocalGradientPrimary
 import com.freqvox.ui.theme.dynamic.LocalGradientSecondary
 import java.util.Locale
 import kotlin.math.roundToInt
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -94,6 +103,7 @@ fun PlayerScreen(
     currentQueueIndex: Int,
     onQueueItemClick: (Int) -> Unit,
     onQueueItemRemove: (Int) -> Unit,
+    onQueueItemMove: (Int, Int) -> Unit,
     onTagSwipeUp: () -> Unit,
     equalizerManager: FreqvoxEqualizerManager,
     currentTrack: TrackEntity?,
@@ -135,7 +145,71 @@ fun PlayerScreen(
     }
 
     var offsetX by remember { mutableStateOf(0f) }
-    var offsetY by remember { mutableStateOf(0f) }
+
+    // ── Seek-bubble feedback (double-tap artwork) ─────────────────────────
+    val latestPosition by rememberUpdatedState(currentPosition)
+    var seekBubbleKey by remember { mutableIntStateOf(0) }
+    var seekBubbleIsForward by remember { mutableStateOf(true) }
+    var showSeekBubble by remember { mutableStateOf(false) }
+    val seekBubbleAlpha by animateFloatAsState(
+        targetValue = if (showSeekBubble) 1f else 0f,
+        animationSpec = if (showSeekBubble) tween(80) else tween(450, easing = FastOutSlowInEasing),
+        label = "seekBubble"
+    )
+    LaunchedEffect(seekBubbleKey) {
+        if (seekBubbleKey > 0) {
+            showSeekBubble = true
+            delay(500)
+            showSeekBubble = false
+        }
+    }
+
+    // ── Swipe-down-to-dismiss ─────────────────────────────────────────────
+    val density = LocalDensity.current
+    val dismissCommitPx by remember(density) { mutableFloatStateOf(with(density) { 80.dp.toPx() }) }
+    val dismissMaxPx by remember(density) { mutableFloatStateOf(with(density) { 360.dp.toPx() }) }
+    var dismissOffsetY by remember { mutableFloatStateOf(0f) }
+
+    val dismissConnection = remember(dismissCommitPx, dismissMaxPx) {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (available.y < 0f && dismissOffsetY > 0f && source == NestedScrollSource.UserInput) {
+                    val take = kotlin.math.max(available.y, -dismissOffsetY)
+                    dismissOffsetY += take
+                    return Offset(0f, take)
+                }
+                return Offset.Zero
+            }
+
+            override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+                if (available.y > 0f && source == NestedScrollSource.UserInput) {
+                    // 1:1 finger tracking
+                    dismissOffsetY = (dismissOffsetY + available.y).coerceAtMost(dismissMaxPx)
+                    return Offset(0f, available.y)
+                }
+                return Offset.Zero
+            }
+
+            override suspend fun onPreFling(available: Velocity): Velocity {
+                val shouldDismiss = dismissOffsetY > dismissCommitPx || available.y > 800f
+                if (shouldDismiss) {
+                    onBack()
+                    androidx.compose.animation.core.animate(
+                        initialValue = dismissOffsetY,
+                        targetValue = 0f,
+                        animationSpec = tween(durationMillis = 260, easing = FastOutSlowInEasing)
+                    ) { value, _ -> dismissOffsetY = value }
+                } else {
+                    androidx.compose.animation.core.animate(
+                        initialValue = dismissOffsetY,
+                        targetValue = 0f,
+                        animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow)
+                    ) { value, _ -> dismissOffsetY = value }
+                }
+                return Velocity.Zero
+            }
+        }
+    }
 
     val glowAlpha by rememberInfiniteTransition(label = "glow").animateFloat(
         initialValue = 0.25f,
@@ -157,19 +231,19 @@ fun PlayerScreen(
     var showEqSheet      by remember { mutableStateOf(false) }
     var showMoreMenu     by remember { mutableStateOf(false) }
 
-    val queueListState = androidx.compose.foundation.lazy.rememberLazyListState()
-    LaunchedEffect(showQueueSheet, currentQueueIndex) {
-        if (showQueueSheet && queue.isNotEmpty()) {
-            val targetIndex = currentQueueIndex.coerceIn(0, queue.size - 1)
-            queueListState.scrollToItem(targetIndex)
-        }
-    }
-
     Column(
         modifier = modifier
             .fillMaxSize()
             .then(com.freqvox.ui.components.sharedBoundsModifier("player.container"))
+            .graphicsLayer {
+                translationY = dismissOffsetY
+                val progress = (dismissOffsetY / dismissMaxPx).coerceIn(0f, 1f)
+                val scale = 1f - progress * 0.05f
+                scaleX = scale
+                scaleY = scale
+            }
             .background(MaterialTheme.colorScheme.background)
+            .nestedScroll(dismissConnection)
             .statusBarsPadding()
             .navigationBarsPadding()
             .verticalScroll(rememberScrollState())
@@ -237,13 +311,16 @@ fun PlayerScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(1f)
-                .pointerInput(duration, currentPosition) {
+                .pointerInput(duration) {
                     detectTapGestures(
                         onDoubleTap = { offset ->
                             if (duration > 0) {
-                                val seekDelta = if (offset.x < size.width / 2f) -10_000L else 10_000L
-                                val newPos = (currentPosition + seekDelta).coerceIn(0L, duration)
+                                val isForward = offset.x > size.width / 2f
+                                val seekDelta = if (isForward) 10_000L else -10_000L
+                                val newPos = (latestPosition + seekDelta).coerceIn(0L, duration)
                                 onSeek(newPos.toFloat() / duration)
+                                seekBubbleIsForward = isForward
+                                seekBubbleKey++
                             }
                         }
                     )
@@ -269,7 +346,7 @@ fun PlayerScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .offset { IntOffset(offsetX.roundToInt(), offsetY.roundToInt()) }
+                    .offset { IntOffset(offsetX.roundToInt(), 0) }
                     .draggable(
                         orientation = Orientation.Horizontal,
                         state = rememberDraggableState { delta -> offsetX += delta },
@@ -277,14 +354,6 @@ fun PlayerScreen(
                             if (offsetX < -150f) onNextClick()
                             else if (offsetX > 150f) onPreviousClick()
                             offsetX = 0f
-                        }
-                    )
-                    .draggable(
-                        orientation = Orientation.Vertical,
-                        state = rememberDraggableState { delta -> offsetY += delta },
-                        onDragStopped = {
-                            if (offsetY < -120f) onTagSwipeUp()
-                            offsetY = 0f
                         }
                     )
                     .clip(RoundedCornerShape(24.dp))
@@ -303,6 +372,35 @@ fun PlayerScreen(
                     accentSecondary = accentSecondary,
                     modifier = Modifier.fillMaxSize()
                 )
+
+                // Double-tap seek bubble
+                if (seekBubbleAlpha > 0f) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .fillMaxWidth(0.5f)
+                            .align(if (seekBubbleIsForward) Alignment.CenterEnd else Alignment.CenterStart)
+                            .graphicsLayer { alpha = seekBubbleAlpha }
+                            .background(Color.White.copy(alpha = 0.12f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                imageVector = if (seekBubbleIsForward) Icons.Default.Forward10 else Icons.Default.Replay10,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(44.dp)
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = if (seekBubbleIsForward) "+10 sec" else "-10 sec",
+                                color = Color.White.copy(alpha = 0.9f),
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+                }
             }
         }
 
@@ -699,13 +797,35 @@ fun PlayerScreen(
 
     // ── Queue Sheet ───────────────────────────────────────────────────────────
     if (showQueueSheet) {
+        // Pair(stableId, QueueItem) — stableId stays with the item through drags
+        val localQueue = remember { mutableStateListOf<Pair<Int, QueueItem>>() }
+        var draggingIndex by remember { mutableIntStateOf(-1) }
+        var dragStartIndex by remember { mutableIntStateOf(-1) }
+        var dragOffsetY by remember { mutableFloatStateOf(0f) }
+        var droppedId by remember { mutableStateOf<Int?>(null) }
+        val coroutineScope = rememberCoroutineScope()
         val queueListState = rememberLazyListState()
-        
-        LaunchedEffect(showQueueSheet, currentQueueIndex) {
-            if (showQueueSheet && queue.isNotEmpty()) {
-                // Scroll to show the active item, with one item above it for context
-                val targetIndex = (currentQueueIndex - 1).coerceAtLeast(0)
-                queueListState.animateScrollToItem(targetIndex)
+
+        var localCurrentQueueIndex by remember { mutableIntStateOf(currentQueueIndex) }
+
+        // Sync from the real queue only when not dragging/dropping
+        LaunchedEffect(queue, currentQueueIndex, draggingIndex, droppedId) {
+            if (draggingIndex == -1 && droppedId == null) {
+                val currentLocalItems = localQueue.map { it.second }
+                if (currentLocalItems != queue) {
+                    localQueue.clear()
+                    queue.forEachIndexed { i, item -> localQueue.add(i to item) }
+                }
+                if (localCurrentQueueIndex != currentQueueIndex) {
+                    localCurrentQueueIndex = currentQueueIndex
+                }
+            }
+        }
+
+        LaunchedEffect(Unit) {
+            if (queue.isNotEmpty()) {
+                val target = (currentQueueIndex - 1).coerceAtLeast(0)
+                queueListState.animateScrollToItem(target)
             }
         }
 
@@ -766,33 +886,141 @@ fun PlayerScreen(
                         verticalArrangement = Arrangement.spacedBy(4.dp),
                         modifier = Modifier.heightIn(max = 520.dp)
                     ) {
-                        itemsIndexed(queue, key = { i, item -> "${item.trackId}_$i" }) { index, item ->
-                            val isCurrent = index == currentQueueIndex
-                            val isPast = index < currentQueueIndex
+                        item(key = "dummy_anchor") {
+                            Spacer(Modifier.height(0.dp))
+                        }
+                        itemsIndexed(
+                            localQueue,
+                            key = { _, (stableId, _) -> stableId }
+                        ) { index, (stableId, item) ->
+                            val isCurrent = index == localCurrentQueueIndex
+                            val isPast = index < localCurrentQueueIndex
+                            val isActivelyDragging = index == draggingIndex
+                            val isDropping = stableId == droppedId
+                            val isDragging = isActivelyDragging || isDropping
+
+                            val animSpec = if (isActivelyDragging) snap<Float>()
+                                           else spring<Float>(dampingRatio = 0.75f, stiffness = Spring.StiffnessMediumLow)
+                            val animatedDragOffsetY by animateFloatAsState(
+                                targetValue = if (isActivelyDragging) dragOffsetY else 0f,
+                                animationSpec = animSpec,
+                                label = "dropAnim"
+                            )
+                            val elevation by animateDpAsState(
+                                targetValue = if (isActivelyDragging) 12.dp else 0.dp,
+                                animationSpec = tween(200),
+                                label = "elevationAnim"
+                            )
+
                             val accent = Color(0xFF7C4DFF)
 
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .animateItem()
+                                    // placementSpec=null: no spring animation fighting the manual offset
+                                    .animateItem(fadeInSpec = null, placementSpec = null, fadeOutSpec = null)
+                                    .zIndex(if (isDragging) 1f else 0f)
+                                    .offset { IntOffset(0, if (isActivelyDragging) dragOffsetY.roundToInt() else animatedDragOffsetY.roundToInt()) }
+                                    .shadow(elevation, RoundedCornerShape(12.dp))
                                     .clip(RoundedCornerShape(12.dp))
                                     .background(
                                         when {
-                                            isCurrent -> accent.copy(alpha = 0.12f)
-                                            else      -> Color.White.copy(alpha = 0.03f)
+                                            isDragging -> accent.copy(alpha = 0.20f)
+                                            isCurrent  -> accent.copy(alpha = 0.12f)
+                                            else       -> Color.White.copy(alpha = 0.03f)
                                         }
                                     )
                                     .then(
                                         if (isCurrent) Modifier.border(1.dp, accent.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
+                                        else if (isDragging) Modifier.border(1.dp, accent.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
                                         else Modifier
                                     )
-                                    .clickable(enabled = !isCurrent) { onQueueItemClick(index) }
-                                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                                    // Long-press anywhere on the row activates drag
+                                    .pointerInput(stableId) {
+                                        detectDragGesturesAfterLongPress(
+                                            onDragStart = { 
+                                                val currentIndex = localQueue.indexOfFirst { it.first == stableId }
+                                                if (currentIndex != -1) {
+                                                    draggingIndex = currentIndex
+                                                    dragStartIndex = currentIndex
+                                                    dragOffsetY = 0f
+                                                    droppedId = null 
+                                                }
+                                            },
+                                            onDrag = { _, delta ->
+                                                dragOffsetY += delta.y
+                                                val items = queueListState.layoutInfo.visibleItemsInfo
+                                                val fromItem = items.firstOrNull { it.key == stableId }
+                                                if (fromItem != null) {
+                                                    val dragCenter = fromItem.offset + fromItem.size / 2 + dragOffsetY.roundToInt()
+                                                    val validItems = items.filter { it.key != "dummy_anchor" }
+                                                    val nearest = validItems.minByOrNull { kotlin.math.abs(it.offset + it.size / 2 - dragCenter) }
+                                                    if (nearest != null) {
+                                                        val targetIdx = (nearest.index - 1).coerceIn(0, localQueue.size - 1)
+                                                        if (targetIdx != draggingIndex) {
+                                                            val adj = if (targetIdx > draggingIndex) -nearest.size.toFloat() else nearest.size.toFloat()
+                                                            androidx.compose.runtime.snapshots.Snapshot.withMutableSnapshot {
+                                                                localQueue.add(targetIdx, localQueue.removeAt(draggingIndex))
+                                                                if (localCurrentQueueIndex == draggingIndex) {
+                                                                    localCurrentQueueIndex = targetIdx
+                                                                } else if (draggingIndex < localCurrentQueueIndex && targetIdx >= localCurrentQueueIndex) {
+                                                                    localCurrentQueueIndex--
+                                                                } else if (draggingIndex > localCurrentQueueIndex && targetIdx <= localCurrentQueueIndex) {
+                                                                    localCurrentQueueIndex++
+                                                                }
+                                                                dragOffsetY += adj
+                                                                draggingIndex = targetIdx
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            },
+                                            onDragEnd = {
+                                                val fromIndex = dragStartIndex
+                                                val toIndex = draggingIndex
+                                                droppedId = localQueue.getOrNull(draggingIndex)?.first
+                                                draggingIndex = -1
+                                                dragStartIndex = -1
+                                                dragOffsetY = 0f
+                                                coroutineScope.launch {
+                                                    delay(300) // Keep the droppedId alive long enough for the spring animation to finish
+                                                    if (droppedId == stableId) droppedId = null
+                                                }
+                                                if (fromIndex in localQueue.indices && fromIndex != toIndex) {
+                                                    onQueueItemMove(fromIndex, toIndex)
+                                                }
+                                            },
+                                            onDragCancel = {
+                                                localQueue.clear()
+                                                queue.forEachIndexed { i, q -> localQueue.add(i to q) }
+                                                draggingIndex = -1
+                                                dragStartIndex = -1
+                                                dragOffsetY = 0f
+                                                droppedId = null
+                                            }
+                                        )
+                                    }
+                                    .clickable(enabled = !isCurrent && draggingIndex == -1) { onQueueItemClick(index) }
+                                    .padding(end = 8.dp, top = 10.dp, bottom = 10.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                // Position / state indicator
+                                // ── Drag handle (visual only) ─────────────────
                                 Box(
-                                    modifier = Modifier.width(28.dp),
+                                    modifier = Modifier.size(40.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        Icons.Default.DragHandle,
+                                        contentDescription = null,
+                                        tint = if (isDragging) accent.copy(alpha = 0.8f)
+                                               else Color.White.copy(alpha = 0.22f),
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+
+                                // ── Position / state indicator ───────────────
+                                Box(
+                                    modifier = Modifier.width(26.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     when {
@@ -800,24 +1028,24 @@ fun PlayerScreen(
                                             Icons.AutoMirrored.Filled.VolumeUp,
                                             contentDescription = null,
                                             tint = accent,
-                                            modifier = Modifier.size(16.dp)
+                                            modifier = Modifier.size(14.dp)
                                         )
                                         isPast -> Icon(
                                             Icons.Default.Check,
                                             contentDescription = null,
                                             tint = Color.White.copy(alpha = 0.2f),
-                                            modifier = Modifier.size(14.dp)
+                                            modifier = Modifier.size(13.dp)
                                         )
                                         else -> Text(
-                                            "${index + 1}",
+                                            "${stableId + 1}",
                                             color = Color.White.copy(alpha = 0.3f),
-                                            fontSize = 12.sp,
+                                            fontSize = 11.sp,
                                             fontWeight = FontWeight.Medium
                                         )
                                     }
                                 }
 
-                                Spacer(modifier = Modifier.width(10.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
 
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
@@ -842,8 +1070,8 @@ fun PlayerScreen(
                                     )
                                 }
 
-                                // Remove button — only for non-current items
-                                if (!isCurrent) {
+                                // ── Remove button on the RIGHT ────────────────
+                                if (!isCurrent && draggingIndex == -1) {
                                     IconButton(
                                         onClick = { onQueueItemRemove(index) },
                                         modifier = Modifier.size(32.dp)
@@ -852,7 +1080,7 @@ fun PlayerScreen(
                                             Icons.Default.Close,
                                             contentDescription = "Remove",
                                             tint = Color.White.copy(alpha = 0.25f),
-                                            modifier = Modifier.size(16.dp)
+                                            modifier = Modifier.size(15.dp)
                                         )
                                     }
                                 }
