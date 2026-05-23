@@ -17,7 +17,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -54,14 +54,14 @@ fun HomeScreen(
     onSearchClick: () -> Unit,
     viewModel: MainViewModel = hiltViewModel()
 ) {
-    val activeTracks by viewModel.activeTracks.collectAsState()
-    val currentTrack by viewModel.currentTrack.collectAsState()
-    val totalSongs by viewModel.totalSongs.collectAsState()
-    val totalDuration by viewModel.totalDuration.collectAsState()
-    val isPlaying by playbackController.isPlaying.collectAsState()
-    val currentTrackTitle by playbackController.currentTrackTitle.collectAsState()
-    val playHistory by viewModel.playHistory.collectAsState()
-    val taggedTrackIds by viewModel.taggedTrackIds.collectAsState()
+    val activeTracks by viewModel.activeTracks.collectAsStateWithLifecycle()
+    val currentTrack by viewModel.currentTrack.collectAsStateWithLifecycle()
+    val totalSongs by viewModel.totalSongs.collectAsStateWithLifecycle()
+    val totalDuration by viewModel.totalDuration.collectAsStateWithLifecycle()
+    val isPlaying by playbackController.isPlaying.collectAsStateWithLifecycle()
+    val currentTrackTitle by playbackController.currentTrackTitle.collectAsStateWithLifecycle()
+    val playHistory by viewModel.playHistory.collectAsStateWithLifecycle()
+    val taggedTrackIds by viewModel.taggedTrackIds.collectAsStateWithLifecycle()
 
     val greeting = rememberGreeting()
 
@@ -136,7 +136,11 @@ fun HomeScreen(
         }
 
         // Iterate through the dynamically generated endless feed blocks
-        items(feedItems) { item ->
+        items(
+            items = feedItems,
+            key = { it.stableId() },
+            contentType = { it::class }
+        ) { item ->
             when (item) {
                 is FeedItem.Spotlight -> {
                     SpotlightFeedBlock(
@@ -584,7 +588,7 @@ fun QuickPicksRow(
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         contentPadding = PaddingValues(horizontal = 24.dp)
     ) {
-        items(tracks) { track ->
+        items(tracks, key = { it.id }) { track ->
             Column(
                 modifier = Modifier
                     .width(130.dp)

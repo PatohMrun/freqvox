@@ -9,6 +9,7 @@ import android.os.Looper
 import android.provider.Settings
 import androidx.compose.animation.core.*
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
@@ -98,7 +99,11 @@ fun PlayerScreen(
     currentTrack: TrackEntity?,
     modifier: Modifier = Modifier
 ) {
-    val progress        = if (duration > 0) currentPosition.toFloat() / duration else 0f
+    val interpolatedPos = com.freqvox.ui.components.rememberInterpolatedPositionMs(
+        isPlaying = isPlaying,
+        positionMs = currentPosition,
+        durationMs = duration
+    )
     val currentPosStr   = formatTime(currentPosition)
     val durationStr     = formatTime(duration)
     val accentPrimary   = LocalGradientPrimary.current
@@ -138,7 +143,12 @@ fun PlayerScreen(
         animationSpec = infiniteRepeatable(tween(2000, easing = FastOutSlowInEasing), RepeatMode.Reverse),
         label = "glowAlpha"
     )
-    val currentGlowAlpha = if (isPlaying) glowAlpha else 0.20f
+    val playingMultiplier by animateFloatAsState(
+        targetValue = if (isPlaying) 1f else 0f,
+        animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing),
+        label = "glowFade"
+    )
+    val currentGlowAlpha = glowAlpha * playingMultiplier + 0.20f * (1f - playingMultiplier)
 
     // Bottom sheet visibility
     var showSleepSheet   by remember { mutableStateOf(false) }
@@ -158,6 +168,8 @@ fun PlayerScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
+            .then(com.freqvox.ui.components.sharedBoundsModifier("player.container"))
+            .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding()
             .navigationBarsPadding()
             .verticalScroll(rememberScrollState())
@@ -317,7 +329,9 @@ fun PlayerScreen(
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
-                        modifier = Modifier.basicMarquee()
+                        modifier = Modifier
+                            .then(com.freqvox.ui.components.sharedElementModifier("player.title"))
+                            .basicMarquee()
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
@@ -325,7 +339,8 @@ fun PlayerScreen(
                         color = Color.White.copy(alpha = 0.55f),
                         fontSize = 16.sp,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.then(com.freqvox.ui.components.sharedElementModifier("player.artist"))
                     )
                 }
                 AestheticLikeButton(
@@ -338,7 +353,7 @@ fun PlayerScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             WaveformScrubber(
-                progress        = progress,
+                progress        = { if (duration > 0) interpolatedPos.value.toFloat() / duration else 0f },
                 durationStr     = durationStr,
                 currentPosStr   = currentPosStr,
                 onSeek          = onSeek,
@@ -420,12 +435,23 @@ fun PlayerScreen(
                         .background(Brush.linearGradient(colors = listOf(accentPrimary, accentSecondary)))
                 ) {
                     IconButton(onClick = onPlayPauseClick, modifier = Modifier.fillMaxSize()) {
-                        Icon(
-                            imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                            contentDescription = "Play/Pause",
-                            tint = Color.White,
-                            modifier = Modifier.size(30.dp)
-                        )
+                        androidx.compose.animation.AnimatedContent(
+                            targetState = isPlaying,
+                            transitionSpec = {
+                                (androidx.compose.animation.scaleIn(animationSpec = tween(320, easing = FastOutSlowInEasing), initialScale = 0.6f) +
+                                        androidx.compose.animation.fadeIn(tween(320))) togetherWith
+                                        (androidx.compose.animation.scaleOut(animationSpec = tween(240, easing = FastOutSlowInEasing), targetScale = 0.6f) +
+                                                androidx.compose.animation.fadeOut(tween(240)))
+                            },
+                            label = "playerPlayPause"
+                        ) { playing ->
+                            Icon(
+                                imageVector = if (playing) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                contentDescription = "Play/Pause",
+                                tint = Color.White,
+                                modifier = Modifier.size(30.dp)
+                            )
+                        }
                     }
                 }
 
@@ -748,6 +774,7 @@ fun PlayerScreen(
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
+                                    .animateItem()
                                     .clip(RoundedCornerShape(12.dp))
                                     .background(
                                         when {

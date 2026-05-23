@@ -1,5 +1,8 @@
 package com.freqvox.ui.player.components
 
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -11,6 +14,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -30,9 +34,9 @@ fun EqualizerSheet(
     equalizerManager: FreqvoxEqualizerManager,
     onDismiss: () -> Unit
 ) {
-    val isEnabled by equalizerManager.isEnabled.collectAsState()
-    val bandLevels by equalizerManager.bandLevels.collectAsState()
-    val currentPreset by equalizerManager.currentPreset.collectAsState()
+    val isEnabled by equalizerManager.isEnabled.collectAsStateWithLifecycle()
+    val bandLevels by equalizerManager.bandLevels.collectAsStateWithLifecycle()
+    val currentPreset by equalizerManager.currentPreset.collectAsStateWithLifecycle()
     val presets = remember { equalizerManager.getPresets() }
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -195,6 +199,15 @@ private fun VerticalEqSlider(
     val inactiveColor = Color.White.copy(alpha = 0.08f)
     val thumbColor = if (enabled) Color.White else Color.White.copy(alpha = 0.2f)
 
+    val animatedValue by animateFloatAsState(
+        targetValue = value,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "eqBand"
+    )
+
     Box(
         modifier = modifier
             .onSizeChanged { trackHeight = it.height }
@@ -236,7 +249,7 @@ private fun VerticalEqSlider(
             val padding = thumbR + 2.dp.toPx()
             val usableHeight = size.height - padding * 2
 
-            val fraction = (value - valueRange.start) / (valueRange.endInclusive - valueRange.start)
+            val fraction = (animatedValue - valueRange.start) / (valueRange.endInclusive - valueRange.start)
             val thumbY = padding + usableHeight * (1f - fraction)
 
             val zeroFraction = (-valueRange.start) / (valueRange.endInclusive - valueRange.start)

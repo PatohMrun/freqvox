@@ -16,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -37,18 +38,18 @@ fun RadioScreen(
     onStationClick: (RadioStation) -> Unit,
     viewModel: RadioViewModel = hiltViewModel()
 ) {
-    val currentTitle by playbackController.currentTrackTitle.collectAsState()
-    val isPlaying by playbackController.isPlaying.collectAsState()
+    val currentTitle by playbackController.currentTrackTitle.collectAsStateWithLifecycle()
+    val isPlaying by playbackController.isPlaying.collectAsStateWithLifecycle()
 
-    val stations by viewModel.stations.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
-    val error by viewModel.error.collectAsState()
-    val favorites by viewModel.favorites.collectAsState()
-    val favoriteStations by viewModel.favoriteStations.collectAsState()
-    val selectedGenre by viewModel.selectedGenre.collectAsState()
-    val selectedCountryCode by viewModel.selectedCountryCode.collectAsState()
-    val searchQuery by viewModel.searchQuery.collectAsState()
-    val playingStation by viewModel.playingStation.collectAsState()
+    val stations by viewModel.stations.collectAsStateWithLifecycle()
+    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+    val error by viewModel.error.collectAsStateWithLifecycle()
+    val favorites by viewModel.favorites.collectAsStateWithLifecycle()
+    val favoriteStations by viewModel.favoriteStations.collectAsStateWithLifecycle()
+    val selectedGenre by viewModel.selectedGenre.collectAsStateWithLifecycle()
+    val selectedCountryCode by viewModel.selectedCountryCode.collectAsStateWithLifecycle()
+    val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
+    val playingStation by viewModel.playingStation.collectAsStateWithLifecycle()
 
     val currentStation = remember(currentTitle, playingStation) {
         if (playingStation != null && currentTitle == playingStation!!.name) playingStation else null

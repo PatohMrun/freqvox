@@ -34,6 +34,7 @@ import androidx.compose.material.icons.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.PlaylistPlay
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -78,11 +79,11 @@ fun LibraryScreen(
     onSearchClick: () -> Unit,
     viewModel: MainViewModel = hiltViewModel()
 ) {
-    val tracks by viewModel.allTracks.collectAsState()
-    val currentTrackTitle by playbackController.currentTrackTitle.collectAsState()
-    val isPlaying by playbackController.isPlaying.collectAsState()
-    val allPlaylists by viewModel.allPlaylists.collectAsState()
-    val allTags by viewModel.allTags.collectAsState()
+    val tracks by viewModel.allTracks.collectAsStateWithLifecycle()
+    val currentTrackTitle by playbackController.currentTrackTitle.collectAsStateWithLifecycle()
+    val isPlaying by playbackController.isPlaying.collectAsStateWithLifecycle()
+    val allPlaylists by viewModel.allPlaylists.collectAsStateWithLifecycle()
+    val allTags by viewModel.allTags.collectAsStateWithLifecycle()
 
     val tabOrder = remember { mutableStateListOf(*LibraryTab.values()) }
     var selectedTab by remember { mutableStateOf(LibraryTab.Songs) }
@@ -193,7 +194,11 @@ fun LibraryScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 120.dp)
                 ) {
-                    itemsIndexed(sortedTracks, key = { _, track -> track.id }) { index, track ->
+                    itemsIndexed(
+                        sortedTracks,
+                        key = { _, track -> track.id },
+                        contentType = { _, _ -> "track" }
+                    ) { index, track ->
                         LibraryTrackItem(
                             track = track,
                             isCurrentTrack = currentTrackTitle == track.title,
@@ -218,7 +223,7 @@ fun LibraryScreen(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                         contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 120.dp)
                     ) {
-                        items(albums.keys.toList()) { albumName ->
+                        items(albums.keys.toList(), key = { it }, contentType = { "album" }) { albumName ->
                             val albumTracks = albums[albumName]!!
                             AlbumItem(
                                 name = albumName,
@@ -241,7 +246,7 @@ fun LibraryScreen(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                         contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 120.dp)
                     ) {
-                        items(artists.keys.toList()) { artistName ->
+                        items(artists.keys.toList(), key = { it }, contentType = { "artist" }) { artistName ->
                             val artistTracks = artists[artistName]!!
                             ArtistItem(
                                 name = artistName,
@@ -270,7 +275,7 @@ fun LibraryScreen(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                         contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 120.dp)
                     ) {
-                        items(folders.keys.toList()) { folderName ->
+                        items(folders.keys.toList(), key = { it }, contentType = { "folder" }) { folderName ->
                             val folderTracks = folders[folderName]!!
                             FolderItem(
                                 path = folderName,
@@ -773,8 +778,8 @@ fun PlaylistsTab(
     var expandedTracks by remember { mutableStateOf<List<TrackEntity>>(emptyList()) }
     
     // Virtual Playlists Data
-    val allTracks by viewModel.allTracks.collectAsState()
-    val taggedTrackIds by viewModel.taggedTrackIds.collectAsState()
+    val allTracks by viewModel.allTracks.collectAsStateWithLifecycle()
+    val taggedTrackIds by viewModel.taggedTrackIds.collectAsStateWithLifecycle()
     
     val likedTrackIds = taggedTrackIds["liked"] ?: emptySet()
     val likedTracks = remember(allTracks, likedTrackIds) { allTracks.filter { it.id in likedTrackIds } }
@@ -1183,7 +1188,7 @@ fun SelectPlaylistDialog(
                 Text("You don't have any standard playlists yet.", color = Color.Gray, fontSize = 14.sp)
             } else {
                 LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 300.dp)) {
-                    items(playlists) { playlist ->
+                    items(playlists, key = { it.id }) { playlist ->
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()

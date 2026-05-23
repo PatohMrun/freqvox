@@ -10,6 +10,7 @@ import com.freqvox.data.local.entities.TagEntity
 import com.freqvox.data.local.entities.TrackEntity
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -103,7 +104,8 @@ class MainViewModel @Inject constructor(
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
-    val searchResults: StateFlow<List<TrackEntity>> = combine(activeTracks, _searchQuery, taggedTrackIds) { tracks, query, tags ->
+    @OptIn(FlowPreview::class)
+    val searchResults: StateFlow<List<TrackEntity>> = combine(activeTracks, _searchQuery.debounce(180), taggedTrackIds) { tracks, query, tags ->
         if (query.isBlank()) {
             emptyList()
         } else {

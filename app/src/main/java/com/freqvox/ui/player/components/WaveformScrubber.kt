@@ -18,7 +18,7 @@ import kotlin.random.Random
 
 @Composable
 fun WaveformScrubber(
-    progress: Float,
+    progress: () -> Float,
     durationStr: String,
     currentPosStr: String,
     onSeek: (Float) -> Unit,
@@ -49,10 +49,11 @@ fun WaveformScrubber(
             val canvasHeight = size.height
             val barWidth     = canvasWidth / barCount
             val gap          = 2.dp.toPx()
+            val p            = progress()
 
             heights.forEachIndexed { index, heightFactor ->
                 val barProgress = index.toFloat() / barCount
-                val isPlayed    = barProgress < progress
+                val isPlayed    = barProgress < p
                 val barHeight   = canvasHeight * heightFactor
                 val x           = index * barWidth
 
@@ -76,7 +77,7 @@ fun WaveformScrubber(
             }
 
             // Playhead line
-            val playheadX = canvasWidth * progress
+            val playheadX = canvasWidth * p
             drawLine(
                 color       = Color.White.copy(alpha = 0.9f),
                 start       = Offset(playheadX, 0f),

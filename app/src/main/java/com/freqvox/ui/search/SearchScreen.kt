@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -38,12 +39,12 @@ fun SearchScreen(
     onFocusConsumed: () -> Unit = {},
     viewModel: MainViewModel = hiltViewModel()
 ) {
-    val searchQuery by viewModel.searchQuery.collectAsState()
-    val searchResults by viewModel.searchResults.collectAsState()
-    val allTags by viewModel.allTags.collectAsState()
+    val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
+    val searchResults by viewModel.searchResults.collectAsStateWithLifecycle()
+    val allTags by viewModel.allTags.collectAsStateWithLifecycle()
     
-    val currentTrackTitle by playbackController.currentTrackTitle.collectAsState()
-    val isPlaying by playbackController.isPlaying.collectAsState()
+    val currentTrackTitle by playbackController.currentTrackTitle.collectAsStateWithLifecycle()
+    val isPlaying by playbackController.isPlaying.collectAsStateWithLifecycle()
     
     val focusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -163,11 +164,16 @@ fun SearchScreen(
                 }
             } else {
                 LazyColumn(contentPadding = PaddingValues(bottom = 120.dp)) {
-                    itemsIndexed(searchResults) { index, track ->
+                    itemsIndexed(
+                        searchResults,
+                        key = { _, track -> track.id },
+                        contentType = { _, _ -> "track" }
+                    ) { index, track ->
                         LibraryTrackItem(
                             track = track,
                             isCurrentTrack = track.title == currentTrackTitle,
                             isPlaying = isPlaying,
+                            modifier = Modifier.animateItem(),
                             onClick = {
                                 if (track.title == currentTrackTitle) {
                                     playbackController.togglePlayPause()

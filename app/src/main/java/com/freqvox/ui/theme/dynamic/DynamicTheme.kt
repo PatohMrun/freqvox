@@ -14,6 +14,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import androidx.palette.graphics.Palette
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import java.io.File
 import kotlin.math.abs
@@ -153,6 +154,9 @@ fun DynamicTheme(
             tertiaryColor  = idle
             return@LaunchedEffect
         }
+
+        // Coalesce rapid track changes so we don't restart 800–1100ms color tweens mid-flight.
+        delay(120)
 
         // Try album art first; fall back to title-derived colour
         val primary = if (artworkPath != null && File(artworkPath).exists()) {

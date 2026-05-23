@@ -133,12 +133,13 @@ fun TagOverlay(
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            val distinctTags = remember(tags) { tags.distinctBy { it.name.lowercase() } }
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                items(tags.distinctBy { it.name.lowercase() }) { tag ->
+                items(distinctTags, key = { it.id }) { tag ->
                     TagChip(
                         tag = tag,
                         isSelected = selectedTagIds.contains(tag.id),

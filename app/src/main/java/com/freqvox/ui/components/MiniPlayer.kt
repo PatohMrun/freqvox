@@ -1,6 +1,14 @@
 package com.freqvox.ui.components
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
@@ -18,6 +26,7 @@ import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -41,12 +50,12 @@ fun MiniPlayer(
     onMiniPlayerClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val isPlaying by playbackController.isPlaying.collectAsState()
-    val trackTitle by playbackController.currentTrackTitle.collectAsState()
-    val artist by playbackController.currentArtist.collectAsState()
-    val artworkUri by playbackController.currentArtworkUri.collectAsState()
-    val currentPosition by playbackController.currentPosition.collectAsState()
-    val duration by playbackController.duration.collectAsState()
+    val isPlaying by playbackController.isPlaying.collectAsStateWithLifecycle()
+    val trackTitle by playbackController.currentTrackTitle.collectAsStateWithLifecycle()
+    val artist by playbackController.currentArtist.collectAsStateWithLifecycle()
+    val artworkUri by playbackController.currentArtworkUri.collectAsStateWithLifecycle()
+    val currentPosition by playbackController.currentPosition.collectAsStateWithLifecycle()
+    val duration by playbackController.duration.collectAsStateWithLifecycle()
 
     // Swipe-to-skip state (on the content row, not the seek bar)
     var offsetX by remember { mutableStateOf(0f) }
@@ -67,16 +76,12 @@ fun MiniPlayer(
         }
     }
 
-    val displayProgress = when {
-        isDragging -> seekFraction
-        pendingSeekFraction >= 0f -> pendingSeekFraction
-        duration > 0 -> currentPosition.toFloat() / duration
-        else -> 0f
-    }
+    val interpolatedPos = rememberInterpolatedPositionMs(isPlaying, currentPosition, duration)
 
     Box(
         modifier = modifier
             .fillMaxWidth()
+            .then(sharedBoundsModifier("player.container"))
             .shadow(8.dp, clip = false)
             .background(Color(0xFF1A1A26))
     ) {
@@ -134,7 +139,9 @@ fun MiniPlayer(
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
-                        modifier = Modifier.basicMarquee()
+                        modifier = Modifier
+                            .then(sharedElementModifier("player.title"))
+                            .basicMarquee()
                     )
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -147,7 +154,9 @@ fun MiniPlayer(
                             fontSize = 12.sp,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier
+                                .weight(1f)
+                                .then(sharedElementModifier("player.artist"))
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
@@ -171,12 +180,23 @@ fun MiniPlayer(
                         onClick = { playbackController.togglePlayPause() },
                         modifier = Modifier.size(40.dp)
                     ) {
-                        Icon(
-                            imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                            contentDescription = if (isPlaying) "Pause" else "Play",
-                            tint = Color.White,
-                            modifier = Modifier.size(28.dp)
-                        )
+                        AnimatedContent(
+                            targetState = isPlaying,
+                            transitionSpec = {
+                                (scaleIn(animationSpec = tween(280, easing = FastOutSlowInEasing), initialScale = 0.6f) +
+                                        fadeIn(tween(280))) togetherWith
+                                        (scaleOut(animationSpec = tween(220, easing = FastOutSlowInEasing), targetScale = 0.6f) +
+                                                fadeOut(tween(220)))
+                            },
+                            label = "miniPlayPause"
+                        ) { playing ->
+                            Icon(
+                                imageVector = if (playing) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                contentDescription = if (playing) "Pause" else "Play",
+                                tint = Color.White,
+                                modifier = Modifier.size(28.dp)
+                            )
+                        }
                     }
                     IconButton(onClick = { playbackController.playNext() }) {
                         Icon(
@@ -235,10 +255,17 @@ fun MiniPlayer(
                         .height(24.dp) // Use full touch target height so thumb isn't clipped
                 ) {
                     val trackHeight = barHeight.toPx()
-                    // Draw the track exactly at the top boundary so there's zero gap above it
-                    val y = trackHeight / 2f 
-                    
-                    // Draw background track
+                    val y = trackHeight / 2f
+
+                    // Resolve progress inside the draw scope so per-frame Animatable ticks
+                    // invalidate only this draw, not the surrounding composition.
+                    val displayProgress = when {
+                        isDragging -> seekFraction
+                        pendingSeekFraction >= 0f -> pendingSeekFraction
+                        duration > 0 -> interpolatedPos.value.toFloat() / duration
+                        else -> 0f
+                    }
+
                     drawLine(
                         color = Color.White.copy(alpha = 0.06f),
                         start = androidx.compose.ui.geometry.Offset(0f, y),
@@ -246,9 +273,8 @@ fun MiniPlayer(
                         strokeWidth = trackHeight,
                         cap = androidx.compose.ui.graphics.StrokeCap.Round
                     )
-                    
+
                     val progressWidth = size.width * displayProgress
-                    // Draw active progress
                     if (progressWidth > 0) {
                         drawLine(
                             color = Color(0xFF7C4DFF),
@@ -258,8 +284,7 @@ fun MiniPlayer(
                             cap = androidx.compose.ui.graphics.StrokeCap.Round
                         )
                     }
-                    
-                    // Draw the thumb (knob) at the tip
+
                     val thumbRadius = if (isDragging) 6.dp.toPx() else 4.dp.toPx()
                     drawCircle(
                         color = Color.White,

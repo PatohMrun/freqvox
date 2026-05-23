@@ -22,6 +22,15 @@ sealed class FeedItem {
     data class FeaturedBanner(val track: TrackEntity) : FeedItem()
 }
 
+fun FeedItem.stableId(): String = when (this) {
+    is FeedItem.HorizontalCarousel       -> "hc:$title:${tracks.firstOrNull()?.id ?: 0}:${tracks.size}"
+    is FeedItem.DoubleHorizontalCarousel -> "dhc:$title:${tracks.firstOrNull()?.id ?: 0}:${tracks.size}"
+    is FeedItem.VerticalList             -> "vl:${title ?: ""}:${tracks.firstOrNull()?.id ?: 0}:${tracks.size}"
+    is FeedItem.Grid                     -> "grid:$title:${tracks.firstOrNull()?.id ?: 0}:${tracks.size}"
+    is FeedItem.Spotlight                -> "spot:${track.id}"
+    is FeedItem.FeaturedBanner           -> "feat:${track.id}"
+}
+
 object FeedGenerator {
 
     fun generateFeed(tracks: List<TrackEntity>, context: FeedContext = FeedContext()): List<FeedItem> {
