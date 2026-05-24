@@ -1,0 +1,11 @@
+Got everything I need. Let me write this up properly.Here's the full picture on how this works.
+
+**The fundamentals:** The low-level foundation is `Modifier.pointerInput`, applied to the `LazyColumn` itself — not to individual items. This way the column holds all positional knowledge and coordinates both the ordering and the auto-scroll in one place.
+
+**The auto-scroll math:** To implement auto-scroll, you check whether the dragged item's edges have crossed the visible threshold zones, calculate the overscrolled offset, and then initiate a scroll by calling `LazyListState.scrollBy(offset)`. The refinement is the speed formula. The Calvin-LL library uses `(1 - ((distance + scrollThreshold) / (scrollThreshold * 2)).coerceIn(0f, 1f)) * 10`, which delivers a 1× to 10× speed range based on proximity. The default scroll threshold is 48dp, with a max scroll animation duration of 100ms per tick. Auto-scrolling is only available for lazy layouts — not for plain `Column` or `Row`.
+
+**Best library:** The Calvin-LL Reorderable library (v3.1.0) handles edge-scroll with speed proportional to distance from the edge, uses the new `Modifier.animateItem` API for smooth item movement, supports drag handles as children of items, and supports `scrollThresholdPadding` for layouts that extend under the navigation bar.
+
+**State management pattern:** The `onMove` callback passes `from` and `to` item indices, and you mutate the list with `add(to.index, removeAt(from.index))`. There's also a `ScrollMoveMode` that controls whether the item below the dragging item is selected during auto-scroll, or the last visible item — useful if you want INSERT vs SWAP queue behaviour.
+
+The widget above has the full code and all the gotchas (key stability, zIndex layering, non-uniform heights, haptic timing, the coroutine loop pattern). The section on DIY is the path if you need tight gesture customisation — useful if you also want swipe-to-delete on the same row.
