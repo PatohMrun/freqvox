@@ -16,7 +16,6 @@ import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
@@ -56,12 +55,10 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.IntOffset
-import androidx.compose.foundation.gestures.scrollBy
-import kotlinx.coroutines.isActive
-import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.Velocity
+import androidx.compose.ui.unit.IntOffset
 import com.freqvox.data.local.entities.TrackEntity
 import com.freqvox.playback.FreqvoxEqualizerManager
 import com.freqvox.ui.player.components.AestheticLikeButton
@@ -76,6 +73,7 @@ import java.util.Locale
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import com.freqvox.ui.player.components.QueueSheet
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -799,363 +797,15 @@ fun PlayerScreen(
 
     // ── Queue Sheet ───────────────────────────────────────────────────────────
     if (showQueueSheet) {
-        // Pair(stableId, QueueItem) — stableId stays with the item through drags
-        val localQueue = remember { mutableStateListOf<Pair<Int, QueueItem>>() }
-        var draggingIndex by remember { mutableIntStateOf(-1) }
-        var dragStartIndex by remember { mutableIntStateOf(-1) }
-        var dragOffsetY by remember { mutableFloatStateOf(0f) }
-        var totalDragOffsetY by remember { mutableFloatStateOf(0f) }
-        var droppedId by remember { mutableStateOf<Int?>(null) }
-        // Raw pointer Y relative to the LazyColumn viewport — set on every onDrag call
-        var pointerYInList by remember { mutableFloatStateOf(0f) }
-        val coroutineScope = rememberCoroutineScope()
-        val queueListState = rememberLazyListState()
-        val density = LocalDensity.current
-        val itemTotalHeightPx = remember(density) { with(density) { 64.dp.toPx() } }
-
-        var localCurrentQueueIndex by remember { mutableIntStateOf(currentQueueIndex) }
-
-        // Sync from the real queue only when not dragging/dropping
-        LaunchedEffect(queue, currentQueueIndex, draggingIndex, droppedId) {
-            if (draggingIndex == -1 && droppedId == null) {
-                val currentLocalItems = localQueue.map { it.second }
-                if (currentLocalItems != queue) {
-                    localQueue.clear()
-                    queue.forEachIndexed { i, item -> localQueue.add(i to item) }
-                }
-                if (localCurrentQueueIndex != currentQueueIndex) {
-                    localCurrentQueueIndex = currentQueueIndex
-                }
-            }
-        }
-
-        LaunchedEffect(Unit) {
-            if (queue.isNotEmpty()) {
-                val target = (currentQueueIndex - 1).coerceAtLeast(0)
-                queueListState.animateScrollToItem(target)
-            }
-        }
-
-        val isDraggingActive = draggingIndex != -1
-        LaunchedEffect(isDraggingActive) {
-            if (isDraggingActive) {
-                while (isActive) {
-                    val di = draggingIndex
-                    if (di < 0 || di >= localQueue.size) {
-                        kotlinx.coroutines.delay(16)
-                        continue
-                    }
-                    val viewportHeight = queueListState.layoutInfo.viewportSize.height.toFloat()
-                    if (viewportHeight > 0f) {
-                        val edgeZone = with(density) { 80.dp.toPx() }
-                        val scrollDelta = when {
-                            pointerYInList < edgeZone -> {
-                                val factor = 1f - (pointerYInList / edgeZone).coerceIn(0f, 1f)
-                                -factor * 24f
-                            }
-                            pointerYInList > (viewportHeight - edgeZone) -> {
-                                val factor = (pointerYInList - (viewportHeight - edgeZone)) / edgeZone
-                                factor.coerceIn(0f, 1f) * 24f
-                            }
-                            else -> 0f
-                        }
-                        if (scrollDelta != 0f) {
-                            val consumed = queueListState.scrollBy(scrollDelta)
-                            if (consumed != 0f && draggingIndex >= 0) {
-                                // List scrolled: items shifted visually, compensate so held item stays under finger
-                                dragOffsetY += consumed
-                                totalDragOffsetY += consumed
-
-                                val slotsShifted = (totalDragOffsetY / itemTotalHeightPx).roundToInt()
-                                val targetIdx = (dragStartIndex + slotsShifted).coerceIn(0, localQueue.lastIndex)
-                                val curIdx = draggingIndex
-                                if (targetIdx != curIdx && curIdx in localQueue.indices && targetIdx in localQueue.indices) {
-                                    val adj = (curIdx - targetIdx) * itemTotalHeightPx
-                                    androidx.compose.runtime.snapshots.Snapshot.withMutableSnapshot {
-                                        localQueue.add(targetIdx, localQueue.removeAt(curIdx))
-                                        if (localCurrentQueueIndex == curIdx) {
-                                            localCurrentQueueIndex = targetIdx
-                                        } else if (curIdx < localCurrentQueueIndex && targetIdx >= localCurrentQueueIndex) {
-                                            localCurrentQueueIndex--
-                                        } else if (curIdx > localCurrentQueueIndex && targetIdx <= localCurrentQueueIndex) {
-                                            localCurrentQueueIndex++
-                                        }
-                                        dragOffsetY += adj
-                                        draggingIndex = targetIdx
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    kotlinx.coroutines.delay(16)
-                }
-            }
-        }
-
-        ModalBottomSheet(
-            onDismissRequest = { showQueueSheet = false },
-            containerColor = Color(0xFF12121A)
-        ) {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                // Header
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("Queue", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                    if (queue.isNotEmpty()) {
-                        Text(
-                            "${queue.size} tracks",
-                            color = Color.White.copy(alpha = 0.4f),
-                            fontSize = 13.sp
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                if (queue.isEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(180.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(
-                                Icons.AutoMirrored.Filled.QueueMusic,
-                                contentDescription = null,
-                                tint = Color.White.copy(alpha = 0.2f),
-                                modifier = Modifier.size(48.dp)
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Text("Queue is empty", color = Color.White.copy(alpha = 0.4f), fontSize = 14.sp)
-                            Text(
-                                "Play a track from your library",
-                                color = Color.White.copy(alpha = 0.25f),
-                                fontSize = 12.sp
-                            )
-                        }
-                    }
-                } else {
-                    LazyColumn(
-                        state = queueListState,
-                        contentPadding = PaddingValues(
-                            start = 16.dp, end = 16.dp, bottom = 48.dp
-                        ),
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                        modifier = Modifier.heightIn(max = 520.dp)
-                    ) {
-                        item(key = "dummy_anchor") {
-                            Spacer(Modifier.height(0.dp))
-                        }
-                        itemsIndexed(
-                            localQueue,
-                            key = { _, (stableId, _) -> stableId }
-                        ) { index, (stableId, item) ->
-                            val isCurrent = index == localCurrentQueueIndex
-                            val isPast = index < localCurrentQueueIndex
-                            val isActivelyDragging = index == draggingIndex
-                            val isDropping = stableId == droppedId
-                            val isDragging = isActivelyDragging || isDropping
-
-                            val animSpec = if (isActivelyDragging) snap<Float>()
-                                           else spring<Float>(dampingRatio = 0.75f, stiffness = Spring.StiffnessMediumLow)
-                            val animatedDragOffsetY by animateFloatAsState(
-                                targetValue = if (isActivelyDragging) dragOffsetY else 0f,
-                                animationSpec = animSpec,
-                                label = "dropAnim"
-                            )
-                            val elevation by animateDpAsState(
-                                targetValue = if (isActivelyDragging) 12.dp else 0.dp,
-                                animationSpec = tween(200),
-                                label = "elevationAnim"
-                            )
-
-                            val accent = Color(0xFF7C4DFF)
-
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    // placementSpec=null: no spring animation fighting the manual offset
-                                    .animateItem(fadeInSpec = null, placementSpec = null, fadeOutSpec = null)
-                                    .zIndex(if (isDragging) 1f else 0f)
-                                    .offset { IntOffset(0, if (isActivelyDragging) dragOffsetY.roundToInt() else animatedDragOffsetY.roundToInt()) }
-                                    .shadow(elevation, RoundedCornerShape(12.dp))
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(
-                                        when {
-                                            isDragging -> accent.copy(alpha = 0.20f)
-                                            isCurrent  -> accent.copy(alpha = 0.12f)
-                                            else       -> Color.White.copy(alpha = 0.03f)
-                                        }
-                                    )
-                                    .then(
-                                        if (isCurrent) Modifier.border(1.dp, accent.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
-                                        else if (isDragging) Modifier.border(1.dp, accent.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
-                                        else Modifier
-                                    )
-                                    // Long-press anywhere on the row activates drag
-                                    .pointerInput(stableId) {
-                                        detectDragGesturesAfterLongPress(
-                                            onDragStart = { offset ->
-                                                val currentIndex = localQueue.indexOfFirst { it.first == stableId }
-                                                if (currentIndex != -1) {
-                                                    draggingIndex = currentIndex
-                                                    dragStartIndex = currentIndex
-                                                    dragOffsetY = 0f
-                                                    totalDragOffsetY = 0f
-                                                    // Initialize pointer Y using item's actual viewport position + touch offset within item
-                                                    val itemInfo = queueListState.layoutInfo.visibleItemsInfo
-                                                        .firstOrNull { it.key == stableId }
-                                                    pointerYInList = (itemInfo?.offset?.toFloat() ?: 0f) + offset.y
-                                                    droppedId = null 
-                                                }
-                                            },
-                                            onDrag = { change, delta ->
-                                                change.consume()
-                                                pointerYInList += delta.y
-                                                dragOffsetY += delta.y
-                                                totalDragOffsetY += delta.y
-                                                
-                                                val slotsShifted = (totalDragOffsetY / itemTotalHeightPx).roundToInt()
-                                                val targetIdx = (dragStartIndex + slotsShifted).coerceIn(0, localQueue.lastIndex)
-                                                val curIdx = draggingIndex
-                                                
-                                                if (targetIdx != curIdx && curIdx in localQueue.indices && targetIdx in localQueue.indices) {
-                                                    val adj = (curIdx - targetIdx) * itemTotalHeightPx
-                                                    androidx.compose.runtime.snapshots.Snapshot.withMutableSnapshot {
-                                                        localQueue.add(targetIdx, localQueue.removeAt(curIdx))
-                                                        if (localCurrentQueueIndex == curIdx) {
-                                                            localCurrentQueueIndex = targetIdx
-                                                        } else if (curIdx < localCurrentQueueIndex && targetIdx >= localCurrentQueueIndex) {
-                                                            localCurrentQueueIndex--
-                                                        } else if (curIdx > localCurrentQueueIndex && targetIdx <= localCurrentQueueIndex) {
-                                                            localCurrentQueueIndex++
-                                                        }
-                                                        dragOffsetY += adj
-                                                        draggingIndex = targetIdx
-                                                    }
-                                                }
-                                            },
-                                            onDragEnd = {
-                                                val fromIndex = dragStartIndex
-                                                val toIndex = draggingIndex
-                                                droppedId = localQueue.getOrNull(draggingIndex)?.first
-                                                draggingIndex = -1
-                                                dragStartIndex = -1
-                                                dragOffsetY = 0f
-                                                coroutineScope.launch {
-                                                    delay(300) // Keep the droppedId alive long enough for the spring animation to finish
-                                                    if (droppedId == stableId) droppedId = null
-                                                }
-                                                if (fromIndex in localQueue.indices && fromIndex != toIndex) {
-                                                    onQueueItemMove(fromIndex, toIndex)
-                                                }
-                                            },
-                                            onDragCancel = {
-                                                localQueue.clear()
-                                                queue.forEachIndexed { i, q -> localQueue.add(i to q) }
-                                                draggingIndex = -1
-                                                dragStartIndex = -1
-                                                dragOffsetY = 0f
-                                                droppedId = null
-                                            }
-                                        )
-                                    }
-                                    .clickable(enabled = !isCurrent && draggingIndex == -1) { onQueueItemClick(index) }
-                                    .padding(end = 8.dp, top = 10.dp, bottom = 10.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                // ── Drag handle (visual only) ─────────────────
-                                Box(
-                                    modifier = Modifier.size(40.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        Icons.Default.DragHandle,
-                                        contentDescription = null,
-                                        tint = if (isDragging) accent.copy(alpha = 0.8f)
-                                               else Color.White.copy(alpha = 0.22f),
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                }
-
-                                // ── Position / state indicator ───────────────
-                                Box(
-                                    modifier = Modifier.width(26.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    when {
-                                        isCurrent -> Icon(
-                                            Icons.AutoMirrored.Filled.VolumeUp,
-                                            contentDescription = null,
-                                            tint = accent,
-                                            modifier = Modifier.size(14.dp)
-                                        )
-                                        isPast -> Icon(
-                                            Icons.Default.Check,
-                                            contentDescription = null,
-                                            tint = Color.White.copy(alpha = 0.2f),
-                                            modifier = Modifier.size(13.dp)
-                                        )
-                                        else -> Text(
-                                            "${stableId + 1}",
-                                            color = Color.White.copy(alpha = 0.3f),
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Medium
-                                        )
-                                    }
-                                }
-
-                                Spacer(modifier = Modifier.width(8.dp))
-
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = item.title,
-                                        color = when {
-                                            isCurrent -> accent
-                                            isPast    -> Color.White.copy(alpha = 0.35f)
-                                            else      -> Color.White.copy(alpha = 0.9f)
-                                        },
-                                        fontSize = 14.sp,
-                                        fontWeight = if (isCurrent) FontWeight.SemiBold else FontWeight.Normal,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                    Text(
-                                        text = item.artist,
-                                        color = if (isPast) Color.White.copy(alpha = 0.2f)
-                                                else Color.White.copy(alpha = 0.45f),
-                                        fontSize = 12.sp,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                }
-
-                                // ── Remove button on the RIGHT ────────────────
-                                if (!isCurrent && draggingIndex == -1) {
-                                    IconButton(
-                                        onClick = { onQueueItemRemove(index) },
-                                        modifier = Modifier.size(32.dp)
-                                    ) {
-                                        Icon(
-                                            Icons.Default.Close,
-                                            contentDescription = "Remove",
-                                            tint = Color.White.copy(alpha = 0.25f),
-                                            modifier = Modifier.size(15.dp)
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        QueueSheet(
+            queue              = queue,
+            currentQueueIndex  = currentQueueIndex,
+            accentColor        = accentPrimary,
+            onQueueItemClick   = onQueueItemClick,
+            onQueueItemRemove  = onQueueItemRemove,
+            onQueueItemMove    = onQueueItemMove,
+            onDismiss          = { showQueueSheet = false }
+        )
     }
 
     // ── EQ Sheet ──────────────────────────────────────────────────────────────

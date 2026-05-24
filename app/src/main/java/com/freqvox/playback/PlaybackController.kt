@@ -90,6 +90,8 @@ class PlaybackController(
     private var historySegmentStart: Long = 0L  // start of current un-paused segment
 
     private var isFetchingAutoplay = false
+    // Tracks the pool of songs to append from (the group/playlist the user is currently playing)
+    private var sourcePool: List<TrackEntity> = emptyList()
 
     init {
         startPositionPolling()
@@ -219,16 +221,28 @@ class PlaybackController(
     }
 
     private fun checkAndAppendTracksIfNeeded(controller: MediaController) {
+        // Never append when any loop mode is active
         if (controller.repeatMode != Player.REPEAT_MODE_OFF) return
-        
+
         val currentIndex = controller.currentMediaItemIndex
         val totalItems = controller.mediaItemCount
-        
+
         if (totalItems - currentIndex <= 3 && !isFetchingAutoplay) {
             isFetchingAutoplay = true
             scope.launch(Dispatchers.IO) {
                 try {
-                    val nextBatch = trackDao.getRandomTracks(15)
+                    // Build set of track IDs already in queue to avoid duplicates
+                    val alreadyQueued = (0 until controller.mediaItemCount)
+                        .map { i -> controller.getMediaItemAt(i).mediaId }
+                        .toSet()
+
+                    // Pull from the source pool if available, otherwise fall back to random
+                    val nextBatch: List<TrackEntity> = if (sourcePool.isNotEmpty()) {
+                        sourcePool.filter { it.id.toString() !in alreadyQueued }.take(15)
+                    } else {
+                        trackDao.getRandomTracks(15)
+                    }
+
                     if (nextBatch.isNotEmpty()) {
                         withContext(Dispatchers.Main) {
                             val newItems = nextBatch.map { track ->
@@ -247,7 +261,7 @@ class PlaybackController(
                                     .build()
                             }
                             controller.addMediaItems(newItems)
-                            
+
                             if (controller.playbackState == Player.STATE_ENDED) {
                                 controller.seekToDefaultPosition(totalItems)
                                 controller.prepare()
@@ -452,7 +466,9 @@ class PlaybackController(
         savePlaybackState()
     }
 
-    fun playQueue(tracks: List<TrackEntity>, startIndex: Int = 0) {
+    fun playQueue(tracks: List<TrackEntity>, startIndex: Int = 0, sourcePool: List<TrackEntity> = tracks) {
+        // Store the full pool so autoplay appends from the same context
+        this.sourcePool = sourcePool
         val mediaItems = tracks.map { track ->
             val meta = MediaMetadata.Builder().setTitle(track.title).setArtist(track.artist)
             track.artworkPath?.let { meta.setArtworkUri(Uri.parse("file://$it")) }
