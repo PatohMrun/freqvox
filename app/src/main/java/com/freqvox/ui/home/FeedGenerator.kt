@@ -32,18 +32,35 @@ fun FeedItem.stableId(): String = when (this) {
     is FeedItem.FeaturedBanner           -> "feat:${track.id}"
 }
 
+/**
+ * Accumulates "already used" picks across pages within one session, so the
+ * "Diving Into <Artist>" / "Album: <X>" sections don't keep choosing the same
+ * artist/album. Reset when the user pull-to-refreshes.
+ */
+data class FeedSessionState(
+    val usedArtists: Set<String> = emptySet(),
+    val usedAlbums:  Set<String> = emptySet()
+)
+
+/** Result of generating a single page: the items plus the updated session memory. */
+data class FeedPage(val items: List<FeedItem>, val session: FeedSessionState)
+
 object FeedGenerator {
 
     /**
      * Generate a feed "page". Pass distinct [random] instances per page (with different seeds)
      * to get a different remix of the same library, supporting endless scroll on HomeScreen.
+     *
+     * Pass the accumulated [session] from prior pages to keep "Diving Into <Artist>" /
+     * "Album: <X>" sections from re-picking the same artist or album across pages.
      */
     fun generateFeed(
         tracks: List<TrackEntity>,
         context: FeedContext = FeedContext(),
-        random: Random = Random.Default
-    ): List<FeedItem> {
-        if (tracks.isEmpty()) return emptyList()
+        random: Random = Random.Default,
+        session: FeedSessionState = FeedSessionState()
+    ): FeedPage {
+        if (tracks.isEmpty()) return FeedPage(emptyList(), session)
 
         val now = System.currentTimeMillis()
         val sevenDaysAgo   = now - 7L  * 86_400_000
@@ -177,6 +194,31 @@ object FeedGenerator {
         val eveningTracks   = tracks.filter { (eveningCount[it.id]   ?: 0) >= 2 }.sortedByDescending { eveningCount[it.id] }.take(15)
         val weekendTracks   = tracks.filter { (weekendCount[it.id]   ?: 0) >= 2 }.sortedByDescending { weekendCount[it.id] }.take(15)
         val commuteTracks   = tracks.filter { (commuteCount[it.id]   ?: 0) >= 2 }.sortedByDescending { commuteCount[it.id] }.take(12)
+
+        // ── Extra buckets for endless variety ────────────────────────────────
+        // These are cheap derived views of the same in-memory `tracks` list.
+        val pureRandom    = tracks.shuffled(random).take(15)
+        val alphaShuffle  = tracks.shuffled(random).sortedBy { it.title.lowercase() }.take(15)
+        // Pick an artist we haven't featured yet this session. If every artist
+        // has already been used, drop the section this page rather than repeat
+        // — keeps the feed feeling fresh; the next pull-to-refresh resets it.
+        val byArtistPick  = tracks.groupBy { it.artist.lowercase() }
+            .filter { it.value.size >= 2 && it.key !in session.usedArtists }
+            .entries.shuffled(random)
+            .firstOrNull()
+            ?.let { (artist, list) -> artist.replaceFirstChar { c -> c.uppercase() } to list.shuffled(random).take(12) }
+        val byAlbumPick   = tracks.groupBy { it.album.lowercase() }
+            .filter { it.value.size >= 3 && it.key.isNotBlank() && it.key !in session.usedAlbums }
+            .entries.shuffled(random)
+            .firstOrNull()
+            ?.let { (album, list) -> album.replaceFirstChar { c -> c.uppercase() } to list.take(12) }
+        val freshThisWeek = tracks.filter { it.dateAdded > sevenDaysAgo }.sortedByDescending { it.dateAdded }.take(12)
+        val oldestPicks   = tracks.sortedBy { it.dateAdded }.take(12).shuffled(random)
+        val mediumLength  = tracks.filter { it.duration in (3 * 60_000L)..(6 * 60_000L) }.shuffled(random).take(12)
+        val highSkipPlay  = tracks.filter { it.skipCount > 0 && it.playCount > 0 && it.playCount >= it.skipCount }
+            .sortedByDescending { it.playCount }.take(10)
+        val zeroSkip      = tracks.filter { it.playCount >= 2 && it.skipCount == 0 }.shuffled(random).take(12)
+        val longestEver   = tracks.sortedByDescending { it.duration }.take(8)
 
         // ── Tag-based sections ────────────────────────────────────────────────
         fun tagTracks(vararg names: String): List<TrackEntity> {
@@ -340,6 +382,53 @@ object FeedGenerator {
         if (neverHeard.size >= 2)
             feedOptions.add(FeedItem.Grid("Never Heard", neverHeard.take(4), Icons.Default.QuestionMark))
 
+        // ── Endless-variety sections (gated by per-page coin flips so different
+        // pages surface different subsets; tuned to keep ~5-7 of these per page) ──
+        fun coin(p: Double): Boolean = random.nextDouble() < p
+
+        if (coin(0.85) && pureRandom.size >= 3)
+            feedOptions.add(createDynamicSection("Wildcards", pureRandom, Icons.Default.Shuffle))
+
+        if (coin(0.55) && alphaShuffle.size >= 3)
+            feedOptions.add(createDynamicSection("A to Z Crawl", alphaShuffle, Icons.Default.SortByAlpha))
+
+        // Track which artist / album we actually committed to this page so we
+        // can pass it back to the caller and avoid re-picking on later pages.
+        var pickedArtist: String? = null
+        var pickedAlbum:  String? = null
+
+        byArtistPick?.let { (name, list) ->
+            if (coin(0.7) && list.size >= 2) {
+                feedOptions.add(createDynamicSection("Diving Into $name", list, Icons.Default.Person))
+                pickedArtist = name.lowercase()
+            }
+        }
+
+        byAlbumPick?.let { (name, list) ->
+            if (coin(0.6) && list.size >= 3) {
+                feedOptions.add(createDynamicSection("Album: $name", list, Icons.Default.Album))
+                pickedAlbum = name.lowercase()
+            }
+        }
+
+        if (coin(0.6) && freshThisWeek.size >= 3)
+            feedOptions.add(createDynamicSection("Fresh This Week", freshThisWeek, Icons.Default.FiberNew))
+
+        if (coin(0.45) && oldestPicks.size >= 3)
+            feedOptions.add(createDynamicSection("From the Vault", oldestPicks, Icons.Default.Inventory2))
+
+        if (coin(0.55) && mediumLength.size >= 3)
+            feedOptions.add(createDynamicSection("The Sweet Spot", mediumLength, Icons.Default.Tune))
+
+        if (coin(0.4) && highSkipPlay.size >= 3)
+            feedOptions.add(createDynamicSection("Skip-then-Stay", highSkipPlay, Icons.Default.SkipNext))
+
+        if (coin(0.5) && zeroSkip.size >= 3)
+            feedOptions.add(createDynamicSection("Never Skipped", zeroSkip, Icons.Default.ThumbUp))
+
+        if (coin(0.4) && longestEver.size >= 2)
+            feedOptions.add(FeedItem.Grid("The Long Way Round", longestEver.take(4), Icons.Default.Timelapse))
+
         // Assemble final feed (fully shuffled with the per-page seed)
         val feed = feedOptions.shuffled(random).toMutableList()
 
@@ -355,14 +444,34 @@ object FeedGenerator {
             }
         }.toSet()
 
-        tracks.filter { it.id !in usedIds }.shuffled(random).chunked(3).take(10)
+        // Filler: any track not yet rendered gets surfaced in a chunked tail so
+        // small libraries still produce visually long pages. Chunk size and tail
+        // length both increased for the endless feed.
+        tracks.filter { it.id !in usedIds }.shuffled(random).chunked(4).take(18)
             .forEachIndexed { i, chunk ->
                 if (chunk.isNotEmpty())
                     feed.add(FeedItem.VerticalList(if (i == 0) "Discover More" else null, chunk, if (i == 0) Icons.Default.Explore else null))
             }
 
+        // If even the filler is exhausted (very tiny library) sprinkle a few
+        // shuffled re-views of the whole library so the page never feels short.
+        if (tracks.size >= 4) {
+            repeat(3) { i ->
+                val sample = tracks.shuffled(random).take(4)
+                if (sample.isNotEmpty()) {
+                    feed.add(
+                        FeedItem.Grid(
+                            title = if (i == 0) "Pick a Direction" else "Another Angle",
+                            tracks = sample,
+                            icon = if (i == 0) Icons.Default.Casino else null
+                        )
+                    )
+                }
+            }
+        }
+
         // Drop sections that don't have enough content to look good
-        return feed.filter { item ->
+        val finalItems = feed.filter { item ->
             when (item) {
                 is FeedItem.VerticalList             -> item.tracks.isNotEmpty()
                 is FeedItem.HorizontalCarousel       -> item.tracks.size >= 2
@@ -371,5 +480,11 @@ object FeedGenerator {
                 else -> true
             }
         }
+
+        val newSession = session.copy(
+            usedArtists = session.usedArtists + listOfNotNull(pickedArtist),
+            usedAlbums  = session.usedAlbums  + listOfNotNull(pickedAlbum)
+        )
+        return FeedPage(finalItems, newSession)
     }
 }

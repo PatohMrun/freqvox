@@ -13,6 +13,8 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
+import kotlin.math.abs
 import kotlin.random.Random
 
 @Composable
@@ -33,7 +35,32 @@ fun WaveformScrubber(
     // waiting for Media3 to confirm the seek and the polling loop to round-trip.
     var isScrubbing  by remember { mutableStateOf(false) }
     var scrubProgress by remember { mutableFloatStateOf(0f) }
-    val displayedProgress = if (isScrubbing) scrubProgress else progress().coerceIn(0f, 1f)
+
+    // After release we keep displaying `scrubProgress` until the upstream
+    // `progress()` actually catches up to it. Otherwise the bar would briefly
+    // render the stale interpolated position (one or two frames) before
+    // Media3 reports the seek result — that's the post-release bounce.
+    var pendingProgress by remember { mutableFloatStateOf(-1f) }
+
+    val upstream = progress().coerceIn(0f, 1f)
+    val displayedProgress = when {
+        isScrubbing             -> scrubProgress
+        pendingProgress >= 0f   -> pendingProgress
+        else                    -> upstream
+    }
+
+    // Clear the pending freeze once upstream converges (or after a safety timeout
+    // so we never get stuck if a seek silently fails).
+    LaunchedEffect(upstream, pendingProgress) {
+        if (pendingProgress < 0f) return@LaunchedEffect
+        if (abs(upstream - pendingProgress) < 0.02f) {
+            delay(60L) // let interpolator's snapTo settle before swapping
+            pendingProgress = -1f
+        } else {
+            delay(1200L) // safety timeout
+            pendingProgress = -1f
+        }
+    }
 
     // Keep the latest onSeek without restarting the pointerInput modifier.
     val onSeekState = rememberUpdatedState(onSeek)
@@ -68,8 +95,10 @@ fun WaveformScrubber(
                                 val ev = awaitPointerEvent(PointerEventPass.Main)
                                 val change = ev.changes.firstOrNull() ?: break
                                 if (!change.pressed) {
-                                    // Final commit on release.
+                                    // Final commit on release. Freeze the bar at
+                                    // the released position until upstream catches up.
                                     onSeekState.value(scrubProgress)
+                                    pendingProgress = scrubProgress
                                     isScrubbing = false
                                     change.consume()
                                     break

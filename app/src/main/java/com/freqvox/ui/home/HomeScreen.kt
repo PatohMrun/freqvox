@@ -93,19 +93,26 @@ fun HomeScreen(
     }
 
     // Endless feed — every page is a fresh remix of the same library with a
-    // different per-page seed. Pulling to refresh resets back to page 1.
+    // different per-page seed. Pulling to refresh resets back to page 1 AND
+    // wipes the cross-page artist/album exclusion memory so all artists become
+    // eligible again. Capped to keep memory bounded; once reached, the footer
+    // tells the user to pull-to-refresh for entirely new content.
     var pageCount by remember(activeTracks, refreshTrigger) { mutableIntStateOf(1) }
+    val maxPages = 20
 
     val feedItems: List<PagedFeedItem> = remember(
         activeTracks, playHistory, taggedTrackIds, refreshTrigger, pageCount
     ) {
         val ctx = FeedContext(playHistory, taggedTrackIds)
+        var session = FeedSessionState()
         (1..pageCount).flatMap { page ->
             val pageRandom = Random(refreshTrigger * 1_000_003L + page * 31L)
-            FeedGenerator.generateFeed(activeTracks, ctx, pageRandom)
-                .map { PagedFeedItem(page, it) }
+            val result = FeedGenerator.generateFeed(activeTracks, ctx, pageRandom, session)
+            session = result.session
+            result.items.map { PagedFeedItem(page, it) }
         }
     }
+    val reachedEnd = pageCount >= maxPages
 
     val heroTrack = currentTrack
         ?: activeTracks.find { it.id == playHistory.firstOrNull()?.trackId }
@@ -113,7 +120,7 @@ fun HomeScreen(
 
     val listState = rememberLazyListState()
 
-    // Auto-paginate when the user nears the end of the rendered feed.
+    // Auto-paginate when the user nears the end of the rendered feed (until the cap).
     LaunchedEffect(listState, activeTracks.size) {
         if (activeTracks.isEmpty()) return@LaunchedEffect
         snapshotFlow {
@@ -124,7 +131,7 @@ fun HomeScreen(
         }
             .distinctUntilChanged()
             .collect { distance ->
-                if (distance in 1..6) pageCount++
+                if (distance in 1..6 && pageCount < maxPages) pageCount++
             }
     }
 
@@ -278,23 +285,40 @@ fun HomeScreen(
                 }
             }
             } // Close when
+
+        if (reachedEnd) {
+            item(key = "feed-end-footer") {
+                EndOfFeedFooter(
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 32.dp)
+                )
+            }
+        }
     } // Close LazyColumn
 
-        // Back-to-top FAB — appears once the user has scrolled meaningfully past the hero.
+        // Back-to-top pill — compact and unobtrusive, sits just above the mini-player.
         AnimatedVisibility(
             visible = showBackToTop,
             enter = fadeIn() + scaleIn(),
             exit = fadeOut() + scaleOut(),
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(end = 20.dp, bottom = 100.dp)
+                .padding(end = 14.dp, bottom = 78.dp)
         ) {
-            FloatingActionButton(
+            Surface(
                 onClick = { scope.launch { listState.animateScrollToItem(0) } },
-                containerColor = Color(0xFF7C4DFF),
-                contentColor = Color.White
+                shape = CircleShape,
+                color = Color(0xFF7C4DFF).copy(alpha = 0.88f),
+                shadowElevation = 4.dp,
+                modifier = Modifier.size(36.dp)
             ) {
-                Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Back to top")
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Default.KeyboardArrowUp,
+                        contentDescription = "Back to top",
+                        tint = Color.White,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
         }
     } // Close Box
@@ -304,6 +328,28 @@ fun HomeScreen(
 /** Wraps a [FeedItem] with the page index it was generated for, so [LazyColumn]
  *  keys remain unique across endless-scroll pages. */
 data class PagedFeedItem(val page: Int, val item: FeedItem)
+
+@Composable
+fun EndOfFeedFooter(modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = "You've explored a lot",
+            color = Color.White,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.SemiBold
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = "Pull down to refresh for a completely new mix",
+            color = Color.White.copy(alpha = 0.45f),
+            fontSize = 13.sp,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+        )
+    }
+}
 
 @Composable
 fun GridFeedBlock(tracks: List<TrackEntity>, onClick: (TrackEntity) -> Unit, modifier: Modifier = Modifier) {

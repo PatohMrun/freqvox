@@ -38,7 +38,14 @@ class MainActivity : ComponentActivity() {
         if (isGranted) {
             viewModel.scanLibrary()
         }
+        // Once the storage permission flow finishes, ask for notifications too
+        // so the lock-screen / shade media controls can render on API 33+.
+        maybeRequestNotificationPermission()
     }
+
+    private val requestNotificationLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { /* user choice is fine either way — we just need to have asked */ }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
@@ -72,6 +79,16 @@ class MainActivity : ComponentActivity() {
 
         if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
             requestPermissionLauncher.launch(permission)
+        } else {
+            maybeRequestNotificationPermission()
+        }
+    }
+
+    private fun maybeRequestNotificationPermission() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        val notif = Manifest.permission.POST_NOTIFICATIONS
+        if (ContextCompat.checkSelfPermission(this, notif) != PackageManager.PERMISSION_GRANTED) {
+            requestNotificationLauncher.launch(notif)
         }
     }
 
