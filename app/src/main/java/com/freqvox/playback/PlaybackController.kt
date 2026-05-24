@@ -229,14 +229,13 @@ class PlaybackController(
 
         if (totalItems - currentIndex <= 3 && !isFetchingAutoplay) {
             isFetchingAutoplay = true
+            // MediaController must only be touched on the main thread — snapshot queue ids here.
+            val alreadyQueued = (0 until controller.mediaItemCount)
+                .map { i -> controller.getMediaItemAt(i).mediaId }
+                .toSet()
+
             scope.launch(Dispatchers.IO) {
                 try {
-                    // Build set of track IDs already in queue to avoid duplicates
-                    val alreadyQueued = (0 until controller.mediaItemCount)
-                        .map { i -> controller.getMediaItemAt(i).mediaId }
-                        .toSet()
-
-                    // Pull from the source pool if available, otherwise fall back to random
                     val nextBatch: List<TrackEntity> = if (sourcePool.isNotEmpty()) {
                         sourcePool.filter { it.id.toString() !in alreadyQueued }.take(15)
                     } else {
@@ -245,6 +244,7 @@ class PlaybackController(
 
                     if (nextBatch.isNotEmpty()) {
                         withContext(Dispatchers.Main) {
+                            val ctrl = mediaController ?: return@withContext
                             val newItems = nextBatch.map { track ->
                                 val extras = android.os.Bundle().apply {
                                     putBoolean("isAutoAppended", true)
@@ -260,12 +260,12 @@ class PlaybackController(
                                     .setMediaMetadata(meta.build())
                                     .build()
                             }
-                            controller.addMediaItems(newItems)
+                            ctrl.addMediaItems(newItems)
 
-                            if (controller.playbackState == Player.STATE_ENDED) {
-                                controller.seekToDefaultPosition(totalItems)
-                                controller.prepare()
-                                controller.play()
+                            if (ctrl.playbackState == Player.STATE_ENDED) {
+                                ctrl.seekToDefaultPosition(totalItems)
+                                ctrl.prepare()
+                                ctrl.play()
                             }
                         }
                     }

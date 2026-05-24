@@ -1,5 +1,7 @@
 package com.freqvox.ui.player.components
 
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -20,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -31,6 +34,9 @@ import androidx.compose.ui.zIndex
 import com.freqvox.playback.QueueItem
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
+import sh.calvin.reorderable.rememberScroller
+
+private val SheetBackground = Color(0xFF12121A)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,7 +62,23 @@ fun QueueSheet(
     var dragFromIndex by remember { mutableIntStateOf(-1) }
     var dragToIndex   by remember { mutableIntStateOf(-1) }
 
-    val reorderState = rememberReorderableLazyListState(listState) { from, to ->
+    // ----- Auto-scroll tuning -------------------------------------------------
+    // Wider threshold = longer 0x→5x ramp as finger nears the edge (gentler accel/decel).
+    // Lower speed factor = lower peak velocity, so the deceleration glides instead of cuts.
+    // Library defaults: 48.dp threshold, 0.05f speed factor (≈ viewportH * 0.5 px/s base).
+    val scrollEdgeThreshold = 88.dp
+    val scrollSpeedFactor   = 0.035f
+
+    val scroller = rememberScroller(
+        scrollableState     = listState,
+        pixelAmountProvider = { listState.layoutInfo.viewportSize.height * scrollSpeedFactor }
+    )
+
+    val reorderState = rememberReorderableLazyListState(
+        lazyListState   = listState,
+        scrollThreshold = scrollEdgeThreshold,
+        scroller        = scroller
+    ) { from, to ->
         val f = from.index
         val t = to.index
         if (f in localQueue.indices && t in localQueue.indices) {
@@ -119,15 +141,35 @@ fun QueueSheet(
             val playingIdxLocal = if (playingTrackId == null) -1
                                   else localQueue.indexOfFirst { it.trackId == playingTrackId }
 
+            // How rows that aren't being dragged slide out of the dragged row's way.
+            // Lower stiffness  = slower, gentler glide.   Higher = snappier, more abrupt.
+            // Lower dampingRatio = more bouncy overshoot. Higher = more critically damped.
+            val flowSpec = remember {
+                spring<androidx.compose.ui.unit.IntOffset>(
+                    dampingRatio = 0.78f,
+                    stiffness    = Spring.StiffnessMediumLow
+                )
+            }
+
             LazyColumn(
                 state          = listState,
                 contentPadding = PaddingValues(start = 8.dp, end = 8.dp, bottom = 48.dp),
                 modifier       = Modifier.heightIn(max = 540.dp)
             ) {
                 itemsIndexed(localQueue, key = { _, item -> item.trackId }) { index, item ->
-                    ReorderableItem(reorderState, key = item.trackId) { isDragging ->
+                    ReorderableItem(
+                        state               = reorderState,
+                        key                 = item.trackId,
+                        animateItemModifier = Modifier.animateItem(placementSpec = flowSpec)
+                    ) { isDragging ->
                         val isCurrent = item.trackId == playingTrackId
                         val isPast    = playingIdxLocal != -1 && index < playingIdxLocal
+
+                        val rowBackground = when {
+                            isDragging -> accentColor.copy(alpha = 0.28f).compositeOver(SheetBackground)
+                            isCurrent  -> accentColor.copy(alpha = 0.10f)
+                            else       -> Color.White.copy(alpha = 0.03f)
+                        }
 
                         Row(
                             modifier = Modifier
@@ -155,15 +197,12 @@ fun QueueSheet(
                                     scaleX          = if (isDragging) 1.04f else 1f
                                     scaleY          = if (isDragging) 1.04f else 1f
                                     shadowElevation = if (isDragging) 24f else 0f
+                                    shape           = RoundedCornerShape(12.dp)
                                     alpha           = if (isPast && !isDragging) 0.55f else 1f
                                 }
                                 .padding(horizontal = 4.dp, vertical = 2.dp)
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(when {
-                                    isDragging -> accentColor.copy(alpha = 0.22f)
-                                    isCurrent  -> accentColor.copy(alpha = 0.10f)
-                                    else       -> Color.White.copy(alpha = 0.03f)
-                                })
+                                .background(rowBackground)
                                 .then(when {
                                     isDragging -> Modifier.border(1.dp, accentColor.copy(.4f), RoundedCornerShape(12.dp))
                                     isCurrent  -> Modifier.border(1.dp, accentColor.copy(.28f), RoundedCornerShape(12.dp))
