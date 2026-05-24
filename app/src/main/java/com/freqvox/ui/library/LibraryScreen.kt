@@ -185,7 +185,7 @@ fun LibraryScreen(
                     SortOrder.RecentlyAdded  -> tracks.sortedByDescending { it.dateAdded }
                     SortOrder.RecentlyPlayed -> tracks.sortedByDescending { it.lastPlayed ?: 0L }
                     SortOrder.MostPlayed     -> tracks.sortedByDescending { it.playCount }
-                    SortOrder.LeastPlayed    -> tracks.sortedBy { it.playCount }
+                    SortOrder.LeastPlayed    -> tracks.sortedWith(compareBy<TrackEntity> { it.playCount }.thenBy { it.title })
                 }
             }
 
@@ -785,7 +785,12 @@ fun PlaylistsTab(
     val likedTracks = remember(allTracks, likedTrackIds) { allTracks.filter { it.id in likedTrackIds } }
     val recentlyPlayed = remember(allTracks) { allTracks.filter { it.lastPlayed != null }.sortedByDescending { it.lastPlayed }.take(50) }
     val mostPlayed = remember(allTracks) { allTracks.filter { it.playCount > 0 }.sortedByDescending { it.playCount }.take(50) }
-    val leastPlayed = remember(allTracks) { allTracks.filter { it.playCount > 0 }.sortedBy { it.playCount }.take(50) }
+    val leastPlayed = remember(allTracks) {
+        allTracks.sortedWith(
+            compareBy<TrackEntity> { it.playCount }  // 0-play songs first, then fewest plays
+                .thenBy { it.dateAdded }               // tie-break: oldest added gets priority (true neglect)
+        ).take(50)
+    }
 
     LaunchedEffect(expandedPlaylistId, playlists) {
         if (expandedPlaylistId == null || expandedPlaylistId!! < 0L) return@LaunchedEffect
@@ -805,6 +810,7 @@ fun PlaylistsTab(
             item {
                 PlaylistItem(
                     playlist = PlaylistEntity(id = -1, name = "Liked Songs", type = "virtual"),
+                    trackCount = likedTracks.size,
                     isExpanded = expandedPlaylistId == -1L,
                     expandedTracks = if (expandedPlaylistId == -1L) likedTracks else emptyList(),
                     onExpand = { expandedPlaylistId = if (expandedPlaylistId == -1L) null else -1L },
@@ -815,6 +821,7 @@ fun PlaylistsTab(
             item {
                 PlaylistItem(
                     playlist = PlaylistEntity(id = -2, name = "Recently Played", type = "virtual"),
+                    trackCount = recentlyPlayed.size,
                     isExpanded = expandedPlaylistId == -2L,
                     expandedTracks = if (expandedPlaylistId == -2L) recentlyPlayed else emptyList(),
                     onExpand = { expandedPlaylistId = if (expandedPlaylistId == -2L) null else -2L },
@@ -825,6 +832,7 @@ fun PlaylistsTab(
             item {
                 PlaylistItem(
                     playlist = PlaylistEntity(id = -3, name = "Most Played", type = "virtual"),
+                    trackCount = mostPlayed.size,
                     isExpanded = expandedPlaylistId == -3L,
                     expandedTracks = if (expandedPlaylistId == -3L) mostPlayed else emptyList(),
                     onExpand = { expandedPlaylistId = if (expandedPlaylistId == -3L) null else -3L },
@@ -835,6 +843,7 @@ fun PlaylistsTab(
             item {
                 PlaylistItem(
                     playlist = PlaylistEntity(id = -4, name = "Least Played", type = "virtual"),
+                    trackCount = leastPlayed.size,
                     isExpanded = expandedPlaylistId == -4L,
                     expandedTracks = if (expandedPlaylistId == -4L) leastPlayed else emptyList(),
                     onExpand = { expandedPlaylistId = if (expandedPlaylistId == -4L) null else -4L },
@@ -856,8 +865,10 @@ fun PlaylistsTab(
                 }
             } else {
                 items(playlists, key = { it.id }) { playlist ->
+                    val customTrackCount = if (expandedPlaylistId == playlist.id) expandedTracks.size else -1
                     PlaylistItem(
                         playlist = playlist,
+                        trackCount = customTrackCount,
                         isExpanded = expandedPlaylistId == playlist.id,
                         expandedTracks = if (expandedPlaylistId == playlist.id) expandedTracks else emptyList(),
                         onExpand = {
@@ -920,6 +931,7 @@ fun PlaylistsTab(
 @Composable
 fun PlaylistItem(
     playlist: PlaylistEntity,
+    trackCount: Int = -1,    // -1 = unknown (custom playlists before expansion)
     isExpanded: Boolean,
     expandedTracks: List<TrackEntity>,
     currentTrackTitle: String = "",
@@ -928,6 +940,14 @@ fun PlaylistItem(
     onDelete: (() -> Unit)? = null
 ) {
     val accent = Color(0xFF7C4DFF)
+
+    // Resolved count: prefer live expanded count, fall back to provided trackCount
+    val resolvedCount = if (isExpanded && expandedTracks.isNotEmpty()) expandedTracks.size else trackCount
+    val countLabel = when {
+        resolvedCount > 0 -> "${resolvedCount} song${if (resolvedCount == 1) "" else "s"}"
+        resolvedCount == 0 -> "Empty"
+        else -> "Tap to load"
+    }
 
     Surface(
         modifier = Modifier
@@ -964,7 +984,7 @@ fun PlaylistItem(
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
-                        text = if (isExpanded && expandedTracks.isNotEmpty()) "${expandedTracks.size} tracks" else "Smart playlist",
+                        text = countLabel,
                         color = Color.White.copy(alpha = 0.4f),
                         fontSize = 12.sp
                     )

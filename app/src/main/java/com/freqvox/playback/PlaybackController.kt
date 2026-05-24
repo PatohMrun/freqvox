@@ -36,6 +36,7 @@ class PlaybackController(
     private var controllerFuture: ListenableFuture<MediaController>? = null
     private var mediaController: MediaController? = null
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+    private val prefs = context.getSharedPreferences("freqvox_playback", Context.MODE_PRIVATE)
 
     private val _currentTrackId = MutableStateFlow<Long?>(null)
     val currentTrackId: StateFlow<Long?> = _currentTrackId.asStateFlow()
@@ -113,6 +114,7 @@ class PlaybackController(
                     // — reading controllerFuture.get() when it points to a different future blocks the main thread
                     mediaController = future.get()
                     setupControllerListener()
+                    restorePlaybackState()
                     pendingMediaItem?.let { playMediaItem(it) }
                 } catch (e: Exception) {
                     android.util.Log.e("PlaybackController", "Service connection failed", e)
@@ -154,6 +156,7 @@ class PlaybackController(
                     seekDebounceJob = scope.launch {
                         delay(200)
                         _isPlaying.value = false
+                        savePlaybackState()
                     }
                 }
             }
@@ -171,6 +174,7 @@ class PlaybackController(
                 } else {
                     _currentQueueIndex.value = 0
                 }
+                savePlaybackState()
             }
 
             override fun onTimelineChanged(timeline: androidx.media3.common.Timeline, reason: Int) {
@@ -445,6 +449,7 @@ class PlaybackController(
             )
         }
         _currentQueueIndex.value = controller.currentMediaItemIndex.coerceAtLeast(0)
+        savePlaybackState()
     }
 
     fun playQueue(tracks: List<TrackEntity>, startIndex: Int = 0) {
@@ -516,5 +521,66 @@ class PlaybackController(
         controllerFuture = null
         mediaController = null
         scope.cancel()
+    }
+
+    private fun savePlaybackState() {
+        val controller = mediaController ?: return
+        if (controller.mediaItemCount == 0) return
+        val trackIds = (0 until controller.mediaItemCount).mapNotNull { i ->
+            val idStr = controller.getMediaItemAt(i).mediaId
+            if (idStr.isNotEmpty()) idStr else null
+        }
+        val currentIndex = controller.currentMediaItemIndex
+        val currentPosition = controller.currentPosition
+
+        prefs.edit()
+            .putString("saved_queue", trackIds.joinToString(","))
+            .putInt("saved_index", currentIndex)
+            .putLong("saved_position", currentPosition)
+            .apply()
+    }
+
+    private fun restorePlaybackState() {
+        val controller = mediaController ?: return
+        if (controller.mediaItemCount > 0) return // Already populated
+        
+        val savedQueueStr = prefs.getString("saved_queue", "") ?: ""
+        if (savedQueueStr.isEmpty()) return
+        
+        val savedIndex = prefs.getInt("saved_index", 0)
+        val savedPosition = prefs.getLong("saved_position", 0L)
+        
+        val trackIds = savedQueueStr.split(",").mapNotNull { it.toLongOrNull() }
+        if (trackIds.isEmpty()) return
+        
+        scope.launch(Dispatchers.IO) {
+            val tracks = trackDao.getTracksByIds(trackIds)
+            // Restore exact saved order, handling any deleted tracks
+            val trackMap = tracks.associateBy { it.id }
+            val orderedTracks = trackIds.mapNotNull { trackMap[it] }
+            
+            if (orderedTracks.isNotEmpty()) {
+                val mediaItems = orderedTracks.map { track ->
+                    val extras = android.os.Bundle().apply {
+                        putBoolean("isAutoAppended", false)
+                    }
+                    val meta = MediaMetadata.Builder()
+                        .setTitle(track.title)
+                        .setArtist(track.artist)
+                        .setExtras(extras)
+                    track.artworkPath?.let { meta.setArtworkUri(Uri.parse("file://$it")) }
+                    MediaItem.Builder()
+                        .setMediaId(track.id.toString())
+                        .setUri(track.path)
+                        .setMediaMetadata(meta.build())
+                        .build()
+                }
+                
+                withContext(Dispatchers.Main) {
+                    controller.setMediaItems(mediaItems, savedIndex.coerceIn(0, mediaItems.lastIndex), savedPosition)
+                    controller.prepare()
+                }
+            }
+        }
     }
 }

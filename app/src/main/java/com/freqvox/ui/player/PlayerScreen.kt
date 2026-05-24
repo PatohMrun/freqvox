@@ -57,6 +57,8 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.foundation.gestures.scrollBy
+import kotlinx.coroutines.isActive
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -802,9 +804,14 @@ fun PlayerScreen(
         var draggingIndex by remember { mutableIntStateOf(-1) }
         var dragStartIndex by remember { mutableIntStateOf(-1) }
         var dragOffsetY by remember { mutableFloatStateOf(0f) }
+        var totalDragOffsetY by remember { mutableFloatStateOf(0f) }
         var droppedId by remember { mutableStateOf<Int?>(null) }
+        // Raw pointer Y relative to the LazyColumn viewport — set on every onDrag call
+        var pointerYInList by remember { mutableFloatStateOf(0f) }
         val coroutineScope = rememberCoroutineScope()
         val queueListState = rememberLazyListState()
+        val density = LocalDensity.current
+        val itemTotalHeightPx = remember(density) { with(density) { 64.dp.toPx() } }
 
         var localCurrentQueueIndex by remember { mutableIntStateOf(currentQueueIndex) }
 
@@ -826,6 +833,62 @@ fun PlayerScreen(
             if (queue.isNotEmpty()) {
                 val target = (currentQueueIndex - 1).coerceAtLeast(0)
                 queueListState.animateScrollToItem(target)
+            }
+        }
+
+        val isDraggingActive = draggingIndex != -1
+        LaunchedEffect(isDraggingActive) {
+            if (isDraggingActive) {
+                while (isActive) {
+                    val di = draggingIndex
+                    if (di < 0 || di >= localQueue.size) {
+                        kotlinx.coroutines.delay(16)
+                        continue
+                    }
+                    val viewportHeight = queueListState.layoutInfo.viewportSize.height.toFloat()
+                    if (viewportHeight > 0f) {
+                        val edgeZone = with(density) { 80.dp.toPx() }
+                        val scrollDelta = when {
+                            pointerYInList < edgeZone -> {
+                                val factor = 1f - (pointerYInList / edgeZone).coerceIn(0f, 1f)
+                                -factor * 24f
+                            }
+                            pointerYInList > (viewportHeight - edgeZone) -> {
+                                val factor = (pointerYInList - (viewportHeight - edgeZone)) / edgeZone
+                                factor.coerceIn(0f, 1f) * 24f
+                            }
+                            else -> 0f
+                        }
+                        if (scrollDelta != 0f) {
+                            val consumed = queueListState.scrollBy(scrollDelta)
+                            if (consumed != 0f && draggingIndex >= 0) {
+                                // List scrolled: items shifted visually, compensate so held item stays under finger
+                                dragOffsetY += consumed
+                                totalDragOffsetY += consumed
+
+                                val slotsShifted = (totalDragOffsetY / itemTotalHeightPx).roundToInt()
+                                val targetIdx = (dragStartIndex + slotsShifted).coerceIn(0, localQueue.lastIndex)
+                                val curIdx = draggingIndex
+                                if (targetIdx != curIdx && curIdx in localQueue.indices && targetIdx in localQueue.indices) {
+                                    val adj = (curIdx - targetIdx) * itemTotalHeightPx
+                                    androidx.compose.runtime.snapshots.Snapshot.withMutableSnapshot {
+                                        localQueue.add(targetIdx, localQueue.removeAt(curIdx))
+                                        if (localCurrentQueueIndex == curIdx) {
+                                            localCurrentQueueIndex = targetIdx
+                                        } else if (curIdx < localCurrentQueueIndex && targetIdx >= localCurrentQueueIndex) {
+                                            localCurrentQueueIndex--
+                                        } else if (curIdx > localCurrentQueueIndex && targetIdx <= localCurrentQueueIndex) {
+                                            localCurrentQueueIndex++
+                                        }
+                                        dragOffsetY += adj
+                                        draggingIndex = targetIdx
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    kotlinx.coroutines.delay(16)
+                }
             }
         }
 
@@ -938,40 +1001,43 @@ fun PlayerScreen(
                                     // Long-press anywhere on the row activates drag
                                     .pointerInput(stableId) {
                                         detectDragGesturesAfterLongPress(
-                                            onDragStart = { 
+                                            onDragStart = { offset ->
                                                 val currentIndex = localQueue.indexOfFirst { it.first == stableId }
                                                 if (currentIndex != -1) {
                                                     draggingIndex = currentIndex
                                                     dragStartIndex = currentIndex
                                                     dragOffsetY = 0f
+                                                    totalDragOffsetY = 0f
+                                                    // Initialize pointer Y using item's actual viewport position + touch offset within item
+                                                    val itemInfo = queueListState.layoutInfo.visibleItemsInfo
+                                                        .firstOrNull { it.key == stableId }
+                                                    pointerYInList = (itemInfo?.offset?.toFloat() ?: 0f) + offset.y
                                                     droppedId = null 
                                                 }
                                             },
-                                            onDrag = { _, delta ->
+                                            onDrag = { change, delta ->
+                                                change.consume()
+                                                pointerYInList += delta.y
                                                 dragOffsetY += delta.y
-                                                val items = queueListState.layoutInfo.visibleItemsInfo
-                                                val fromItem = items.firstOrNull { it.key == stableId }
-                                                if (fromItem != null) {
-                                                    val dragCenter = fromItem.offset + fromItem.size / 2 + dragOffsetY.roundToInt()
-                                                    val validItems = items.filter { it.key != "dummy_anchor" }
-                                                    val nearest = validItems.minByOrNull { kotlin.math.abs(it.offset + it.size / 2 - dragCenter) }
-                                                    if (nearest != null) {
-                                                        val targetIdx = (nearest.index - 1).coerceIn(0, localQueue.size - 1)
-                                                        if (targetIdx != draggingIndex) {
-                                                            val adj = if (targetIdx > draggingIndex) -nearest.size.toFloat() else nearest.size.toFloat()
-                                                            androidx.compose.runtime.snapshots.Snapshot.withMutableSnapshot {
-                                                                localQueue.add(targetIdx, localQueue.removeAt(draggingIndex))
-                                                                if (localCurrentQueueIndex == draggingIndex) {
-                                                                    localCurrentQueueIndex = targetIdx
-                                                                } else if (draggingIndex < localCurrentQueueIndex && targetIdx >= localCurrentQueueIndex) {
-                                                                    localCurrentQueueIndex--
-                                                                } else if (draggingIndex > localCurrentQueueIndex && targetIdx <= localCurrentQueueIndex) {
-                                                                    localCurrentQueueIndex++
-                                                                }
-                                                                dragOffsetY += adj
-                                                                draggingIndex = targetIdx
-                                                            }
+                                                totalDragOffsetY += delta.y
+                                                
+                                                val slotsShifted = (totalDragOffsetY / itemTotalHeightPx).roundToInt()
+                                                val targetIdx = (dragStartIndex + slotsShifted).coerceIn(0, localQueue.lastIndex)
+                                                val curIdx = draggingIndex
+                                                
+                                                if (targetIdx != curIdx && curIdx in localQueue.indices && targetIdx in localQueue.indices) {
+                                                    val adj = (curIdx - targetIdx) * itemTotalHeightPx
+                                                    androidx.compose.runtime.snapshots.Snapshot.withMutableSnapshot {
+                                                        localQueue.add(targetIdx, localQueue.removeAt(curIdx))
+                                                        if (localCurrentQueueIndex == curIdx) {
+                                                            localCurrentQueueIndex = targetIdx
+                                                        } else if (curIdx < localCurrentQueueIndex && targetIdx >= localCurrentQueueIndex) {
+                                                            localCurrentQueueIndex--
+                                                        } else if (curIdx > localCurrentQueueIndex && targetIdx <= localCurrentQueueIndex) {
+                                                            localCurrentQueueIndex++
                                                         }
+                                                        dragOffsetY += adj
+                                                        draggingIndex = targetIdx
                                                     }
                                                 }
                                             },
