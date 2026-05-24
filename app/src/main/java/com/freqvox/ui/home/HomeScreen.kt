@@ -4,15 +4,22 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
@@ -39,12 +46,19 @@ import com.freqvox.data.local.entities.TrackEntity
 import com.freqvox.playback.PlaybackController
 import com.freqvox.ui.main.MainViewModel
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.LaunchedEffect
+import com.freqvox.ui.search.SearchSheet
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import java.util.*
+import kotlin.random.Random
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -67,15 +81,57 @@ fun HomeScreen(
 
     var refreshTrigger by remember { mutableStateOf(0) }
     var isRefreshing by remember { mutableStateOf(false) }
+    var showSearchSheet by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
-    val feedItems = remember(activeTracks, playHistory, taggedTrackIds, refreshTrigger) {
-        FeedGenerator.generateFeed(activeTracks, FeedContext(playHistory, taggedTrackIds))
+    if (showSearchSheet) {
+        SearchSheet(
+            playbackController = playbackController,
+            onDismiss = { showSearchSheet = false },
+            viewModel = viewModel
+        )
+    }
+
+    // Endless feed — every page is a fresh remix of the same library with a
+    // different per-page seed. Pulling to refresh resets back to page 1.
+    var pageCount by remember(activeTracks, refreshTrigger) { mutableIntStateOf(1) }
+
+    val feedItems: List<PagedFeedItem> = remember(
+        activeTracks, playHistory, taggedTrackIds, refreshTrigger, pageCount
+    ) {
+        val ctx = FeedContext(playHistory, taggedTrackIds)
+        (1..pageCount).flatMap { page ->
+            val pageRandom = Random(refreshTrigger * 1_000_003L + page * 31L)
+            FeedGenerator.generateFeed(activeTracks, ctx, pageRandom)
+                .map { PagedFeedItem(page, it) }
+        }
     }
 
     val heroTrack = currentTrack
         ?: activeTracks.find { it.id == playHistory.firstOrNull()?.trackId }
         ?: activeTracks.firstOrNull()
+
+    val listState = rememberLazyListState()
+
+    // Auto-paginate when the user nears the end of the rendered feed.
+    LaunchedEffect(listState, activeTracks.size) {
+        if (activeTracks.isEmpty()) return@LaunchedEffect
+        snapshotFlow {
+            val info = listState.layoutInfo
+            val total = info.totalItemsCount
+            val lastVisible = info.visibleItemsInfo.lastOrNull()?.index ?: -1
+            if (total <= 0) -1 else (total - lastVisible)
+        }
+            .distinctUntilChanged()
+            .collect { distance ->
+                if (distance in 1..6) pageCount++
+            }
+    }
+
+    // Back-to-top FAB visibility — only show after the user has scrolled meaningfully.
+    val showBackToTop by remember {
+        derivedStateOf { listState.firstVisibleItemIndex > 8 }
+    }
 
     PullToRefreshBox(
         isRefreshing = isRefreshing,
@@ -108,6 +164,7 @@ fun HomeScreen(
         }
 
         LazyColumn(
+            state = listState,
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(top = 24.dp, bottom = 120.dp) // Space for bottom nav/player
         ) {
@@ -117,7 +174,7 @@ fun HomeScreen(
                 greeting = greeting,
                 totalSongs = totalSongs,
                 totalDurationMs = totalDuration,
-                onSearchClick = onSearchClick,
+                onSearchClick = { showSearchSheet = true },
                 modifier = Modifier.padding(horizontal = 24.dp)
             )
             Spacer(modifier = Modifier.height(32.dp))
@@ -138,9 +195,10 @@ fun HomeScreen(
         // Iterate through the dynamically generated endless feed blocks
         items(
             items = feedItems,
-            key = { it.stableId() },
-            contentType = { it::class }
-        ) { item ->
+            key = { "${it.page}:${it.item.stableId()}" },
+            contentType = { it.item::class }
+        ) { paged ->
+            val item = paged.item
             when (item) {
                 is FeedItem.Spotlight -> {
                     SpotlightFeedBlock(
@@ -221,9 +279,31 @@ fun HomeScreen(
             }
             } // Close when
     } // Close LazyColumn
+
+        // Back-to-top FAB — appears once the user has scrolled meaningfully past the hero.
+        AnimatedVisibility(
+            visible = showBackToTop,
+            enter = fadeIn() + scaleIn(),
+            exit = fadeOut() + scaleOut(),
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(end = 20.dp, bottom = 100.dp)
+        ) {
+            FloatingActionButton(
+                onClick = { scope.launch { listState.animateScrollToItem(0) } },
+                containerColor = Color(0xFF7C4DFF),
+                contentColor = Color.White
+            ) {
+                Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Back to top")
+            }
+        }
     } // Close Box
     } // Close PullToRefreshBox
 } // Close HomeScreen
+
+/** Wraps a [FeedItem] with the page index it was generated for, so [LazyColumn]
+ *  keys remain unique across endless-scroll pages. */
+data class PagedFeedItem(val page: Int, val item: FeedItem)
 
 @Composable
 fun GridFeedBlock(tracks: List<TrackEntity>, onClick: (TrackEntity) -> Unit, modifier: Modifier = Modifier) {

@@ -76,4 +76,10 @@ interface TrackDao {
 
     @Query("SELECT * FROM tracks ORDER BY RANDOM() LIMIT :limit")
     suspend fun getRandomTracks(limit: Int = 15): List<TrackEntity>
+
+    /** Random library tracks, excluding a given set of ids — used by autoplay to
+     *  keep the queue flowing past a finished playlist without re-queuing the
+     *  same tracks. */
+    @Query("SELECT * FROM tracks WHERE id NOT IN (:excludeIds) ORDER BY RANDOM() LIMIT :limit")
+    suspend fun getRandomTracksExcluding(excludeIds: List<Long>, limit: Int = 15): List<TrackEntity>
 }

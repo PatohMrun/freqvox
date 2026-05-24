@@ -68,11 +68,18 @@ fun MiniPlayer(
     var pendingSeekFraction by remember { mutableFloatStateOf(-1f) }
     val barHeight by animateDpAsState(if (isDragging) 4.dp else 2.dp, label = "barH")
 
-    // Clear pending seek once currentPosition reflects the seek target (within 3%)
-    if (pendingSeekFraction >= 0f && duration > 0) {
-        val positionFraction = currentPosition.toFloat() / duration
-        if (kotlin.math.abs(positionFraction - pendingSeekFraction) < 0.03f) {
-            pendingSeekFraction = -1f
+    // Clear pending seek once currentPosition reflects the seek target (within 3%).
+    // Done in a LaunchedEffect (not during composition) AND with a small delay so the
+    // interpolatedPos Animatable has a chance to snapTo the new currentPosition first.
+    // Without the delay the Canvas reads the stale interpolated value for one frame
+    // and the bar visibly jumps backward — that is the post-scrub flicker.
+    LaunchedEffect(currentPosition, duration, pendingSeekFraction) {
+        if (pendingSeekFraction >= 0f && duration > 0) {
+            val positionFraction = currentPosition.toFloat() / duration
+            if (kotlin.math.abs(positionFraction - pendingSeekFraction) < 0.03f) {
+                kotlinx.coroutines.delay(60L)
+                pendingSeekFraction = -1f
+            }
         }
     }
 

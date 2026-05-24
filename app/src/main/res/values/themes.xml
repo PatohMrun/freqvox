@@ -1,15 +1,27 @@
 <resources>
-    <!-- Base application theme. -->
+    <!-- Splash → post-splash chain. -->
     <style name="Theme.Freqvox" parent="Theme.SplashScreen">
-        <!-- Set the splash screen background, animated icon, and animation duration. -->
         <item name="windowSplashScreenBackground">@color/splash_background</item>
-        <!-- Use windowSplashScreenAnimatedIcon to add a drawable or an animated drawable -->
         <item name="windowSplashScreenAnimatedIcon">@drawable/splash_logo</item>
-        <!-- Set the theme of the Activity that directly follows your splash screen. -->
         <item name="postSplashScreenTheme">@style/Theme.Freqvox.Main</item>
+
+        <!-- Make the splash window itself match the rest of the app so the hand-off
+             does not flash a system-default status bar style. -->
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
     </style>
 
-    <style name="Theme.Freqvox.Main" parent="android:Theme.Material.Light.NoActionBar">
+    <!-- Dark NoActionBar parent: matches the Compose dark color scheme so OEM
+         skins don't override the runtime SystemBarStyle.dark(...) call with
+         their own "this is a Light theme, force dark icons" logic. -->
+    <style name="Theme.Freqvox.Main" parent="android:Theme.Material.NoActionBar">
         <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+        <item name="android:windowBackground">@color/splash_background</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
     </style>
 </resources>

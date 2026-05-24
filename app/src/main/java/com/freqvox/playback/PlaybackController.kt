@@ -221,7 +221,8 @@ class PlaybackController(
     }
 
     private fun checkAndAppendTracksIfNeeded(controller: MediaController) {
-        // Never append when any loop mode is active
+        // Never append when any loop mode is active — the user has chosen to loop
+        // their original selection, so injecting new tracks would break that intent.
         if (controller.repeatMode != Player.REPEAT_MODE_OFF) return
 
         val currentIndex = controller.currentMediaItemIndex
@@ -230,16 +231,31 @@ class PlaybackController(
         if (totalItems - currentIndex <= 3 && !isFetchingAutoplay) {
             isFetchingAutoplay = true
             // MediaController must only be touched on the main thread — snapshot queue ids here.
-            val alreadyQueued = (0 until controller.mediaItemCount)
+            val alreadyQueuedIds = (0 until controller.mediaItemCount)
                 .map { i -> controller.getMediaItemAt(i).mediaId }
                 .toSet()
 
             scope.launch(Dispatchers.IO) {
                 try {
-                    val nextBatch: List<TrackEntity> = if (sourcePool.isNotEmpty()) {
-                        sourcePool.filter { it.id.toString() !in alreadyQueued }.take(15)
+                    // Two-stage autoplay:
+                    //   1) Drain whatever is left of the original sourcePool (the playlist/
+                    //      carousel/library group the user actually picked).
+                    //   2) Once that pool is exhausted (or was never set), fall back to a
+                    //      random sweep of the wider library — excluding tracks already in
+                    //      the queue — so short Home carousels and small Library playlists
+                    //      keep flowing instead of going silent at the last track.
+                    val unplayedPool = sourcePool.filter { it.id.toString() !in alreadyQueuedIds }
+                    val nextBatch: List<TrackEntity> = if (unplayedPool.isNotEmpty()) {
+                        unplayedPool.take(15)
                     } else {
-                        trackDao.getRandomTracks(15)
+                        val excludeIds = alreadyQueuedIds
+                            .mapNotNull { it.toLongOrNull() }
+                            .take(900) // SQLite parameter cap safety
+                        if (excludeIds.isEmpty()) {
+                            trackDao.getRandomTracks(15)
+                        } else {
+                            trackDao.getRandomTracksExcluding(excludeIds, 15)
+                        }
                     }
 
                     if (nextBatch.isNotEmpty()) {

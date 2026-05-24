@@ -87,7 +87,13 @@ fun MainScreen(
         if (currentTrackTitle == "No track selected") showPlayer = false
     }
 
-    BackHandler(enabled = showPlayer) { showPlayer = false }
+    // NOTE: BackHandler is intentionally NOT placed here. NavHost (composed inside
+    // the Scaffold below) registers its own OnBackPressedCallback during composition,
+    // and OnBackPressedDispatcher fires LIFO — last registered wins. If we add our
+    // BackHandler here at MainScreen scope, NavHost's callback fires first and pops
+    // the bottom-nav back stack (e.g. Library -> Home) before our handler is even
+    // consulted, which is why dismissing the player used to land you on Home.
+    // We register it INSIDE the player's AnimatedVisibility block instead.
 
     val showMiniPlayer = currentTrackTitle != "No track selected"
 
@@ -258,6 +264,12 @@ fun MainScreen(
                         enter = fadeIn(tween(420)),
                         exit = fadeOut(tween(420))
                     ) {
+                        // Registered here so this callback is added to OnBackPressedDispatcher
+                        // AFTER NavHost's callback (which composes earlier in the tree). Because
+                        // the dispatcher iterates LIFO, ours fires first when the player is open,
+                        // dismissing the player without ever touching the nav back stack.
+                        BackHandler(enabled = showPlayer) { showPlayer = false }
+
                         CompositionLocalProvider(
                             LocalSharedTransitionScope provides sharedScope,
                             LocalAnimatedVisibilityScope provides this@AnimatedVisibility

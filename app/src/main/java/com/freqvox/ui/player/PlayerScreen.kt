@@ -8,8 +8,8 @@ import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
 import androidx.compose.animation.core.*
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
@@ -19,12 +19,15 @@ import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -47,6 +50,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -75,7 +79,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import com.freqvox.ui.player.components.QueueSheet
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun PlayerScreen(
     trackTitle: String,
@@ -165,14 +169,19 @@ fun PlayerScreen(
     }
 
     // ── Swipe-down-to-dismiss ─────────────────────────────────────────────
-    val density = LocalDensity.current
-    val dismissCommitPx by remember(density) { mutableFloatStateOf(with(density) { 80.dp.toPx() }) }
-    val dismissMaxPx by remember(density) { mutableFloatStateOf(with(density) { 360.dp.toPx() }) }
-    var dismissOffsetY by remember { mutableFloatStateOf(0f) }
+    val density          = LocalDensity.current
+    val screenHeightPx   = with(density) { LocalConfiguration.current.screenHeightDp.dp.toPx() }
+    val dismissCommitPx  by remember(density) { mutableFloatStateOf(with(density) { 80.dp.toPx() }) }
+    val dismissMaxPx     by remember(density) { mutableFloatStateOf(with(density) { 360.dp.toPx() }) }
+    var dismissOffsetY   by remember { mutableFloatStateOf(0f) }
+    // While the slide-off animation is running, ignore further finger input so
+    // we don't restart partway through and end up snapping between states.
+    var isDismissing     by remember { mutableStateOf(false) }
 
-    val dismissConnection = remember(dismissCommitPx, dismissMaxPx) {
+    val dismissConnection = remember(dismissCommitPx, dismissMaxPx, screenHeightPx) {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (isDismissing) return Offset.Zero
                 if (available.y < 0f && dismissOffsetY > 0f && source == NestedScrollSource.UserInput) {
                     val take = kotlin.math.max(available.y, -dismissOffsetY)
                     dismissOffsetY += take
@@ -182,8 +191,8 @@ fun PlayerScreen(
             }
 
             override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+                if (isDismissing) return Offset.Zero
                 if (available.y > 0f && source == NestedScrollSource.UserInput) {
-                    // 1:1 finger tracking
                     dismissOffsetY = (dismissOffsetY + available.y).coerceAtMost(dismissMaxPx)
                     return Offset(0f, available.y)
                 }
@@ -191,18 +200,23 @@ fun PlayerScreen(
             }
 
             override suspend fun onPreFling(available: Velocity): Velocity {
+                if (isDismissing) return Velocity.Zero
                 val shouldDismiss = dismissOffsetY > dismissCommitPx || available.y > 800f
                 if (shouldDismiss) {
+                    // Slide DOWN off-screen while the parent fades us out in parallel.
+                    // The old code animated dismissOffsetY back to 0 (i.e. UP), which
+                    // is the wrong direction and is what made the dismiss "flicker".
+                    isDismissing = true
                     onBack()
                     androidx.compose.animation.core.animate(
                         initialValue = dismissOffsetY,
-                        targetValue = 0f,
-                        animationSpec = tween(durationMillis = 260, easing = FastOutSlowInEasing)
+                        targetValue  = screenHeightPx,
+                        animationSpec = tween(durationMillis = 280, easing = FastOutLinearInEasing)
                     ) { value, _ -> dismissOffsetY = value }
                 } else {
                     androidx.compose.animation.core.animate(
                         initialValue = dismissOffsetY,
-                        targetValue = 0f,
+                        targetValue  = 0f,
                         animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow)
                     ) { value, _ -> dismissOffsetY = value }
                 }
@@ -247,8 +261,7 @@ fun PlayerScreen(
             .statusBarsPadding()
             .navigationBarsPadding()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 24.dp)
-            .animateContentSize(),
+            .padding(horizontal = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Spacer(modifier = Modifier.height(16.dp))
@@ -651,13 +664,23 @@ fun PlayerScreen(
 
     // ── Sleep Timer Sheet ──────────────────────────────────────────────────────
     if (showSleepSheet) {
+        // Disable the sheet's own IME-aware inset so we can manage it ourselves
+        // (ModalBottomSheet under edge-to-edge does NOT auto-resize for the keyboard).
+        // Combined with .imePadding() + verticalScroll + bringIntoViewRequester below,
+        // this makes the custom-minutes TextField pop above the keyboard on focus.
         ModalBottomSheet(
             onDismissRequest = { showSleepSheet = false },
-            containerColor = Color(0xFF1A1A26)
+            containerColor   = Color(0xFF1A1A26),
+            sheetState       = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            contentWindowInsets = { WindowInsets(0, 0, 0, 0) }
         ) {
+            val scrollState = rememberScrollState()
+            val bringIntoView = remember { BringIntoViewRequester() }
+            val coroutineScope = rememberCoroutineScope()
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .verticalScroll(scrollState)
                     .imePadding()
                     .padding(horizontal = 24.dp)
                     .padding(bottom = 32.dp),
@@ -741,7 +764,19 @@ fun PlayerScreen(
                         placeholder = { Text("Minutes", color = Color.White.copy(alpha = 0.3f), fontSize = 13.sp) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .bringIntoViewRequester(bringIntoView)
+                            .onFocusChanged { state ->
+                                if (state.isFocused) {
+                                    coroutineScope.launch {
+                                        // Small delay so the IME has started its animation
+                                        // and imePadding has actually grown before we scroll.
+                                        delay(220L)
+                                        bringIntoView.bringIntoView()
+                                    }
+                                }
+                            },
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedTextColor = Color.White,
                             unfocusedTextColor = Color.White,

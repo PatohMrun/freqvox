@@ -7,6 +7,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import com.freqvox.data.local.entities.PlayHistoryEntity
 import com.freqvox.data.local.entities.TrackEntity
 import java.util.Calendar
+import kotlin.random.Random
 
 data class FeedContext(
     val playHistory: List<PlayHistoryEntity> = emptyList(),
@@ -33,7 +34,15 @@ fun FeedItem.stableId(): String = when (this) {
 
 object FeedGenerator {
 
-    fun generateFeed(tracks: List<TrackEntity>, context: FeedContext = FeedContext()): List<FeedItem> {
+    /**
+     * Generate a feed "page". Pass distinct [random] instances per page (with different seeds)
+     * to get a different remix of the same library, supporting endless scroll on HomeScreen.
+     */
+    fun generateFeed(
+        tracks: List<TrackEntity>,
+        context: FeedContext = FeedContext(),
+        random: Random = Random.Default
+    ): List<FeedItem> {
         if (tracks.isEmpty()) return emptyList()
 
         val now = System.currentTimeMillis()
@@ -104,7 +113,7 @@ object FeedGenerator {
 
         val neverHeard = tracks
             .filter { it.playCount == 0 }
-            .shuffled()
+            .shuffled(random)
             .take(12)
 
         val freshInbox = tracks
@@ -114,28 +123,28 @@ object FeedGenerator {
 
         val deepCuts = tracks
             .filter { it.duration > 6 * 60_000L }
-            .shuffled()
+            .shuffled(random)
             .take(8)
 
         val epicTracks = tracks
             .filter { it.duration > 10 * 60_000L }
-            .shuffled()
+            .shuffled(random)
             .take(8)
 
         val quickHits = tracks
             .filter { it.duration in 60_000L..(3 * 60_000L) }
-            .shuffled()
+            .shuffled(random)
             .take(12)
 
         val interludes = tracks
             .filter { it.duration in 10_000L..<60_000L }
-            .shuffled()
+            .shuffled(random)
             .take(6)
 
         val discovery = tracks
             .sortedBy { it.playCount }
             .take((tracks.size * 0.6).toInt().coerceAtLeast(20))
-            .shuffled()
+            .shuffled(random)
             .take(20)
 
         val highCompletion = tracks
@@ -155,7 +164,7 @@ object FeedGenerator {
 
         val buriedTreasures = tracks
             .filter { it.playCount in 1..3 && it.skipCount == 0 }
-            .shuffled()
+            .shuffled(random)
             .take(10)
 
         val guiltyPleasures = tracks
@@ -172,7 +181,7 @@ object FeedGenerator {
         // ── Tag-based sections ────────────────────────────────────────────────
         fun tagTracks(vararg names: String): List<TrackEntity> {
             val ids = names.flatMapTo(mutableSetOf()) { context.taggedTrackIds[it.lowercase()] ?: emptySet() }
-            return ids.mapNotNull { trackById[it] }.shuffled().take(15) // Advised cap applied
+            return ids.mapNotNull { trackById[it] }.shuffled(random).take(15) // Advised cap applied
         }
 
         val likedTracks      = tagTracks("liked")
@@ -201,8 +210,8 @@ object FeedGenerator {
                 options.add(FeedItem.VerticalList(title, tracksList.take(5), icon))
             }
             if (tracksList.size >= 6) options.add(FeedItem.DoubleHorizontalCarousel(title, tracksList, icon))
-            
-            return options.randomOrNull() ?: FeedItem.HorizontalCarousel(title, tracksList, icon)
+
+            return options.randomOrNull(random) ?: FeedItem.HorizontalCarousel(title, tracksList, icon)
         }
 
         // Spotlight
@@ -331,8 +340,8 @@ object FeedGenerator {
         if (neverHeard.size >= 2)
             feedOptions.add(FeedItem.Grid("Never Heard", neverHeard.take(4), Icons.Default.QuestionMark))
 
-        // Assemble final feed (fully shuffled)
-        val feed = feedOptions.shuffled().toMutableList()
+        // Assemble final feed (fully shuffled with the per-page seed)
+        val feed = feedOptions.shuffled(random).toMutableList()
 
         // Fill remaining tracks not yet shown
         val usedIds = feed.flatMap { item ->
@@ -346,7 +355,7 @@ object FeedGenerator {
             }
         }.toSet()
 
-        tracks.filter { it.id !in usedIds }.shuffled().chunked(3).take(10)
+        tracks.filter { it.id !in usedIds }.shuffled(random).chunked(3).take(10)
             .forEachIndexed { i, chunk ->
                 if (chunk.isNotEmpty())
                     feed.add(FeedItem.VerticalList(if (i == 0) "Discover More" else null, chunk, if (i == 0) Icons.Default.Explore else null))

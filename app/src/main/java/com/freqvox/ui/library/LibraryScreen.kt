@@ -55,6 +55,7 @@ import com.freqvox.data.local.entities.TrackEntity
 import com.freqvox.playback.PlaybackController
 import com.freqvox.ui.home.ProceduralArtwork
 import com.freqvox.ui.main.MainViewModel
+import com.freqvox.ui.search.SearchSheet
 import java.io.File
 
 enum class LibraryTab { Songs, Albums, Artists, Folders, Playlists }
@@ -89,10 +90,19 @@ fun LibraryScreen(
     var selectedTab by remember { mutableStateOf(LibraryTab.Songs) }
     var sortOrder by remember { mutableStateOf(SortOrder.Default) }
     var trackToAdd by remember { mutableStateOf<TrackEntity?>(null) }
-    
+    var showSearchSheet by remember { mutableStateOf(false) }
+
     var expandedAlbumName by remember { mutableStateOf<String?>(null) }
     var expandedArtistName by remember { mutableStateOf<String?>(null) }
     var expandedFolderPath by remember { mutableStateOf<String?>(null) }
+
+    if (showSearchSheet) {
+        SearchSheet(
+            playbackController = playbackController,
+            onDismiss = { showSearchSheet = false },
+            viewModel = viewModel
+        )
+    }
 
     Column(
         modifier = Modifier.fillMaxSize()
@@ -123,7 +133,7 @@ fun LibraryScreen(
                 )
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onSearchClick) {
+                IconButton(onClick = { showSearchSheet = true }) {
                     Icon(
                         imageVector = Icons.Default.Search,
                         contentDescription = "Search",
