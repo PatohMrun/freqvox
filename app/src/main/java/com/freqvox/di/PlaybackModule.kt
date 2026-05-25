@@ -2,6 +2,7 @@ package com.freqvox.di
 
 import android.content.Context
 import com.freqvox.data.local.dao.PlayHistoryDao
+import com.freqvox.data.local.dao.TagDao
 import com.freqvox.data.local.dao.TrackDao
 import com.freqvox.playback.FreqvoxEqualizerManager
 import com.freqvox.playback.PlaybackController
@@ -28,11 +29,12 @@ object PlaybackModule {
     fun providePlaybackController(
         @ApplicationContext context: Context,
         trackDao: TrackDao,
+        tagDao: TagDao,
         playHistoryDao: PlayHistoryDao,
         sleepTimerManager: SleepTimerManager,
         equalizerManager: FreqvoxEqualizerManager
     ): PlaybackController {
-        return PlaybackController(context, trackDao, playHistoryDao, sleepTimerManager, equalizerManager).apply {
+        return PlaybackController(context, trackDao, tagDao, playHistoryDao, sleepTimerManager, equalizerManager).apply {
             initializeController()
         }
     }

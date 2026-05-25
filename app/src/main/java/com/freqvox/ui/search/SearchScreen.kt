@@ -31,6 +31,7 @@ import com.freqvox.data.local.entities.TrackEntity
 import com.freqvox.playback.PlaybackController
 import com.freqvox.ui.library.LibraryTrackItem
 import com.freqvox.ui.main.MainViewModel
+import com.freqvox.ui.tag.formatTagDisplayName
 
 @Composable
 fun SearchScreen(
@@ -233,7 +234,7 @@ fun TagCard(name: String, baseColor: Color, modifier: Modifier = Modifier, onTag
         )
         
         Text(
-            text = name.replaceFirstChar { if (it.isLowerCase()) it.titlecase(java.util.Locale.ROOT) else it.toString() },
+            text = formatTagDisplayName(name),
             color = Color.White,
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold,

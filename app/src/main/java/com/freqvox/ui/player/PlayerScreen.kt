@@ -66,6 +66,7 @@ import androidx.compose.ui.unit.IntOffset
 import com.freqvox.data.local.entities.TrackEntity
 import com.freqvox.playback.FreqvoxEqualizerManager
 import com.freqvox.ui.player.components.AestheticLikeButton
+import com.freqvox.ui.player.components.DislikeButton
 import com.freqvox.ui.player.components.EqualizerSheet
 import com.freqvox.ui.player.components.FreqvoxVisualizer
 import com.freqvox.ui.player.components.LyricsSheet
@@ -89,6 +90,7 @@ fun PlayerScreen(
     duration: Long,
     artworkUri: String?,
     isLiked: Boolean,
+    isDisliked: Boolean = false,
     shuffleEnabled: Boolean,
     repeatMode: Int,
     sleepTimerActive: Boolean,
@@ -99,6 +101,7 @@ fun PlayerScreen(
     onPreviousClick: () -> Unit,
     onSeek: (Float) -> Unit,
     onLikeClick: () -> Unit,
+    onDislikeClick: () -> Unit = {},
     onShuffleClick: () -> Unit,
     onRepeatClick: () -> Unit,
     onSleepTimer: (Int) -> Unit,
@@ -150,11 +153,13 @@ fun PlayerScreen(
 
     var offsetX by remember { mutableStateOf(0f) }
 
-    // ── Seek-bubble feedback (double-tap artwork) ─────────────────────────
+    // ── Seek-bubble feedback (rapid tap pairs on artwork) ─────────────────
     val latestPosition by rememberUpdatedState(currentPosition)
+    val latestDuration by rememberUpdatedState(duration)
     var seekBubbleKey by remember { mutableIntStateOf(0) }
     var seekBubbleIsForward by remember { mutableStateOf(true) }
     var showSeekBubble by remember { mutableStateOf(false) }
+    var lastArtworkTapTime by remember { mutableLongStateOf(0L) }
     val seekBubbleAlpha by animateFloatAsState(
         targetValue = if (showSeekBubble) 1f else 0f,
         animationSpec = if (showSeekBubble) tween(80) else tween(450, easing = FastOutSlowInEasing),
@@ -256,7 +261,7 @@ fun PlayerScreen(
                 scaleX = scale
                 scaleY = scale
             }
-            .background(MaterialTheme.colorScheme.background)
+            .background(Color(0xFF12121A))
             .nestedScroll(dismissConnection)
             .statusBarsPadding()
             .navigationBarsPadding()
@@ -326,15 +331,19 @@ fun PlayerScreen(
                 .aspectRatio(1f)
                 .pointerInput(duration) {
                     detectTapGestures(
-                        onDoubleTap = { offset ->
-                            if (duration > 0) {
-                                val isForward = offset.x > size.width / 2f
+                        onTap = { offset ->
+                            val dur = latestDuration
+                            if (dur <= 0) return@detectTapGestures
+                            val now = System.currentTimeMillis()
+                            val isForward = offset.x > size.width / 2f
+                            if (now - lastArtworkTapTime <= 400L) {
                                 val seekDelta = if (isForward) 10_000L else -10_000L
-                                val newPos = (latestPosition + seekDelta).coerceIn(0L, duration)
-                                onSeek(newPos.toFloat() / duration)
+                                val newPos = (latestPosition + seekDelta).coerceIn(0L, dur)
+                                onSeek(newPos.toFloat() / dur)
                                 seekBubbleIsForward = isForward
                                 seekBubbleKey++
                             }
+                            lastArtworkTapTime = now
                         }
                     )
                 }
@@ -454,11 +463,19 @@ fun PlayerScreen(
                         modifier = Modifier.then(com.freqvox.ui.components.sharedElementModifier("player.artist"))
                     )
                 }
-                AestheticLikeButton(
-                    isLiked = isLiked,
-                    onClick = onLikeClick,
-                    modifier = Modifier.size(44.dp)
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    DislikeButton(
+                        isDisliked = isDisliked,
+                        onClick = onDislikeClick,
+                        modifier = Modifier.size(44.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    AestheticLikeButton(
+                        isLiked = isLiked,
+                        onClick = onLikeClick,
+                        modifier = Modifier.size(44.dp)
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(16.dp))

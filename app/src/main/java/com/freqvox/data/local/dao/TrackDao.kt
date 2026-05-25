@@ -40,6 +40,15 @@ interface TrackDao {
     @Query("DELETE FROM tracks WHERE id = :trackId")
     suspend fun deleteTrackById(trackId: Long)
 
+    @Query("DELETE FROM track_tags WHERE trackId = :trackId")
+    suspend fun deleteTrackTagsForTrack(trackId: Long)
+
+    @Query("DELETE FROM play_history WHERE trackId = :trackId")
+    suspend fun deletePlayHistoryForTrack(trackId: Long)
+
+    @Query("DELETE FROM skip_history WHERE trackId = :trackId")
+    suspend fun deleteSkipHistoryForTrack(trackId: Long)
+
     @Query("SELECT * FROM tracks ORDER BY playCount DESC LIMIT 50")
     fun getMostPlayedTracks(): Flow<List<TrackEntity>>
 
@@ -74,12 +83,27 @@ interface TrackDao {
     """)
     fun getHiddenTracks(recentThreshold: Long): Flow<List<TrackEntity>>
 
-    @Query("SELECT * FROM tracks ORDER BY RANDOM() LIMIT :limit")
+    @Query("""
+        SELECT * FROM tracks
+        WHERE id NOT IN (
+            SELECT trackId FROM track_tags
+            WHERE tagId = (SELECT id FROM tags WHERE LOWER(name) = 'disliked' LIMIT 1)
+        )
+        ORDER BY RANDOM() LIMIT :limit
+    """)
     suspend fun getRandomTracks(limit: Int = 15): List<TrackEntity>
 
     /** Random library tracks, excluding a given set of ids — used by autoplay to
      *  keep the queue flowing past a finished playlist without re-queuing the
-     *  same tracks. */
-    @Query("SELECT * FROM tracks WHERE id NOT IN (:excludeIds) ORDER BY RANDOM() LIMIT :limit")
+     *  same tracks. Also excludes disliked tracks. */
+    @Query("""
+        SELECT * FROM tracks
+        WHERE id NOT IN (:excludeIds)
+        AND id NOT IN (
+            SELECT trackId FROM track_tags
+            WHERE tagId = (SELECT id FROM tags WHERE LOWER(name) = 'disliked' LIMIT 1)
+        )
+        ORDER BY RANDOM() LIMIT :limit
+    """)
     suspend fun getRandomTracksExcluding(excludeIds: List<Long>, limit: Int = 15): List<TrackEntity>
 }

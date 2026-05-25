@@ -6,14 +6,16 @@ import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.background
 import androidx.compose.material3.*
@@ -67,11 +69,11 @@ fun MainScreen(
     val currentQueueIndex by playbackController.currentQueueIndex.collectAsStateWithLifecycle()
 
     val isLiked by viewModel.isCurrentTrackLiked.collectAsStateWithLifecycle()
+    val isDisliked by viewModel.isCurrentTrackDisliked.collectAsStateWithLifecycle()
     val currentTrack by viewModel.currentTrack.collectAsStateWithLifecycle()
     val allTags by viewModel.allTags.collectAsStateWithLifecycle()
     val currentTrackTags by viewModel.currentTrackTags.collectAsStateWithLifecycle()
 
-    val sheetState = rememberModalBottomSheetState()
     val scope = rememberCoroutineScope()
     var showTagSheet by remember { mutableStateOf(false) }
     var searchFocusTrigger by remember { mutableStateOf(0L) }
@@ -123,7 +125,8 @@ fun MainScreen(
                                     ) {
                                         MiniPlayer(
                                             playbackController = playbackController,
-                                            onMiniPlayerClick = { showPlayer = true }
+                                            onMiniPlayerClick = { showPlayer = true },
+                                            onSwipeUpToExpand = { showPlayer = true }
                                         )
                                     }
                                 }
@@ -234,9 +237,10 @@ fun MainScreen(
                             if (showTagSheet) {
                                 ModalBottomSheet(
                                     onDismissRequest = { showTagSheet = false },
-                                    sheetState = sheetState,
-                                    containerColor = Color.Transparent,
-                                    dragHandle = null
+                                    sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+                                    containerColor = Color(0xFF12121A),
+                                    dragHandle = { BottomSheetDefaults.DragHandle() },
+                                    contentWindowInsets = { WindowInsets(0, 0, 0, 0) }
                                 ) {
                                     TagOverlay(
                                         tags = allTags,
@@ -247,22 +251,24 @@ fun MainScreen(
                                         onCreateCustomTag = { name ->
                                             viewModel.createCustomTag(name)
                                         },
-                                        onClose = {
-                                            scope.launch { sheetState.hide() }.invokeOnCompletion {
-                                                showTagSheet = false
-                                            }
-                                        }
+                                        onClose = { showTagSheet = false },
+                                        modifier = Modifier.navigationBarsPadding().padding(bottom = 8.dp)
                                     )
                                 }
                             }
                         }
                     }
 
-                    // Full-screen player overlay — appears on top of the Scaffold via SharedTransitionLayout
+                    // Full-screen player overlay — appears on top of the Scaffold via SharedTransitionLayout.
+                    // We deliberately use only fade for enter/exit and let the shared-bounds container
+                    // animate the actual geometric morph from the mini-player. A slide-in here would race
+                    // the shared title/artist elements (which animate against their *layout* position,
+                    // not the slide translation), making the text appear to "fly up" before the rest of
+                    // the player catches up.
                     AnimatedVisibility(
                         visible = showPlayer,
-                        enter = fadeIn(tween(420)),
-                        exit = fadeOut(tween(420))
+                        enter = fadeIn(tween(280, easing = FastOutSlowInEasing)),
+                        exit = fadeOut(tween(220, easing = FastOutSlowInEasing))
                     ) {
                         // Registered here so this callback is added to OnBackPressedDispatcher
                         // AFTER NavHost's callback (which composes earlier in the tree). Because
@@ -274,6 +280,11 @@ fun MainScreen(
                             LocalSharedTransitionScope provides sharedScope,
                             LocalAnimatedVisibilityScope provides this@AnimatedVisibility
                         ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(Color(0xFF12121A))
+                            ) {
                             val playerPosition by playbackController.currentPosition.collectAsStateWithLifecycle()
                             val playerDuration by playbackController.duration.collectAsStateWithLifecycle()
                             PlayerScreen(
@@ -284,6 +295,7 @@ fun MainScreen(
                                 duration = playerDuration,
                                 artworkUri = currentArtworkUri?.toString(),
                                 isLiked = isLiked,
+                                isDisliked = isDisliked,
                                 shuffleEnabled = shuffleEnabled,
                                 repeatMode = repeatMode,
                                 sleepTimerActive = sleepTimerActive,
@@ -294,6 +306,7 @@ fun MainScreen(
                                 onPreviousClick = { playbackController.playPrevious() },
                                 onSeek = { playbackController.seekTo((it * playerDuration.toFloat()).toLong()) },
                                 onLikeClick = { viewModel.toggleLike() },
+                                onDislikeClick = { viewModel.toggleDislike() },
                                 onShuffleClick = { playbackController.toggleShuffle() },
                                 onRepeatClick = { playbackController.cycleRepeatMode() },
                                 onSleepTimer = { minutes -> playbackController.startSleepTimer(minutes) },
@@ -307,6 +320,7 @@ fun MainScreen(
                                 equalizerManager = playbackController.equalizerManager,
                                 currentTrack = currentTrack
                             )
+                            }
                         }
                     }
                 }

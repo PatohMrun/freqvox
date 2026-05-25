@@ -12,11 +12,10 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.draggable
-import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.awaitHorizontalTouchSlopOrCancellation
+import androidx.compose.foundation.gestures.horizontalDrag
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -33,6 +32,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.font.FontWeight
@@ -48,6 +49,7 @@ import kotlin.math.roundToInt
 fun MiniPlayer(
     playbackController: PlaybackController,
     onMiniPlayerClick: () -> Unit,
+    onSwipeUpToExpand: () -> Unit = onMiniPlayerClick,
     modifier: Modifier = Modifier
 ) {
     val isPlaying by playbackController.isPlaying.collectAsStateWithLifecycle()
@@ -57,8 +59,13 @@ fun MiniPlayer(
     val currentPosition by playbackController.currentPosition.collectAsStateWithLifecycle()
     val duration by playbackController.duration.collectAsStateWithLifecycle()
 
-    // Swipe-to-skip state (on the content row, not the seek bar)
-    var offsetX by remember { mutableStateOf(0f) }
+    val density = LocalDensity.current
+    val expandThresholdPx = with(density) { 56.dp.toPx() }
+
+    // Body-region gesture state. The buttons row sits OUTSIDE this gesture handler
+    // so taps reach the IconButtons directly instead of being intercepted here.
+    var offsetX by remember { mutableFloatStateOf(0f) }
+    var offsetY by remember { mutableFloatStateOf(0f) }
 
     // Seek bar state
     var barWidth by remember { mutableIntStateOf(1) }
@@ -69,10 +76,6 @@ fun MiniPlayer(
     val barHeight by animateDpAsState(if (isDragging) 4.dp else 2.dp, label = "barH")
 
     // Clear pending seek once currentPosition reflects the seek target (within 3%).
-    // Done in a LaunchedEffect (not during composition) AND with a small delay so the
-    // interpolatedPos Animatable has a chance to snapTo the new currentPosition first.
-    // Without the delay the Canvas reads the stale interpolated value for one frame
-    // and the bar visibly jumps backward — that is the post-scrub flicker.
     LaunchedEffect(currentPosition, duration, pendingSeekFraction) {
         if (pendingSeekFraction >= 0f && duration > 0) {
             val positionFraction = currentPosition.toFloat() / duration
@@ -93,88 +96,138 @@ fun MiniPlayer(
             .background(Color(0xFF1A1A26))
     ) {
         Box(modifier = Modifier.fillMaxWidth()) {
-            // ── Content row — swipe left/right to skip ────────────────────────
+            // ── Content row ────────────────────────────────────────────────────
+            // Body (artwork + title) holds the swipe-to-expand gesture.
+            // Buttons are siblings, so their tap targets are independent.
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(60.dp)
-                    .offset { IntOffset(offsetX.roundToInt(), 0) }
-                    .draggable(
-                        orientation = Orientation.Horizontal,
-                        state = rememberDraggableState { delta -> offsetX += delta },
-                        onDragStopped = {
-                            if (offsetX > 150) playbackController.playPrevious()
-                            else if (offsetX < -150) playbackController.playNext()
-                            offsetX = 0f
-                        }
-                    )
-                    .clickable(onClick = onMiniPlayerClick)
-                    .padding(horizontal = 12.dp),
+                    .padding(top = 6.dp), // leave the top strip for the seek bar
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Artwork thumbnail
-                Surface(
+                Row(
                     modifier = Modifier
-                        .size(40.dp)
-                        .clip(RoundedCornerShape(6.dp)),
-                    color = Color(0xFF12121A)
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .offset { IntOffset(offsetX.roundToInt(), offsetY.roundToInt()) }
+                        .pointerInput(Unit) {
+                            awaitEachGesture {
+                                val firstEvent = awaitPointerEvent()
+                                val firstChange = firstEvent.changes.firstOrNull()
+                                    ?: return@awaitEachGesture
+                                if (!firstChange.pressed) return@awaitEachGesture
+
+                                var totalX = 0f
+                                var totalY = 0f
+                                var gesture: String? = null // "h", "v", or null until decided
+                                var event = firstEvent
+                                while (event.changes.any { it.pressed }) {
+                                    event = awaitPointerEvent()
+                                    val change = event.changes.firstOrNull() ?: break
+                                    if (!change.pressed) break
+                                    // positionChange() returns Offset.Zero when another
+                                    // pointer-input consumed the change (e.g. the seek
+                                    // bar). That keeps us from fighting it.
+                                    val delta = change.positionChange()
+                                    totalX += delta.x
+                                    totalY += delta.y
+                                    if (gesture == null && (kotlin.math.abs(totalX) > 12f || kotlin.math.abs(totalY) > 12f)) {
+                                        gesture = if (kotlin.math.abs(totalY) > kotlin.math.abs(totalX)) "v" else "h"
+                                    }
+                                    when (gesture) {
+                                        "h" -> {
+                                            offsetX += delta.x
+                                            change.consume()
+                                        }
+                                        "v" -> {
+                                            offsetY = (offsetY + delta.y).coerceIn(-expandThresholdPx * 1.4f, 0f)
+                                            change.consume()
+                                        }
+                                    }
+                                }
+
+                                when {
+                                    gesture == "v" && offsetY < -expandThresholdPx -> onSwipeUpToExpand()
+                                    gesture == "h" && offsetX > 150f -> playbackController.playPrevious()
+                                    gesture == "h" && offsetX < -150f -> playbackController.playNext()
+                                    gesture == null && kotlin.math.abs(totalX) < 12f && kotlin.math.abs(totalY) < 12f ->
+                                        onMiniPlayerClick()
+                                }
+                                offsetX = 0f
+                                offsetY = 0f
+                            }
+                        }
+                        .padding(start = 12.dp, end = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    if (artworkUri != null) {
-                        AsyncImage(
-                            model = artworkUri,
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize()
+                    Surface(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(RoundedCornerShape(6.dp)),
+                        color = Color(0xFF12121A)
+                    ) {
+                        if (artworkUri != null) {
+                            AsyncImage(
+                                model = artworkUri,
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(
+                                    trackTitle.take(1).uppercase(),
+                                    color = Color.Gray,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = trackTitle,
+                            color = Color.White,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            modifier = Modifier
+                                .then(sharedElementModifier("player.title"))
+                                .basicMarquee()
                         )
-                    } else {
-                        Box(contentAlignment = Alignment.Center) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             Text(
-                                trackTitle.take(1).uppercase(),
-                                color = Color.Gray,
-                                fontWeight = FontWeight.Bold
+                                text = artist.ifBlank { "Unknown Artist" },
+                                color = Color.White.copy(alpha = 0.5f),
+                                fontSize = 12.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .then(sharedElementModifier("player.artist"))
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "${formatTime(currentPosition)} / ${formatTime(duration)}",
+                                color = Color.White.copy(alpha = 0.5f),
+                                fontSize = 10.sp
                             )
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.width(12.dp))
-
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = trackTitle,
-                        color = Color.White,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        modifier = Modifier
-                            .then(sharedElementModifier("player.title"))
-                            .basicMarquee()
-                    )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = artist.ifBlank { "Unknown Artist" },
-                            color = Color.White.copy(alpha = 0.5f),
-                            fontSize = 12.sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier
-                                .weight(1f)
-                                .then(sharedElementModifier("player.artist"))
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "${formatTime(currentPosition)} / ${formatTime(duration)}",
-                            color = Color.White.copy(alpha = 0.5f),
-                            fontSize = 10.sp
-                        )
-                    }
-                }
-
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                // Controls — siblings of the gesture region. Taps land on IconButtons.
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(end = 4.dp)
+                ) {
                     IconButton(onClick = { playbackController.playPrevious() }) {
                         Icon(
                             Icons.Default.SkipPrevious,
@@ -216,37 +269,32 @@ fun MiniPlayer(
                 }
             }
 
-            // ── Seek bar — 24dp touch target overlay at the top ───────────────────
+            // ── Seek bar — slim strip at the top, drag-only ────────────────────
+            // Touch slop must be crossed horizontally before scrubbing activates.
+            // A plain tap (or vertical swipe) passes through to the row's gesture
+            // handler, so the bar can never be moved by accident.
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(24.dp)
+                    .height(14.dp)
                     .align(Alignment.TopCenter)
                     .onSizeChanged { barWidth = it.width }
                     .pointerInput(barWidth, duration) {
                         awaitEachGesture {
-                            // Wait for finger down
-                            val firstEvent = awaitPointerEvent()
-                            val firstChange = firstEvent.changes.firstOrNull()
-                                ?: return@awaitEachGesture
-                            if (!firstChange.pressed) return@awaitEachGesture
-                            firstChange.consume()
+                            val down = awaitFirstDown(requireUnconsumed = false)
+                            val firstDrag = awaitHorizontalTouchSlopOrCancellation(down.id) { change, _ ->
+                                change.consume()
+                            } ?: return@awaitEachGesture
 
                             isDragging = true
-                            seekFraction = (firstChange.position.x / barWidth).coerceIn(0f, 1f)
+                            seekFraction = (firstDrag.position.x / barWidth).coerceIn(0f, 1f)
+                            firstDrag.consume()
 
-                            // Track drag
-                            var event = firstEvent
-                            while (event.changes.any { it.pressed }) {
-                                event = awaitPointerEvent()
-                                val change = event.changes.firstOrNull() ?: break
-                                if (change.pressed) {
-                                    seekFraction = (change.position.x / barWidth).coerceIn(0f, 1f)
-                                    change.consume()
-                                }
+                            horizontalDrag(firstDrag.id) { change ->
+                                seekFraction = (change.position.x / barWidth).coerceIn(0f, 1f)
+                                change.consume()
                             }
 
-                            // Seek on release — freeze display at seekFraction until position converges
                             if (duration > 0) {
                                 pendingSeekFraction = seekFraction
                                 playbackController.seekTo((seekFraction * duration).toLong())
@@ -259,13 +307,11 @@ fun MiniPlayer(
                 Canvas(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(24.dp) // Use full touch target height so thumb isn't clipped
+                        .height(14.dp)
                 ) {
                     val trackHeight = barHeight.toPx()
                     val y = trackHeight / 2f
 
-                    // Resolve progress inside the draw scope so per-frame Animatable ticks
-                    // invalidate only this draw, not the surrounding composition.
                     val displayProgress = when {
                         isDragging -> seekFraction
                         pendingSeekFraction >= 0f -> pendingSeekFraction
@@ -292,12 +338,15 @@ fun MiniPlayer(
                         )
                     }
 
-                    val thumbRadius = if (isDragging) 6.dp.toPx() else 4.dp.toPx()
-                    drawCircle(
-                        color = Color.White,
-                        radius = thumbRadius,
-                        center = androidx.compose.ui.geometry.Offset(progressWidth, y)
-                    )
+                    // Hide the thumb when idle — it's a status bar, not a slider,
+                    // until the user actively scrubs.
+                    if (isDragging) {
+                        drawCircle(
+                            color = Color.White,
+                            radius = 6.dp.toPx(),
+                            center = androidx.compose.ui.geometry.Offset(progressWidth, y)
+                        )
+                    }
                 }
             }
         }

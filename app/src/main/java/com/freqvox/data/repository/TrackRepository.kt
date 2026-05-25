@@ -170,6 +170,7 @@ class TrackRepository @Inject constructor(
     private suspend fun ensureDefaultTags() {
         val defaultTags = listOf(
             "liked"       to 0xFFFF4D7C.toInt(),
+            "disliked"    to 0xFF78909C.toInt(),
             "chill"       to 0xFF42A5F5.toInt(),
             "energetic"   to 0xFFFF6D00.toInt(),
             "focus"       to 0xFF4DFFB4.toInt(),
@@ -253,8 +254,14 @@ class TrackRepository @Inject constructor(
         return trackDao.getSimilarTracks(trackId)
     }
 
-    suspend fun deleteTrack(trackId: Long) = withContext(Dispatchers.IO) {
+    /** Removes all app data for a track after the media file has been deleted (or user chose library-only removal). */
+    suspend fun purgeTrackFromLibrary(trackId: Long) = withContext(Dispatchers.IO) {
+        trackDao.deleteTrackTagsForTrack(trackId)
+        trackDao.deletePlayHistoryForTrack(trackId)
+        trackDao.deleteSkipHistoryForTrack(trackId)
         trackDao.deleteTrackById(trackId)
+        val artworkFile = File(context.cacheDir, "artworks/$trackId.jpg")
+        if (artworkFile.exists()) artworkFile.delete()
     }
 
     suspend fun getTracksByFolder(folderPath: String): List<TrackEntity> {
@@ -265,6 +272,55 @@ class TrackRepository @Inject constructor(
         val existingNames = tagDao.getAllTags().first().map { it.name.lowercase() }.toSet()
         if (name.lowercase() !in existingNames) {
             tagDao.insertTag(TagEntity(name = name.lowercase(), color = color))
+        }
+    }
+
+    /** Used by the media notification like action and in-app like toggle. */
+    suspend fun isTrackLiked(trackId: Long): Boolean {
+        val likedTagId = tagDao.getAllTags().first()
+            .find { it.name.equals("liked", ignoreCase = true) }
+            ?.id ?: return false
+        return tagDao.getTagIdsForTrack(trackId).contains(likedTagId)
+    }
+
+    suspend fun isTrackDisliked(trackId: Long): Boolean {
+        val dislikedTagId = tagDao.getAllTags().first()
+            .find { it.name.equals("disliked", ignoreCase = true) }
+            ?.id ?: return false
+        return tagDao.getTagIdsForTrack(trackId).contains(dislikedTagId)
+    }
+
+    suspend fun toggleLikeForTrack(trackId: Long) {
+        val tags = tagDao.getAllTags().first()
+        val likedTag = tags.find { it.name.equals("liked", ignoreCase = true) } ?: return
+        val dislikedTag = tags.find { it.name.equals("disliked", ignoreCase = true) }
+        val current = tagDao.getTagIdsForTrack(trackId)
+        if (current.contains(likedTag.id)) {
+            tagDao.deleteTrackTagCrossRef(TrackTagCrossRef(trackId, likedTag.id))
+        } else {
+            dislikedTag?.let { dis ->
+                if (current.contains(dis.id)) {
+                    tagDao.deleteTrackTagCrossRef(TrackTagCrossRef(trackId, dis.id))
+                }
+            }
+            tagDao.insertTrackTagCrossRef(TrackTagCrossRef(trackId, likedTag.id))
+        }
+    }
+
+    suspend fun toggleDislikeForTrack(trackId: Long) {
+        val tags = tagDao.getAllTags().first()
+        val dislikedTag = tags.find { it.name.equals("disliked", ignoreCase = true) } ?: return
+        val likedTag = tags.find { it.name.equals("liked", ignoreCase = true) }
+        val current = tagDao.getTagIdsForTrack(trackId)
+        if (current.contains(dislikedTag.id)) {
+            tagDao.deleteTrackTagCrossRef(TrackTagCrossRef(trackId, dislikedTag.id))
+        } else {
+            likedTag?.let { liked ->
+                if (current.contains(liked.id)) {
+                    tagDao.deleteTrackTagCrossRef(TrackTagCrossRef(trackId, liked.id))
+                }
+            }
+            tagDao.insertTrackTagCrossRef(TrackTagCrossRef(trackId, dislikedTag.id))
         }
     }
 }

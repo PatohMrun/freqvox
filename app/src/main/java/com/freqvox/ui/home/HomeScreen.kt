@@ -1,9 +1,13 @@
+@file:OptIn(ExperimentalFoundationApi::class)
+
 package com.freqvox.ui.home
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -53,6 +57,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.LaunchedEffect
+import com.freqvox.ui.components.TagPickerSheet
 import com.freqvox.ui.search.SearchSheet
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -76,8 +81,12 @@ fun HomeScreen(
     val currentTrackTitle by playbackController.currentTrackTitle.collectAsStateWithLifecycle()
     val playHistory by viewModel.playHistory.collectAsStateWithLifecycle()
     val taggedTrackIds by viewModel.taggedTrackIds.collectAsStateWithLifecycle()
+    val allTags by viewModel.allTags.collectAsStateWithLifecycle()
+    val taggingTrackId by viewModel.taggingTrackId.collectAsStateWithLifecycle()
+    val taggingTrackTags by viewModel.taggingTrackTags.collectAsStateWithLifecycle()
 
     val greeting = rememberGreeting()
+    val onTagLongPress: (TrackEntity) -> Unit = { viewModel.openTagPicker(it.id) }
 
     var refreshTrigger by remember { mutableStateOf(0) }
     var isRefreshing by remember { mutableStateOf(false) }
@@ -89,6 +98,16 @@ fun HomeScreen(
             playbackController = playbackController,
             onDismiss = { showSearchSheet = false },
             viewModel = viewModel
+        )
+    }
+
+    if (taggingTrackId != null) {
+        TagPickerSheet(
+            tags = allTags,
+            selectedTagIds = taggingTrackTags.map { it.id },
+            onTagClick = { viewModel.toggleTagForTaggingTrack(it.id) },
+            onCreateCustomTag = { viewModel.createCustomTag(it) },
+            onDismiss = { viewModel.closeTagPicker() }
         )
     }
 
@@ -193,6 +212,7 @@ fun HomeScreen(
                 HeroFeedCard(
                     track = heroTrack,
                     onClick = { onTrackClick(heroTrack, activeTracks) },
+                    onLongPress = { onTagLongPress(heroTrack) },
                     modifier = Modifier.padding(horizontal = 24.dp)
                 )
                 Spacer(modifier = Modifier.height(32.dp))
@@ -211,6 +231,7 @@ fun HomeScreen(
                     SpotlightFeedBlock(
                         track = item.track,
                         onClick = { onTrackClick(item.track, activeTracks) },
+                        onLongPress = { onTagLongPress(item.track) },
                         modifier = Modifier.padding(horizontal = 24.dp)
                     )
                     Spacer(modifier = Modifier.height(32.dp))
@@ -220,6 +241,7 @@ fun HomeScreen(
                     FeaturedBannerBlock(
                         track = item.track,
                         onClick = { onTrackClick(item.track, activeTracks) },
+                        onLongPress = { onTagLongPress(item.track) },
                         modifier = Modifier.padding(horizontal = 24.dp)
                     )
                     Spacer(modifier = Modifier.height(32.dp))
@@ -236,7 +258,8 @@ fun HomeScreen(
                                 track = track,
                                 isCurrentTrack = currentTrackTitle == track.title,
                                 isPlaying = isPlaying,
-                                onClick = { onTrackClick(track, item.tracks) }
+                                onClick = { onTrackClick(track, item.tracks) },
+                                onLongPress = { onTagLongPress(track) }
                             )
                             Spacer(modifier = Modifier.height(12.dp))
                         }
@@ -250,7 +273,8 @@ fun HomeScreen(
                     QuickPicksRow(
                         tracks = item.tracks,
                         queueContext = item.tracks,
-                        onTrackClick = onTrackClick
+                        onTrackClick = onTrackClick,
+                        onTagLongPress = onTagLongPress
                     )
                     Spacer(modifier = Modifier.height(32.dp))
                 }
@@ -262,13 +286,15 @@ fun HomeScreen(
                     QuickPicksRow(
                         tracks = item.tracks.take(half),
                         queueContext = item.tracks,
-                        onTrackClick = onTrackClick
+                        onTrackClick = onTrackClick,
+                        onTagLongPress = onTagLongPress
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     QuickPicksRow(
                         tracks = item.tracks.drop(half),
                         queueContext = item.tracks,
-                        onTrackClick = onTrackClick
+                        onTrackClick = onTrackClick,
+                        onTagLongPress = onTagLongPress
                     )
                     Spacer(modifier = Modifier.height(32.dp))
                 }
@@ -279,6 +305,7 @@ fun HomeScreen(
                     GridFeedBlock(
                         tracks = item.tracks,
                         onClick = { track -> onTrackClick(track, item.tracks) },
+                        onLongPress = onTagLongPress,
                         modifier = Modifier.padding(horizontal = 24.dp)
                     )
                     Spacer(modifier = Modifier.height(32.dp))
@@ -352,7 +379,12 @@ fun EndOfFeedFooter(modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun GridFeedBlock(tracks: List<TrackEntity>, onClick: (TrackEntity) -> Unit, modifier: Modifier = Modifier) {
+fun GridFeedBlock(
+    tracks: List<TrackEntity>,
+    onClick: (TrackEntity) -> Unit,
+    onLongPress: (TrackEntity) -> Unit = {},
+    modifier: Modifier = Modifier
+) {
     val chunked = tracks.chunked(2)
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         chunked.forEach { rowTracks ->
@@ -364,7 +396,10 @@ fun GridFeedBlock(tracks: List<TrackEntity>, onClick: (TrackEntity) -> Unit, mod
                             .weight(1f)
                             .clip(RoundedCornerShape(16.dp))
                             .background(Color.White.copy(alpha = 0.04f))
-                            .clickable { onClick(track) }
+                            .combinedClickable(
+                                onClick = { onClick(track) },
+                                onLongClick = { onLongPress(track) }
+                            )
                             .padding(12.dp)
                     ) {
                         Surface(
@@ -404,13 +439,18 @@ fun GridFeedBlock(tracks: List<TrackEntity>, onClick: (TrackEntity) -> Unit, mod
 }
 
 @Composable
-fun SpotlightFeedBlock(track: TrackEntity, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun SpotlightFeedBlock(
+    track: TrackEntity,
+    onClick: () -> Unit,
+    onLongPress: () -> Unit = {},
+    modifier: Modifier = Modifier
+) {
     Box(
         modifier = modifier
             .fillMaxWidth()
             .aspectRatio(1f) // huge square
             .clip(RoundedCornerShape(24.dp))
-            .clickable(onClick = onClick)
+            .combinedClickable(onClick = onClick, onLongClick = onLongPress)
             .background(Color(0xFF1A1A26))
             .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(24.dp)),
         contentAlignment = Alignment.Center
@@ -536,13 +576,18 @@ fun Header(greeting: String, totalSongs: Int, totalDurationMs: Long, onSearchCli
 }
 
 @Composable
-fun HeroFeedCard(track: TrackEntity, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun HeroFeedCard(
+    track: TrackEntity,
+    onClick: () -> Unit,
+    onLongPress: () -> Unit = {},
+    modifier: Modifier = Modifier
+) {
     Box(
         modifier = modifier
             .fillMaxWidth()
             .height(200.dp)
             .clip(RoundedCornerShape(24.dp))
-            .clickable(onClick = onClick)
+            .combinedClickable(onClick = onClick, onLongClick = onLongPress)
             .background(
                 Brush.linearGradient(
                     colors = listOf(Color(0xFF7C4DFF).copy(alpha = 0.3f), Color(0xFF12121A))
@@ -627,6 +672,7 @@ fun FeedTrackCard(
     isCurrentTrack: Boolean = false,
     isPlaying: Boolean = false,
     onClick: () -> Unit,
+    onLongPress: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val activeAccent = Color(0xFF7C4DFF)
@@ -641,7 +687,7 @@ fun FeedTrackCard(
             .clip(RoundedCornerShape(16.dp))
             .background(if (isCurrentTrack) activeAccent.copy(alpha = bgAlpha) else Color.White.copy(alpha = bgAlpha))
             .then(borderModifier)
-            .clickable(onClick = onClick)
+            .combinedClickable(onClick = onClick, onLongClick = onLongPress)
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -708,7 +754,8 @@ fun SectionTitle(title: String, icon: androidx.compose.ui.graphics.vector.ImageV
 fun QuickPicksRow(
     tracks: List<TrackEntity>,
     queueContext: List<TrackEntity>,
-    onTrackClick: (TrackEntity, List<TrackEntity>) -> Unit
+    onTrackClick: (TrackEntity, List<TrackEntity>) -> Unit,
+    onTagLongPress: (TrackEntity) -> Unit = {}
 ) {
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -718,7 +765,10 @@ fun QuickPicksRow(
             Column(
                 modifier = Modifier
                     .width(130.dp)
-                    .clickable { onTrackClick(track, queueContext) }
+                    .combinedClickable(
+                        onClick = { onTrackClick(track, queueContext) },
+                        onLongClick = { onTagLongPress(track) }
+                    )
             ) {
                 Surface(
                     modifier = Modifier.size(130.dp),
@@ -846,13 +896,18 @@ fun ProceduralArtwork(track: TrackEntity, modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun FeaturedBannerBlock(track: TrackEntity, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun FeaturedBannerBlock(
+    track: TrackEntity,
+    onClick: () -> Unit,
+    onLongPress: () -> Unit = {},
+    modifier: Modifier = Modifier
+) {
     Box(
         modifier = modifier
             .fillMaxWidth()
             .height(130.dp)
             .clip(RoundedCornerShape(20.dp))
-            .clickable(onClick = onClick)
+            .combinedClickable(onClick = onClick, onLongClick = onLongPress)
             .background(
                 Brush.horizontalGradient(
                     colors = listOf(Color(0xFF6B3FA0), Color(0xFF1A1A26))

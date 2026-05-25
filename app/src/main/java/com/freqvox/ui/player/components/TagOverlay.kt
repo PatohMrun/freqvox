@@ -25,25 +25,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.freqvox.data.local.entities.TagEntity
-
-private val tagIcons: Map<String, ImageVector> = mapOf(
-    "liked"      to Icons.Default.Favorite,
-    "chill"      to Icons.Default.AcUnit,
-    "energetic"  to Icons.Default.Bolt,
-    "focus"      to Icons.Default.School,
-    "hype"       to Icons.Default.Whatshot,
-    "melancholy" to Icons.Default.Cloud,
-    "late night" to Icons.Default.Bedtime,
-    "workout"    to Icons.Default.FitnessCenter,
-    "drive"      to Icons.Default.DirectionsCar,
-    "sleep"      to Icons.Default.Hotel,
-    "party"      to Icons.Default.Celebration,
-    "morning"    to Icons.Default.WbSunny,
-    "throwback"  to Icons.Default.History,
-    "underrated" to Icons.Default.Diamond,
-    "sad"        to Icons.Default.SentimentDissatisfied,
-    "vibes"      to Icons.Default.AutoAwesome
-)
+import com.freqvox.ui.tag.formatTagDisplayName
+import com.freqvox.ui.tag.iconForTag
 
 @Composable
 fun TagOverlay(
@@ -51,8 +34,11 @@ fun TagOverlay(
     selectedTagIds: List<Long>,
     onTagClick: (TagEntity) -> Unit,
     onCreateCustomTag: (String) -> Unit,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
+    val visibleTags = remember(tags) { tags.filter { it.name.lowercase() != "disliked" } }
+
     var showNewTagDialog by remember { mutableStateOf(false) }
     var newTagName by remember { mutableStateOf("") }
 
@@ -95,9 +81,9 @@ fun TagOverlay(
     }
 
     Surface(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .fillMaxHeight(0.55f),
+            .fillMaxHeight(0.92f),
         color = Color(0xFF12121A),
         shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
         tonalElevation = 16.dp
@@ -133,7 +119,7 @@ fun TagOverlay(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            val distinctTags = remember(tags) { tags.distinctBy { it.name.lowercase() } }
+            val distinctTags = remember(visibleTags) { visibleTags.distinctBy { it.name.lowercase() } }
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -143,7 +129,7 @@ fun TagOverlay(
                     TagChip(
                         tag = tag,
                         isSelected = selectedTagIds.contains(tag.id),
-                        icon = tagIcons[tag.name.lowercase()] ?: Icons.Default.Label,
+                        icon = iconForTag(tag.name),
                         onClick = { onTagClick(tag) }
                     )
                 }
@@ -222,7 +208,7 @@ fun TagChip(
                 Spacer(modifier = Modifier.width(7.dp))
             }
             Text(
-                text = tag.name.replaceFirstChar { it.uppercase() },
+                text = formatTagDisplayName(tag.name),
                 color = if (isSelected) Color.White else Color.White.copy(alpha = 0.55f),
                 fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
                 fontSize = 14.sp

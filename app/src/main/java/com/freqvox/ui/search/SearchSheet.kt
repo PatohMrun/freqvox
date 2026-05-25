@@ -84,11 +84,13 @@ fun SearchSheet(
         onDismissRequest = onDismiss,
         containerColor   = Color(0xFF12121A),
         sheetState       = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        dragHandle       = { BottomSheetDefaults.DragHandle() }
+        dragHandle       = { BottomSheetDefaults.DragHandle() },
+        contentWindowInsets = { WindowInsets(0, 0, 0, 0) }
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .navigationBarsPadding()
                 .imePadding()
                 .padding(horizontal = 16.dp)
                 .padding(bottom = 16.dp)

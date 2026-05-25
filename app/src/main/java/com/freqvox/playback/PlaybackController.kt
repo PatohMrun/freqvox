@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import androidx.core.content.ContextCompat
 import com.freqvox.data.local.dao.PlayHistoryDao
+import com.freqvox.data.local.dao.TagDao
 import com.freqvox.data.local.dao.TrackDao
 import com.freqvox.data.local.entities.PlayHistoryEntity
 import com.freqvox.data.local.entities.SkipHistoryEntity
@@ -29,6 +30,7 @@ data class QueueItem(
 class PlaybackController(
     private val context: Context,
     private val trackDao: TrackDao,
+    private val tagDao: TagDao,
     private val playHistoryDao: PlayHistoryDao,
     private val sleepTimerManager: SleepTimerManager,
     val equalizerManager: FreqvoxEqualizerManager
@@ -244,7 +246,9 @@ class PlaybackController(
                     //      random sweep of the wider library — excluding tracks already in
                     //      the queue — so short Home carousels and small Library playlists
                     //      keep flowing instead of going silent at the last track.
-                    val unplayedPool = sourcePool.filter { it.id.toString() !in alreadyQueuedIds }
+                    val dislikedIds = tagDao.getDislikedTrackIds().toSet()
+                    val unplayedPool = sourcePool
+                        .filter { it.id.toString() !in alreadyQueuedIds && it.id !in dislikedIds }
                     val nextBatch: List<TrackEntity> = if (unplayedPool.isNotEmpty()) {
                         unplayedPool.take(15)
                     } else {
@@ -480,6 +484,27 @@ class PlaybackController(
         }
         _currentQueueIndex.value = controller.currentMediaItemIndex.coerceAtLeast(0)
         savePlaybackState()
+    }
+
+    /** Drops a deleted track from the queue and advances playback if it was current. */
+    fun removeTrackFromLibrary(trackId: Long) {
+        val controller = mediaController ?: return
+        val mediaId = trackId.toString()
+        val indicesToRemove = (0 until controller.mediaItemCount)
+            .filter { controller.getMediaItemAt(it).mediaId == mediaId }
+            .sortedDescending()
+        indicesToRemove.forEach { controller.removeMediaItem(it) }
+        if (_currentTrackId.value == trackId) {
+            if (controller.mediaItemCount == 0) {
+                controller.stop()
+                _currentTrackTitle.value = "No track selected"
+                _currentArtist.value = ""
+                _currentArtworkUri.value = null
+                _currentTrackId.value = null
+                _isPlaying.value = false
+            }
+        }
+        refreshQueue()
     }
 
     fun playQueue(tracks: List<TrackEntity>, startIndex: Int = 0, sourcePool: List<TrackEntity> = tracks) {

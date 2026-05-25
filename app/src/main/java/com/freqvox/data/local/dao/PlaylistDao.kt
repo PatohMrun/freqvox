@@ -19,6 +19,14 @@ interface PlaylistDao {
     @Query("SELECT * FROM playlists WHERE id = :id")
     suspend fun getPlaylistById(id: Long): PlaylistEntity?
 
+    @Query("""
+        SELECT EXISTS(
+            SELECT 1 FROM playlist_tracks
+            WHERE playlistId = :playlistId AND trackId = :trackId
+        )
+    """)
+    suspend fun isTrackInPlaylist(playlistId: Long, trackId: Long): Boolean
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertPlaylistTrack(crossRef: com.freqvox.data.local.entities.PlaylistTrackCrossRef)
 

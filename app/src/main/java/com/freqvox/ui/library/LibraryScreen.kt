@@ -1,5 +1,10 @@
 package com.freqvox.ui.library
 
+import android.app.Activity
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.IntentSenderRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -42,6 +47,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -49,16 +55,23 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.freqvox.data.repository.AddTrackResult
+import com.freqvox.media.MediaTrackDeleter
 import com.freqvox.data.local.entities.PlaylistEntity
 import com.freqvox.data.local.entities.TagEntity
 import com.freqvox.data.local.entities.TrackEntity
 import com.freqvox.playback.PlaybackController
+import com.freqvox.ui.tag.formatTagDisplayName
 import com.freqvox.ui.home.ProceduralArtwork
 import com.freqvox.ui.main.MainViewModel
 import com.freqvox.ui.search.SearchSheet
+import kotlinx.coroutines.launch
 import java.io.File
 
-enum class LibraryTab { Songs, Albums, Artists, Folders, Playlists }
+// NOTE: order here drives the initial pill order in the Library header.
+// Playlists is intentionally second so it's one tap from the default (Songs).
+// Users can still long-press + drag to reorder pills at runtime.
+enum class LibraryTab { Songs, Playlists, Albums, Artists, Folders }
 
 enum class SortOrder(val label: String) {
     Default("Default"),
@@ -90,12 +103,32 @@ fun LibraryScreen(
     var selectedTab by remember { mutableStateOf(LibraryTab.Songs) }
     var sortOrder by remember { mutableStateOf(SortOrder.Default) }
     var trackToAdd by remember { mutableStateOf<TrackEntity?>(null) }
+    var trackToDelete by remember { mutableStateOf<TrackEntity?>(null) }
+    var deleteDialogStep by remember { mutableIntStateOf(0) }
+    var pendingDeleteTrackId by remember { mutableStateOf<Long?>(null) }
     var showSearchSheet by remember { mutableStateOf(false) }
+
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    val deleteLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartIntentSenderForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            pendingDeleteTrackId?.let { viewModel.completeTrackDeletion(it) }
+            scope.launch {
+                snackbarHostState.showSnackbar("Song deleted from device")
+            }
+        }
+        pendingDeleteTrackId = null
+    }
 
     var expandedAlbumName by remember { mutableStateOf<String?>(null) }
     var expandedArtistName by remember { mutableStateOf<String?>(null) }
     var expandedFolderPath by remember { mutableStateOf<String?>(null) }
 
+    Box(modifier = Modifier.fillMaxSize()) {
     if (showSearchSheet) {
         SearchSheet(
             playbackController = playbackController,
@@ -221,7 +254,10 @@ fun LibraryScreen(
                                     playbackController.playQueue(sortedTracks, index)
                                 }
                             },
-                            onDelete = { viewModel.deleteTrack(track.id) },
+                            onRequestDelete = {
+                                trackToDelete = track
+                                deleteDialogStep = 1
+                            },
                             onAddToPlaylist = { trackToAdd = track }
                         )
                     }
@@ -314,11 +350,72 @@ fun LibraryScreen(
         SelectPlaylistDialog(
             playlists = allPlaylists.filter { it.type == "manual" },
             onSelect = { playlist ->
-                viewModel.addTrackToPlaylist(playlist.id, track.id)
-                trackToAdd = null
+                scope.launch {
+                    when (viewModel.addTrackToPlaylist(playlist.id, track.id)) {
+                        AddTrackResult.Added ->
+                            snackbarHostState.showSnackbar("Added to ${playlist.name}")
+                        AddTrackResult.AlreadyInPlaylist ->
+                            snackbarHostState.showSnackbar("Already in ${playlist.name}")
+                    }
+                    trackToAdd = null
+                }
             },
             onDismiss = { trackToAdd = null }
         )
+    }
+
+    trackToDelete?.let { track ->
+        when (deleteDialogStep) {
+            1 -> DeleteTrackStepOneDialog(
+                track = track,
+                onContinue = { deleteDialogStep = 2 },
+                onDismiss = {
+                    trackToDelete = null
+                    deleteDialogStep = 0
+                }
+            )
+            2 -> DeleteTrackStepTwoDialog(
+                track = track,
+                onConfirmDelete = {
+                    pendingDeleteTrackId = track.id
+                    trackToDelete = null
+                    deleteDialogStep = 0
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        val request = MediaTrackDeleter.createDeleteRequest(context, track.id)
+                        if (request != null) {
+                            deleteLauncher.launch(request)
+                        } else {
+                            scope.launch {
+                                snackbarHostState.showSnackbar("Could not delete file")
+                            }
+                            pendingDeleteTrackId = null
+                        }
+                    } else {
+                        scope.launch {
+                            if (MediaTrackDeleter.tryDeleteViaResolver(context, track.id)) {
+                                viewModel.completeTrackDeletion(track.id)
+                                snackbarHostState.showSnackbar("Song deleted from device")
+                            } else {
+                                snackbarHostState.showSnackbar("Could not delete file — check storage permission")
+                            }
+                            pendingDeleteTrackId = null
+                        }
+                    }
+                },
+                onDismiss = {
+                    trackToDelete = null
+                    deleteDialogStep = 0
+                }
+            )
+        }
+    }
+
+    SnackbarHost(
+        hostState = snackbarHostState,
+        modifier = Modifier
+            .align(Alignment.BottomCenter)
+            .padding(bottom = 100.dp)
+    )
     }
 }
 
@@ -495,43 +592,11 @@ fun LibraryTrackItem(
     isPlaying: Boolean = false,
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
-    onDelete: (() -> Unit)? = null,
+    onRequestDelete: (() -> Unit)? = null,
     onAddToPlaylist: (() -> Unit)? = null
 ) {
     val accent = Color(0xFF7C4DFF)
-    var showDeleteDialog by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
-
-    if (showDeleteDialog) {
-        AlertDialog(
-            onDismissRequest = { showDeleteDialog = false },
-            containerColor = Color(0xFF1E1E2E),
-            title = { Text("Remove song", color = Color.White, fontWeight = FontWeight.SemiBold) },
-            text = {
-                Text(
-                    "Remove \"${track.title}\" from your library?",
-                    color = Color.White.copy(alpha = 0.7f),
-                    fontSize = 14.sp
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    showDeleteDialog = false
-                    onDelete?.invoke()
-                }) {
-                    Text("Remove", color = Color(0xFFFF4D7C), fontWeight = FontWeight.SemiBold)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) {
-                    Text("Cancel", color = Color.White.copy(alpha = 0.6f))
-                }
-            },
-            icon = {
-                Icon(Icons.Default.Delete, contentDescription = null, tint = Color(0xFFFF4D7C))
-            }
-        )
-    }
 
     Row(
         modifier = modifier
@@ -549,7 +614,7 @@ fun LibraryTrackItem(
             .pointerInput(Unit) {
                 detectTapGestures(
                     onTap = { onClick() },
-                    onLongPress = { if (onDelete != null) showDeleteDialog = true }
+                    onLongPress = { onRequestDelete?.invoke() }
                 )
             }
             .padding(12.dp),
@@ -616,12 +681,12 @@ fun LibraryTrackItem(
                             }
                         )
                     }
-                    if (onDelete != null) {
+                    if (onRequestDelete != null) {
                         DropdownMenuItem(
-                            text = { Text("Remove from Library", color = Color(0xFFFF4D7C)) },
-                            onClick = { 
+                            text = { Text("Delete from device…", color = Color(0xFFFF4D7C)) },
+                            onClick = {
                                 showMenu = false
-                                showDeleteDialog = true
+                                onRequestDelete.invoke()
                             },
                             leadingIcon = {
                                 Icon(Icons.Default.Delete, contentDescription = null, tint = Color(0xFFFF4D7C))
@@ -784,13 +849,13 @@ fun PlaylistsTab(
 ) {
     var showCreateDialog by remember { mutableStateOf(false) }
     var playlistToDelete by remember { mutableStateOf<PlaylistEntity?>(null) }
-    var expandedPlaylistId by remember { mutableStateOf<Long?>(null) }
-    var expandedTracks by remember { mutableStateOf<List<TrackEntity>>(emptyList()) }
-    
+    val expandedPlaylistId by viewModel.expandedPlaylistId.collectAsStateWithLifecycle()
+    val expandedTracksFromVm by viewModel.expandedPlaylistTracks.collectAsStateWithLifecycle()
+
     // Virtual Playlists Data
     val allTracks by viewModel.allTracks.collectAsStateWithLifecycle()
     val taggedTrackIds by viewModel.taggedTrackIds.collectAsStateWithLifecycle()
-    
+
     val likedTrackIds = taggedTrackIds["liked"] ?: emptySet()
     val likedTracks = remember(allTracks, likedTrackIds) { allTracks.filter { it.id in likedTrackIds } }
     val recentlyPlayed = remember(allTracks) { allTracks.filter { it.lastPlayed != null }.sortedByDescending { it.lastPlayed }.take(50) }
@@ -802,10 +867,12 @@ fun PlaylistsTab(
         ).take(50)
     }
 
-    LaunchedEffect(expandedPlaylistId, playlists) {
-        if (expandedPlaylistId == null || expandedPlaylistId!! < 0L) return@LaunchedEffect
-        val playlist = playlists.find { it.id == expandedPlaylistId } ?: return@LaunchedEffect
-        expandedTracks = viewModel.getTracksForPlaylist(playlist)
+    // Reactive tracks for the currently expanded custom playlist (id > 0).
+    // For virtual playlists (id < 0) we still compute locally above.
+    val expandedTracks: List<TrackEntity> = if (expandedPlaylistId != null && expandedPlaylistId!! > 0L) {
+        expandedTracksFromVm
+    } else {
+        emptyList()
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -823,7 +890,7 @@ fun PlaylistsTab(
                     trackCount = likedTracks.size,
                     isExpanded = expandedPlaylistId == -1L,
                     expandedTracks = if (expandedPlaylistId == -1L) likedTracks else emptyList(),
-                    onExpand = { expandedPlaylistId = if (expandedPlaylistId == -1L) null else -1L },
+                    onExpand = { viewModel.setExpandedPlaylist(if (expandedPlaylistId == -1L) null else -1L) },
                     onPlay = { tracks, startIndex -> if (tracks.isNotEmpty()) playbackController.playQueue(tracks, startIndex) },
                     onDelete = null
                 )
@@ -834,7 +901,7 @@ fun PlaylistsTab(
                     trackCount = recentlyPlayed.size,
                     isExpanded = expandedPlaylistId == -2L,
                     expandedTracks = if (expandedPlaylistId == -2L) recentlyPlayed else emptyList(),
-                    onExpand = { expandedPlaylistId = if (expandedPlaylistId == -2L) null else -2L },
+                    onExpand = { viewModel.setExpandedPlaylist(if (expandedPlaylistId == -2L) null else -2L) },
                     onPlay = { tracks, startIndex -> if (tracks.isNotEmpty()) playbackController.playQueue(tracks, startIndex) },
                     onDelete = null
                 )
@@ -845,7 +912,7 @@ fun PlaylistsTab(
                     trackCount = mostPlayed.size,
                     isExpanded = expandedPlaylistId == -3L,
                     expandedTracks = if (expandedPlaylistId == -3L) mostPlayed else emptyList(),
-                    onExpand = { expandedPlaylistId = if (expandedPlaylistId == -3L) null else -3L },
+                    onExpand = { viewModel.setExpandedPlaylist(if (expandedPlaylistId == -3L) null else -3L) },
                     onPlay = { tracks, startIndex -> if (tracks.isNotEmpty()) playbackController.playQueue(tracks, startIndex) },
                     onDelete = null
                 )
@@ -856,7 +923,7 @@ fun PlaylistsTab(
                     trackCount = leastPlayed.size,
                     isExpanded = expandedPlaylistId == -4L,
                     expandedTracks = if (expandedPlaylistId == -4L) leastPlayed else emptyList(),
-                    onExpand = { expandedPlaylistId = if (expandedPlaylistId == -4L) null else -4L },
+                    onExpand = { viewModel.setExpandedPlaylist(if (expandedPlaylistId == -4L) null else -4L) },
                     onPlay = { tracks, startIndex -> if (tracks.isNotEmpty()) playbackController.playQueue(tracks, startIndex) },
                     onDelete = null
                 )
@@ -882,7 +949,9 @@ fun PlaylistsTab(
                         isExpanded = expandedPlaylistId == playlist.id,
                         expandedTracks = if (expandedPlaylistId == playlist.id) expandedTracks else emptyList(),
                         onExpand = {
-                            expandedPlaylistId = if (expandedPlaylistId == playlist.id) null else playlist.id
+                            viewModel.setExpandedPlaylist(
+                                if (expandedPlaylistId == playlist.id) null else playlist.id
+                            )
                         },
                         onPlay = { tracks, startIndex -> if (tracks.isNotEmpty()) playbackController.playQueue(tracks, startIndex) },
                         onDelete = { playlistToDelete = playlist }
@@ -1088,7 +1157,7 @@ fun CreatePlaylistDialog(
                                     if (isSelected) selectedTagIds.remove(tag.id)
                                     else selectedTagIds.add(tag.id)
                                 },
-                                label = { Text(tag.name.replaceFirstChar { it.uppercase() }, fontSize = 12.sp, maxLines = 1) },
+                                label = { Text(formatTagDisplayName(tag.name), fontSize = 12.sp, maxLines = 1) },
                                 colors = FilterChipDefaults.filterChipColors(
                                     selectedContainerColor = Color(tag.color).copy(alpha = 0.22f),
                                     selectedLabelColor = Color.White,

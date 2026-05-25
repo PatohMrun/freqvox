@@ -2,8 +2,10 @@ package com.freqvox.ui.main
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.freqvox.data.repository.AddTrackResult
 import com.freqvox.data.repository.TrackRepository
 import com.freqvox.data.repository.PlaylistRepository
+import com.freqvox.playback.PlaybackController
 import com.freqvox.data.local.entities.PlayHistoryEntity
 import com.freqvox.data.local.entities.PlaylistEntity
 import com.freqvox.data.local.entities.TagEntity
@@ -18,7 +20,8 @@ import javax.inject.Inject
 @HiltViewModel
 class MainViewModel @Inject constructor(
     private val trackRepository: TrackRepository,
-    private val playlistRepository: PlaylistRepository
+    private val playlistRepository: PlaylistRepository,
+    private val playbackController: PlaybackController
 ) : ViewModel() {
 
     // Threshold for skip tracker: 30 days
@@ -31,15 +34,6 @@ class MainViewModel @Inject constructor(
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = emptyList()
         )
-
-    // Only "Active" tracks (not hidden by skip tracker)
-    val activeTracks: StateFlow<List<TrackEntity>> = trackRepository.getActiveTracks(
-        System.currentTimeMillis() - skipThresholdMs
-    ).stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
-        initialValue = emptyList()
-    )
 
     val allTags: StateFlow<List<TagEntity>> = trackRepository.allTags
         .map { tags -> tags.distinctBy { it.name.lowercase() } }
@@ -73,6 +67,19 @@ class MainViewModel @Inject constructor(
         initialValue = emptyMap()
     )
 
+    // Active tracks: skip-tracker hidden + disliked excluded from home/search/shuffle pools
+    val activeTracks: StateFlow<List<TrackEntity>> = combine(
+        trackRepository.getActiveTracks(System.currentTimeMillis() - skipThresholdMs),
+        taggedTrackIds
+    ) { tracks, tags ->
+        val disliked = tags["disliked"] ?: emptySet()
+        tracks.filter { it.id !in disliked }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
+
     val allPlaylists: StateFlow<List<PlaylistEntity>> = playlistRepository.allPlaylists
         .stateIn(
             scope = viewModelScope,
@@ -99,6 +106,10 @@ class MainViewModel @Inject constructor(
 
     val isCurrentTrackLiked: StateFlow<Boolean> = currentTrackTags
         .map { tags -> tags.any { it.name.lowercase() == "liked" } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    val isCurrentTrackDisliked: StateFlow<Boolean> = currentTrackTags
+        .map { tags -> tags.any { it.name.lowercase() == "disliked" } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     private val _searchQuery = MutableStateFlow("")
@@ -183,13 +194,16 @@ class MainViewModel @Inject constructor(
     }
 
     fun toggleLike() {
-        val track = currentTrack.value ?: return
+        val trackId = _currentTrackId.value ?: return
         viewModelScope.launch {
-            // Find 'liked' tag case-insensitively
-            val likedTag = allTags.value.find { it.name.equals("liked", ignoreCase = true) }
-            if (likedTag != null) {
-                trackRepository.toggleTagForTrack(track.id, likedTag.id)
-            }
+            trackRepository.toggleLikeForTrack(trackId)
+        }
+    }
+
+    fun toggleDislike() {
+        val trackId = _currentTrackId.value ?: return
+        viewModelScope.launch {
+            trackRepository.toggleDislikeForTrack(trackId)
         }
     }
 
@@ -215,15 +229,14 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    fun addTrackToPlaylist(playlistId: Long, trackId: Long) {
-        viewModelScope.launch {
-            playlistRepository.addTrackToPlaylist(playlistId, trackId)
-        }
-    }
+    suspend fun addTrackToPlaylist(playlistId: Long, trackId: Long): AddTrackResult =
+        playlistRepository.addTrackToPlaylist(playlistId, trackId)
 
-    fun deleteTrack(trackId: Long) {
+    /** Called after the system delete confirmation (or legacy resolver delete) succeeds. */
+    fun completeTrackDeletion(trackId: Long) {
         viewModelScope.launch {
-            trackRepository.deleteTrack(trackId)
+            trackRepository.purgeTrackFromLibrary(trackId)
+            playbackController.removeTrackFromLibrary(trackId)
         }
     }
 
@@ -235,6 +248,58 @@ class MainViewModel @Inject constructor(
 
     suspend fun getTracksForPlaylist(playlist: com.freqvox.data.local.entities.PlaylistEntity): List<TrackEntity> =
         playlistRepository.getTracksForPlaylist(playlist)
+
+    // ── Reactive expanded-playlist tracks ────────────────────────────────────
+    // The Library UI used to one-shot snapshot a playlist's tracks via .first()
+    // and stash them in a Compose state. That meant adding/removing a song or
+    // toggling a tag (for smart playlists) did NOT update the open list — the
+    // "playlists fail to update" bug. Now we observe the underlying flow so any
+    // mutation propagates straight to the UI.
+    private val _expandedPlaylistId = MutableStateFlow<Long?>(null)
+    val expandedPlaylistId: StateFlow<Long?> = _expandedPlaylistId.asStateFlow()
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val expandedPlaylistTracks: StateFlow<List<TrackEntity>> = combine(
+        _expandedPlaylistId, allPlaylists
+    ) { id, lists ->
+        if (id == null || id < 0L) null else lists.find { it.id == id }
+    }
+        .flatMapLatest { playlist ->
+            if (playlist == null) flowOf(emptyList())
+            else playlistRepository.observeTracksForPlaylist(playlist)
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    fun setExpandedPlaylist(id: Long?) {
+        _expandedPlaylistId.value = id
+    }
+
+    // ── Home (and elsewhere): tag a specific track without opening the player ──
+    private val _taggingTrackId = MutableStateFlow<Long?>(null)
+    val taggingTrackId: StateFlow<Long?> = _taggingTrackId.asStateFlow()
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val taggingTrackTags: StateFlow<List<TagEntity>> = _taggingTrackId
+        .flatMapLatest { id ->
+            if (id != null) trackRepository.getTagsForTrack(id)
+            else flowOf(emptyList())
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    fun openTagPicker(trackId: Long) {
+        _taggingTrackId.value = trackId
+    }
+
+    fun closeTagPicker() {
+        _taggingTrackId.value = null
+    }
+
+    fun toggleTagForTaggingTrack(tagId: Long) {
+        val trackId = _taggingTrackId.value ?: return
+        viewModelScope.launch {
+            trackRepository.toggleTagForTrack(trackId, tagId)
+        }
+    }
 
     fun createCustomTag(name: String) {
         if (name.isBlank()) return

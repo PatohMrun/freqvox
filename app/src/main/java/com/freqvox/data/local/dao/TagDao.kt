@@ -39,4 +39,10 @@ interface TagDao {
 
     @Query("SELECT * FROM track_tags")
     fun getAllTrackTagCrossRefs(): Flow<List<TrackTagCrossRef>>
+
+    @Query("""
+        SELECT trackId FROM track_tags
+        WHERE tagId = (SELECT id FROM tags WHERE LOWER(name) = 'disliked' LIMIT 1)
+    """)
+    suspend fun getDislikedTrackIds(): List<Long>
 }

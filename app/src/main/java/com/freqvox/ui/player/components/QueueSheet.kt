@@ -112,9 +112,10 @@ fun QueueSheet(
         onDismissRequest = onDismiss,
         containerColor   = Color(0xFF12121A),
         dragHandle       = { BottomSheetDefaults.DragHandle() },
-        sheetState       = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        sheetState       = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        contentWindowInsets = { WindowInsets(0, 0, 0, 0) }
     ) {
-        Column(Modifier.fillMaxWidth()) {
+        Column(Modifier.fillMaxWidth().navigationBarsPadding()) {
 
             Row(
                 Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 14.dp),

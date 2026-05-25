@@ -6,8 +6,16 @@ import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.freqvox.data.local.entities.PlayHistoryEntity
 import com.freqvox.data.local.entities.TrackEntity
+import com.freqvox.ui.tag.formatTagDisplayName
+import com.freqvox.ui.tag.iconForTag
 import java.util.Calendar
 import kotlin.random.Random
+
+/** Tags that already have curated feed sections — skip in the dynamic tag sweep. */
+private val CURATED_TAG_NAMES = setOf(
+    "liked", "workout", "chill", "focus", "hype", "party", "melancholy", "sad",
+    "late night", "drive", "throwback", "underrated", "morning", "vibes", "sleep", "energetic"
+)
 
 data class FeedContext(
     val playHistory: List<PlayHistoryEntity> = emptyList(),
@@ -245,6 +253,12 @@ object FeedGenerator {
         val feedOptions = mutableListOf<FeedItem>()
 
         fun createDynamicSection(title: String, tracksList: List<TrackEntity>, icon: ImageVector? = null): FeedItem {
+            when {
+                tracksList.size == 1 ->
+                    return FeedItem.VerticalList(title, tracksList, icon)
+                tracksList.size == 2 ->
+                    return FeedItem.HorizontalCarousel(title, tracksList, icon)
+            }
             val options = mutableListOf<FeedItem>()
             if (tracksList.size >= 2) options.add(FeedItem.HorizontalCarousel(title, tracksList, icon))
             if (tracksList.size >= 4) {
@@ -306,13 +320,13 @@ object FeedGenerator {
 
 
         // Workout / Energy
-        if (workoutTracks.size >= 3)
+        if (workoutTracks.isNotEmpty())
             feedOptions.add(createDynamicSection("Workout Mode", workoutTracks, Icons.Default.FitnessCenter))
-        else if (energeticTracks.size >= 3)
+        else if (energeticTracks.isNotEmpty())
             feedOptions.add(createDynamicSection("High Energy", energeticTracks, Icons.Default.Bolt))
 
         // Chill
-        if (chillTracks.size >= 3)
+        if (chillTracks.isNotEmpty())
             feedOptions.add(createDynamicSection("Chill Session", chillTracks, Icons.Default.SelfImprovement))
 
         // Inbox
@@ -336,15 +350,15 @@ object FeedGenerator {
             feedOptions.add(createDynamicSection("Quick Hits", quickHits, Icons.Default.Timer))
 
         // Focus
-        if (focusTracks.size >= 3)
+        if (focusTracks.isNotEmpty())
             feedOptions.add(createDynamicSection("Focus Mode", focusTracks, Icons.Default.MenuBook))
 
         // Drive
-        if (driveTracks.size >= 3)
+        if (driveTracks.isNotEmpty())
             feedOptions.add(createDynamicSection("Drive Mode", driveTracks, Icons.Default.DirectionsCar))
 
         // Sleep
-        if (sleepTracks.size >= 3)
+        if (sleepTracks.isNotEmpty())
             feedOptions.add(createDynamicSection("Sleep", sleepTracks, Icons.Default.Nightlight))
 
         // Weekend
@@ -358,13 +372,32 @@ object FeedGenerator {
         if (isCommute && commuteTracks.size >= 4)
             feedOptions.add(createDynamicSection("Commute Vibes", commuteTracks, Icons.Default.DirectionsBus))
 
-        // Moods / Tags
-        if (hypeTracks.size >= 3) feedOptions.add(createDynamicSection("Hype", hypeTracks, Icons.Default.Whatshot))
-        if (melancholyTracks.size >= 3) feedOptions.add(createDynamicSection("Melancholy", melancholyTracks, Icons.Default.Cloud))
-        if (throwbackTracks.size >= 3) feedOptions.add(createDynamicSection("Throwback", throwbackTracks, Icons.Default.Update))
-        if (underratedTracks.size >= 3) feedOptions.add(createDynamicSection("Underrated", underratedTracks, Icons.Default.Grade))
-        if (vibeTracks.size >= 3) feedOptions.add(createDynamicSection("The Vibe", vibeTracks, Icons.Default.AutoAwesome))
+        // Moods / Tags (any tag with ≥1 song qualifies)
+        if (hypeTracks.isNotEmpty()) feedOptions.add(createDynamicSection("Hype", hypeTracks, Icons.Default.Whatshot))
+        if (melancholyTracks.isNotEmpty()) feedOptions.add(createDynamicSection("Melancholy", melancholyTracks, Icons.Default.Cloud))
+        if (throwbackTracks.isNotEmpty()) feedOptions.add(createDynamicSection("Throwback", throwbackTracks, Icons.Default.Update))
+        if (underratedTracks.isNotEmpty()) feedOptions.add(createDynamicSection("Underrated", underratedTracks, Icons.Default.Grade))
+        if (vibeTracks.isNotEmpty()) feedOptions.add(createDynamicSection("The Vibe", vibeTracks, Icons.Default.AutoAwesome))
         if (guiltyPleasures.size >= 3) feedOptions.add(createDynamicSection("Guilty Pleasures", guiltyPleasures, Icons.Default.Psychology))
+
+        // User-created and other tags: one feed category per tag with ≥1 song (not already curated above)
+        context.taggedTrackIds
+            .filter { (name, ids) -> ids.isNotEmpty() && name.lowercase() !in CURATED_TAG_NAMES }
+            .keys
+            .shuffled(random)
+            .take(12)
+            .forEach { tagName ->
+                val tracks = tagTracks(tagName)
+                if (tracks.isNotEmpty()) {
+                    feedOptions.add(
+                        createDynamicSection(
+                            formatTagDisplayName(tagName),
+                            tracks,
+                            iconForTag(tagName)
+                        )
+                    )
+                }
+            }
 
         // Buried treasures
         if (buriedTreasures.size >= 2)
