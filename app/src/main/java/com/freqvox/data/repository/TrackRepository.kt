@@ -356,13 +356,22 @@ class TrackRepository @Inject constructor(
         }
     }
 
-    suspend fun toggleDislikeForTrack(trackId: Long) {
+    /**
+     * Toggles the "disliked" tag for the track and removes the "liked" tag if it
+     * was set (mutually exclusive). Returns the resulting dislike state:
+     *   true  → the track is now disliked
+     *   false → the dislike was removed (or no "disliked" tag exists)
+     * UI callers use the return to decide between snackbar copy and whether to
+     * skip the currently-playing track.
+     */
+    suspend fun toggleDislikeForTrack(trackId: Long): Boolean {
         val tags = tagDao.getAllTags().first()
-        val dislikedTag = tags.find { it.name.equals("disliked", ignoreCase = true) } ?: return
+        val dislikedTag = tags.find { it.name.equals("disliked", ignoreCase = true) } ?: return false
         val likedTag = tags.find { it.name.equals("liked", ignoreCase = true) }
         val current = tagDao.getTagIdsForTrack(trackId)
-        if (current.contains(dislikedTag.id)) {
+        return if (current.contains(dislikedTag.id)) {
             tagDao.deleteTrackTagCrossRef(TrackTagCrossRef(trackId, dislikedTag.id))
+            false
         } else {
             likedTag?.let { liked ->
                 if (current.contains(liked.id)) {
@@ -370,6 +379,7 @@ class TrackRepository @Inject constructor(
                 }
             }
             tagDao.insertTrackTagCrossRef(TrackTagCrossRef(trackId, dislikedTag.id))
+            true
         }
     }
 }

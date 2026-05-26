@@ -37,6 +37,8 @@ import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.PlaylistPlay
+import androidx.compose.material.icons.filled.ThumbDown
+import androidx.compose.material.icons.outlined.ThumbDownOffAlt
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -98,6 +100,7 @@ fun LibraryScreen(
     val isPlaying by playbackController.isPlaying.collectAsStateWithLifecycle()
     val allPlaylists by viewModel.allPlaylists.collectAsStateWithLifecycle()
     val allTags by viewModel.allTags.collectAsStateWithLifecycle()
+    val dislikedTrackIds by viewModel.dislikedTrackIds.collectAsStateWithLifecycle()
 
     val tabOrder = remember { mutableStateListOf(*LibraryTab.values()) }
     var selectedTab by remember { mutableStateOf(LibraryTab.Songs) }
@@ -246,6 +249,7 @@ fun LibraryScreen(
                             track = track,
                             isCurrentTrack = currentTrackTitle == track.title,
                             isPlaying = isPlaying,
+                            isDisliked = track.id in dislikedTrackIds,
                             modifier = Modifier.animateItem(),
                             onClick = {
                                 if (currentTrackTitle == track.title) {
@@ -258,7 +262,8 @@ fun LibraryScreen(
                                 trackToDelete = track
                                 deleteDialogStep = 1
                             },
-                            onAddToPlaylist = { trackToAdd = track }
+                            onAddToPlaylist = { trackToAdd = track },
+                            onToggleDislike = { viewModel.toggleDislikeForTrack(track.id) }
                         )
                     }
                 }
@@ -590,10 +595,12 @@ fun LibraryTrackItem(
     track: TrackEntity,
     isCurrentTrack: Boolean = false,
     isPlaying: Boolean = false,
+    isDisliked: Boolean = false,
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
     onRequestDelete: (() -> Unit)? = null,
-    onAddToPlaylist: (() -> Unit)? = null
+    onAddToPlaylist: (() -> Unit)? = null,
+    onToggleDislike: (() -> Unit)? = null
 ) {
     val accent = Color(0xFF7C4DFF)
     var showMenu by remember { mutableStateOf(false) }
@@ -633,18 +640,33 @@ fun LibraryTrackItem(
         }
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = track.title,
-                color = if (isCurrentTrack) accent else Color.White,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (isDisliked) {
+                    Icon(
+                        imageVector = Icons.Default.ThumbDown,
+                        contentDescription = "Disliked",
+                        tint = Color(0xFF78909C),
+                        modifier = Modifier.size(13.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                }
+                Text(
+                    text = track.title,
+                    color = when {
+                        isCurrentTrack -> accent
+                        isDisliked     -> Color.White.copy(alpha = 0.45f)
+                        else           -> Color.White
+                    },
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
             Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = track.artist,
-                color = Color.White.copy(alpha = 0.5f),
+                color = Color.White.copy(alpha = if (isDisliked) 0.3f else 0.5f),
                 fontSize = 13.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -682,6 +704,28 @@ fun LibraryTrackItem(
                             },
                             leadingIcon = {
                                 Icon(Icons.Default.PlaylistAdd, contentDescription = null, tint = Color.White)
+                            }
+                        )
+                    }
+                    if (onToggleDislike != null) {
+                        val dislikeAccent = Color(0xFF78909C)
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    text = if (isDisliked) "Remove dislike" else "Dislike track",
+                                    color = if (isDisliked) dislikeAccent else Color.White
+                                )
+                            },
+                            onClick = {
+                                showMenu = false
+                                onToggleDislike.invoke()
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = if (isDisliked) Icons.Default.ThumbDown else Icons.Outlined.ThumbDownOffAlt,
+                                    contentDescription = null,
+                                    tint = if (isDisliked) dislikeAccent else Color.White
+                                )
                             }
                         )
                     }

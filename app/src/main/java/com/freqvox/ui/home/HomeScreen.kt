@@ -84,6 +84,7 @@ fun HomeScreen(
     val allTags by viewModel.allTags.collectAsStateWithLifecycle()
     val taggingTrackId by viewModel.taggingTrackId.collectAsStateWithLifecycle()
     val taggingTrackTags by viewModel.taggingTrackTags.collectAsStateWithLifecycle()
+    val dislikedTrackIds by viewModel.dislikedTrackIds.collectAsStateWithLifecycle()
 
     val greeting = rememberGreeting()
     val onTagLongPress: (TrackEntity) -> Unit = { viewModel.openTagPicker(it.id) }
@@ -102,12 +103,15 @@ fun HomeScreen(
     }
 
     if (taggingTrackId != null) {
+        val targetId = taggingTrackId
         TagPickerSheet(
             tags = allTags,
             selectedTagIds = taggingTrackTags.map { it.id },
             onTagClick = { viewModel.toggleTagForTaggingTrack(it.id) },
             onCreateCustomTag = { viewModel.createCustomTag(it) },
-            onDismiss = { viewModel.closeTagPicker() }
+            onDismiss = { viewModel.closeTagPicker() },
+            isDisliked = targetId != null && targetId in dislikedTrackIds,
+            onToggleDislike = targetId?.let { id -> { viewModel.toggleDislikeForTrack(id) } }
         )
     }
 

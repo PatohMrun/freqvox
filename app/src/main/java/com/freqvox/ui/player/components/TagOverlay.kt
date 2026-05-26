@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.ThumbDownOffAlt
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
@@ -35,6 +36,8 @@ fun TagOverlay(
     onTagClick: (TagEntity) -> Unit,
     onCreateCustomTag: (String) -> Unit,
     onClose: () -> Unit,
+    isDisliked: Boolean = false,
+    onToggleDislike: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val visibleTags = remember(tags) { tags.filter { it.name.lowercase() != "disliked" } }
@@ -119,6 +122,14 @@ fun TagOverlay(
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            if (onToggleDislike != null) {
+                DislikeTrackRow(
+                    isDisliked = isDisliked,
+                    onClick = onToggleDislike
+                )
+                Spacer(modifier = Modifier.height(14.dp))
+            }
+
             val distinctTags = remember(visibleTags) { visibleTags.distinctBy { it.name.lowercase() } }
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
@@ -164,6 +175,61 @@ fun TagOverlay(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun DislikeTrackRow(
+    isDisliked: Boolean,
+    onClick: () -> Unit
+) {
+    val dislikeColor = Color(0xFF78909C)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(52.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(
+                if (isDisliked) dislikeColor.copy(alpha = 0.18f)
+                else Color.White.copy(alpha = 0.05f)
+            )
+            .border(
+                width = if (isDisliked) 1.5.dp else 1.dp,
+                color = if (isDisliked) dislikeColor.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.08f),
+                shape = RoundedCornerShape(14.dp)
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = if (isDisliked) Icons.Default.ThumbDown else Icons.Outlined.ThumbDownOffAlt,
+            contentDescription = null,
+            tint = if (isDisliked) dislikeColor else Color.White.copy(alpha = 0.55f),
+            modifier = Modifier.size(18.dp)
+        )
+        Spacer(modifier = Modifier.width(10.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = if (isDisliked) "Disliked" else "Dislike this track",
+                color = if (isDisliked) Color.White else Color.White.copy(alpha = 0.85f),
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 14.sp
+            )
+            Text(
+                text = if (isDisliked) "Tap to remove" else "Hides it from your feed and autoplay",
+                color = Color.White.copy(alpha = 0.4f),
+                fontSize = 11.sp
+            )
+        }
+        if (isDisliked) {
+            Icon(
+                imageVector = Icons.Default.Check,
+                contentDescription = null,
+                tint = dislikeColor,
+                modifier = Modifier.size(16.dp)
+            )
         }
     }
 }

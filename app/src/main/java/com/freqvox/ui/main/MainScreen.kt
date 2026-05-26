@@ -22,6 +22,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -78,6 +79,7 @@ fun MainScreen(
     var showTagSheet by remember { mutableStateOf(false) }
     var searchFocusTrigger by remember { mutableStateOf(0L) }
     var showPlayer by rememberSaveable { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
 
     // Sync current track to ViewModel using the exposed ID for reliability
     LaunchedEffect(currentTrackId) {
@@ -89,6 +91,34 @@ fun MainScreen(
         if (currentTrackTitle == "No track selected") showPlayer = false
     }
 
+    // Dislike feedback: snackbar for every toggle + auto-skip when the user
+    // dislikes the track that's currently playing. Without the skip, the song
+    // they just rejected keeps playing and the button feels like it did
+    // nothing. Snackbar message follows the resulting state.
+    LaunchedEffect(viewModel, playbackController) {
+        viewModel.dislikeEvents.collect { event ->
+            if (event.isNowDisliked && event.isCurrentTrack) {
+                playbackController.skipNext()
+            }
+            snackbarHostState.currentSnackbarData?.dismiss()
+            val message = if (event.isNowDisliked) {
+                "Disliked. Track hidden from your feed."
+            } else {
+                "Dislike removed."
+            }
+            scope.launch { snackbarHostState.showSnackbar(message) }
+        }
+    }
+
+    // Generic snackbar channel — used by search surfaces (which have no host
+    // of their own) for "Added to <playlist>" / "Song deleted" feedback.
+    LaunchedEffect(viewModel) {
+        viewModel.snackbarMessages.collect { message ->
+            snackbarHostState.currentSnackbarData?.dismiss()
+            scope.launch { snackbarHostState.showSnackbar(message) }
+        }
+    }
+
     // NOTE: BackHandler is intentionally NOT placed here. NavHost (composed inside
     // the Scaffold below) registers its own OnBackPressedCallback during composition,
     // and OnBackPressedDispatcher fires LIFO — last registered wins. If we add our
@@ -98,6 +128,16 @@ fun MainScreen(
     // We register it INSIDE the player's AnimatedVisibility block instead.
 
     val showMiniPlayer = currentTrackTitle != "No track selected"
+
+    val snackbarBottomPadding by androidx.compose.animation.core.animateDpAsState(
+        targetValue = when {
+            showPlayer       -> 36.dp
+            showMiniPlayer   -> 160.dp
+            else             -> 96.dp
+        },
+        animationSpec = tween(220),
+        label = "snackbarBottomPadding"
+    )
 
     DynamicTheme(artworkPath = currentArtworkUri?.path, trackTitle = currentTrackTitle) {
         Box(modifier = Modifier.fillMaxSize()) {
@@ -254,6 +294,8 @@ fun MainScreen(
                                             viewModel.createCustomTag(name)
                                         },
                                         onClose = { showTagSheet = false },
+                                        isDisliked = isDisliked,
+                                        onToggleDislike = { viewModel.toggleDislike() },
                                         modifier = Modifier.navigationBarsPadding().padding(bottom = 8.dp)
                                     )
                                 }
@@ -328,6 +370,19 @@ fun MainScreen(
                     }
                 }
             }
+
+            // Global snackbar host. Sits at the root so feedback (e.g. dislike
+            // toggles fired from Home/Library/Search/Player) is visible from any
+            // page. Bottom padding animates to clear the mini-player + nav bar
+            // when present, or sit flush above nothing when the full-screen
+            // player overlay is up.
+            SnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
+                    .padding(bottom = snackbarBottomPadding)
+            )
         }
     }
 }

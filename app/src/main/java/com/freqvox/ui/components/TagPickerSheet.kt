@@ -18,7 +18,9 @@ fun TagPickerSheet(
     selectedTagIds: List<Long>,
     onTagClick: (TagEntity) -> Unit,
     onCreateCustomTag: (String) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    isDisliked: Boolean = false,
+    onToggleDislike: (() -> Unit)? = null
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ModalBottomSheet(
@@ -33,6 +35,8 @@ fun TagPickerSheet(
             onTagClick = onTagClick,
             onCreateCustomTag = onCreateCustomTag,
             onClose = onDismiss,
+            isDisliked = isDisliked,
+            onToggleDislike = onToggleDislike,
             modifier = Modifier.navigationBarsPadding()
         )
     }

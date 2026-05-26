@@ -29,6 +29,8 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.freqvox.data.local.entities.TrackEntity
 import com.freqvox.playback.PlaybackController
+import com.freqvox.ui.components.TrackActionsDialogs
+import com.freqvox.ui.components.rememberTrackActionsState
 import com.freqvox.ui.library.LibraryTrackItem
 import com.freqvox.ui.main.MainViewModel
 import com.freqvox.ui.tag.formatTagDisplayName
@@ -43,9 +45,14 @@ fun SearchScreen(
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val searchResults by viewModel.searchResults.collectAsStateWithLifecycle()
     val allTags by viewModel.allTags.collectAsStateWithLifecycle()
-    
+    val dislikedTrackIds by viewModel.dislikedTrackIds.collectAsStateWithLifecycle()
+    val allPlaylists by viewModel.allPlaylists.collectAsStateWithLifecycle()
+
     val currentTrackTitle by playbackController.currentTrackTitle.collectAsStateWithLifecycle()
     val isPlaying by playbackController.isPlaying.collectAsStateWithLifecycle()
+
+    val trackActions = rememberTrackActionsState()
+    TrackActionsDialogs(state = trackActions, viewModel = viewModel, playlists = allPlaylists)
     
     val focusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -156,7 +163,11 @@ fun SearchScreen(
                     }
                 }
             } else {
-                TagsGrid(tags = allTags, onTagClick = { viewModel.onSearchQueryChange(it) })
+                // applyTagFilter (not onSearchQueryChange) so the ViewModel
+                // can tell this came from a chip tap vs. free typing. Only
+                // matters for the Disliked chip today, but the distinction
+                // is now available for any future strict-tag behaviour.
+                TagsGrid(tags = allTags, onTagClick = { viewModel.applyTagFilter(it) })
             }
         } else {
             if (searchResults.isEmpty()) {
@@ -174,6 +185,7 @@ fun SearchScreen(
                             track = track,
                             isCurrentTrack = track.title == currentTrackTitle,
                             isPlaying = isPlaying,
+                            isDisliked = track.id in dislikedTrackIds,
                             modifier = Modifier.animateItem(),
                             onClick = {
                                 if (track.title == currentTrackTitle) {
@@ -181,7 +193,10 @@ fun SearchScreen(
                                 } else {
                                     playbackController.playQueue(searchResults, index)
                                 }
-                            }
+                            },
+                            onAddToPlaylist = { trackActions.openAddToPlaylist(track) },
+                            onRequestDelete = { trackActions.openDeleteFlow(track) },
+                            onToggleDislike = { viewModel.toggleDislikeForTrack(track.id) }
                         )
                     }
                 }

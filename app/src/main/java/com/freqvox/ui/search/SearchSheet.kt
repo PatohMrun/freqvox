@@ -26,6 +26,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.freqvox.data.local.entities.TrackEntity
 import com.freqvox.playback.PlaybackController
+import com.freqvox.ui.components.TrackActionsDialogs
+import com.freqvox.ui.components.rememberTrackActionsState
 import com.freqvox.ui.library.LibraryTrackItem
 import com.freqvox.ui.main.MainViewModel
 
@@ -52,8 +54,21 @@ fun SearchSheet(
     val isPlaying          by playbackController.isPlaying.collectAsStateWithLifecycle()
     val activeTracks       by viewModel.activeTracks.collectAsStateWithLifecycle()
     val taggedTrackIds     by viewModel.taggedTrackIds.collectAsStateWithLifecycle()
+    val dislikedTrackIds   by viewModel.dislikedTrackIds.collectAsStateWithLifecycle()
+    val allPlaylists       by viewModel.allPlaylists.collectAsStateWithLifecycle()
+
+    val trackActions = rememberTrackActionsState()
+    // Dialogs render at the sheet's composition root — Compose hoists
+    // AlertDialogs into their own window so they appear ON TOP of the
+    // ModalBottomSheet without being clipped.
+    TrackActionsDialogs(state = trackActions, viewModel = viewModel, playlists = allPlaylists)
 
     // Filter locally so we don't disturb the ViewModel's persistent search state.
+    // The Search tab has a Disliked chip that puts the sheet into a strict
+    // tag-only mode (see MainViewModel.applyTagFilter); this overlay has no
+    // chips at all, so we keep the keyword pipeline pure here — typing
+    // "disliked" behaves like any other word and matches titles/artists,
+    // letting a track legitimately named "Disliked Mix" still be found.
     val results: List<TrackEntity> = remember(localQuery.text, activeTracks, taggedTrackIds) {
         val q = localQuery.text
         if (q.isBlank()) {
@@ -179,6 +194,7 @@ fun SearchSheet(
                                 track = track,
                                 isCurrentTrack = track.title == currentTrackTitle,
                                 isPlaying = isPlaying,
+                                isDisliked = track.id in dislikedTrackIds,
                                 onClick = {
                                     if (track.title == currentTrackTitle) {
                                         playbackController.togglePlayPause()
@@ -186,7 +202,10 @@ fun SearchSheet(
                                         playbackController.playQueue(results, index)
                                     }
                                     onDismiss()
-                                }
+                                },
+                                onAddToPlaylist = { trackActions.openAddToPlaylist(track) },
+                                onRequestDelete = { trackActions.openDeleteFlow(track) },
+                                onToggleDislike = { viewModel.toggleDislikeForTrack(track.id) }
                             )
                         }
                     }

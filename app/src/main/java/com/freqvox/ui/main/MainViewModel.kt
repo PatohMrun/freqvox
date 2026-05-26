@@ -121,22 +121,85 @@ class MainViewModel @Inject constructor(
         .map { tags -> tags.any { it.name.lowercase() == "disliked" } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
+    /** Flat set of every track id that currently carries the "disliked" tag.
+     *  UI rows use it to flip their 3-dot menu copy between "Dislike track"
+     *  and "Remove dislike" without each row having to observe its own tags. */
+    val dislikedTrackIds: StateFlow<Set<Long>> = taggedTrackIds
+        .map { it["disliked"] ?: emptySet() }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
+
+    /** One-shot event emitted whenever a dislike is toggled. MainScreen
+     *  collects it to show the snackbar (and skip the currently-playing
+     *  track when its dislike was *just* added). */
+    data class DislikeToggled(
+        val trackId: Long,
+        val isNowDisliked: Boolean,
+        val isCurrentTrack: Boolean
+    )
+
+    private val _dislikeEvents = MutableSharedFlow<DislikeToggled>(extraBufferCapacity = 4)
+    val dislikeEvents: SharedFlow<DislikeToggled> = _dislikeEvents.asSharedFlow()
+
+    /** Generic one-shot snackbar channel. Any composable in the app can post a
+     *  human-readable message that the root SnackbarHost (in MainScreen) will
+     *  render. Used by search surfaces — which don't carry their own host — to
+     *  surface "Added to <playlist>" / "Song deleted from device" feedback the
+     *  same way Library does. */
+    private val _snackbarMessages = MutableSharedFlow<String>(extraBufferCapacity = 4)
+    val snackbarMessages: SharedFlow<String> = _snackbarMessages.asSharedFlow()
+
+    fun postSnackbar(message: String) {
+        viewModelScope.launch { _snackbarMessages.emit(message) }
+    }
+
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
+    // Set to a tag name when the user taps a tag chip in Search, null otherwise.
+    // Lets `searchResults` distinguish "user tapped the Disliked chip" (= strict
+    // tag-only view of what they hid) from "user happened to type the word
+    // disliked" (= normal keyword pipeline, so a track legitimately named
+    // "Disliked Mix" can still be found). Cleared on any direct text edit
+    // because the user is now expressing a free-form search, not a chip click.
+    private val _searchTagFilter = MutableStateFlow<String?>(null)
+    val searchTagFilter: StateFlow<String?> = _searchTagFilter.asStateFlow()
+
     @OptIn(FlowPreview::class)
-    val searchResults: StateFlow<List<TrackEntity>> = combine(activeTracks, _searchQuery.debounce(180), taggedTrackIds) { tracks, query, tags ->
+    val searchResults: StateFlow<List<TrackEntity>> = combine(
+        allTracks, activeTracks, _searchQuery.debounce(180), taggedTrackIds, _searchTagFilter
+    ) { all, active, query, tags, tagFilter ->
         if (query.isBlank()) {
             emptyList()
         } else {
             val normalizedQuery = query.replace(Regex("[^A-Za-z0-9]"), "").lowercase()
-            
+
+            // ── Strict "Disliked" chip path ──────────────────────────────────
+            // Triggered ONLY when the user tapped the Disliked chip (tagFilter
+            // is set), not when they typed the word "disliked". Two reasons we
+            // need a dedicated branch here:
+            //   1. activeTracks excludes disliked tracks by design, so the
+            //      normal pipeline would always return zero results for the
+            //      Disliked chip — making it look broken. Source from
+            //      allTracks here so the user can actually see what they hid.
+            //   2. The generic query path ORs in title/artist/album keyword
+            //      matches, which would let a song *titled* "Disliked Mix"
+            //      pollute this view. The chip should mean "show me what I
+            //      hid", nothing else.
+            //
+            // Typing "disliked" still goes through the normal pipeline below,
+            // so a track legitimately named "Disliked …" remains findable by
+            // typing — it just won't surface from the chip tap.
+            if (tagFilter == "disliked") {
+                val dislikedIds = tags["disliked"] ?: emptySet()
+                return@combine all.filter { it.id in dislikedIds }
+            }
+
             // Allow exact matches on tag names first
             val matchingIds = tags.filterKeys { 
                 it.replace(Regex("[^A-Za-z0-9]"), "").lowercase().contains(normalizedQuery)
             }.values.flatten().toSet()
             
-            tracks.filter { track ->
+            active.filter { track ->
                 val normTitle = track.title.replace(Regex("[^A-Za-z0-9]"), "").lowercase()
                 val normArtist = track.artist.replace(Regex("[^A-Za-z0-9]"), "").lowercase()
                 val normAlbum = track.album.replace(Regex("[^A-Za-z0-9]"), "").lowercase()
@@ -192,7 +255,19 @@ class MainViewModel @Inject constructor(
     }
 
     fun onSearchQueryChange(query: String) {
+        // Direct text input — exit chip-tap mode so the next search runs
+        // through the normal keyword pipeline. If the user wants the strict
+        // tag-only view back, they can tap the chip again.
+        if (_searchTagFilter.value != null) _searchTagFilter.value = null
         _searchQuery.value = query
+    }
+
+    /** Called from the Search tab's chip grid. Sets both the visible query
+     *  text and the strict tag-filter marker so `searchResults` can
+     *  distinguish this from someone typing the tag's name by hand. */
+    fun applyTagFilter(tagName: String) {
+        _searchTagFilter.value = tagName.lowercase()
+        _searchQuery.value = tagName
     }
 
     fun toggleTagForCurrentTrack(tagId: Long) {
@@ -211,8 +286,23 @@ class MainViewModel @Inject constructor(
 
     fun toggleDislike() {
         val trackId = _currentTrackId.value ?: return
+        toggleDislikeForTrack(trackId)
+    }
+
+    /** Toggle the dislike tag for any track (not just the playing one).
+     *  Emits a [DislikeToggled] event so the UI can react with a snackbar
+     *  and — when the currently-playing track was the one disliked — skip
+     *  it so the user doesn't keep hearing the song they just rejected. */
+    fun toggleDislikeForTrack(trackId: Long) {
         viewModelScope.launch {
-            trackRepository.toggleDislikeForTrack(trackId)
+            val isNowDisliked = trackRepository.toggleDislikeForTrack(trackId)
+            _dislikeEvents.emit(
+                DislikeToggled(
+                    trackId = trackId,
+                    isNowDisliked = isNowDisliked,
+                    isCurrentTrack = trackId == _currentTrackId.value
+                )
+            )
         }
     }
 
