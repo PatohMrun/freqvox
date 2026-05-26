@@ -6,6 +6,7 @@ import com.freqvox.data.local.entities.PlaylistEntity
 import com.freqvox.data.local.entities.TrackEntity
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import javax.inject.Inject
@@ -76,24 +77,69 @@ class PlaylistRepository @Inject constructor(
             val tagsByTrack = crossRefs.groupBy { it.trackId }
                 .mapValues { entry -> entry.value.map { it.tagId }.toSet() }
             tracks.filter { track ->
-                val trackTags = tagsByTrack[track.id] ?: emptySet()
-                val matchesInclude = query.include.isEmpty() || trackTags.containsAll(query.include)
-                val matchesExclude = query.exclude.any { trackTags.contains(it) }
-                matchesInclude && !matchesExclude
+                matchesQuery(track.id, tagsByTrack, query)
             }
         }
     }
 
+    /**
+     * Per-playlist track count for every playlist in one map. Manual counts
+     * come from a single GROUP BY on the cross-ref table; smart counts are
+     * derived from the same tag/track inputs that drive `observeTracksForPlaylist`,
+     * so they stay in sync with what the user would see if they expanded the
+     * playlist. Avoids the old "Tap to load" placeholder for collapsed rows.
+     */
+    val playlistTrackCounts: Flow<Map<Long, Int>> = combine(
+        playlistDao.getAllPlaylists(),
+        playlistDao.getManualPlaylistTrackCounts(),
+        trackRepository.allTracks,
+        trackRepository.allTrackTagCrossRefs
+    ) { playlists, manualCounts, tracks, crossRefs ->
+        val manualMap = manualCounts.associate { it.playlistId to it.count }
+        val tagsByTrack: Map<Long, Set<Long>> = crossRefs.groupBy { it.trackId }
+            .mapValues { entry -> entry.value.map { it.tagId }.toSet() }
+        playlists.associate { playlist ->
+            val count = when (playlist.type) {
+                "manual" -> manualMap[playlist.id] ?: 0
+                "query"  -> {
+                    val query = parseQuery(playlist.queryJson)
+                    if (query == null) 0
+                    else tracks.count { track -> matchesQuery(track.id, tagsByTrack, query) }
+                }
+                else -> 0
+            }
+            playlist.id to count
+        }
+    }.distinctUntilChanged()
+
     suspend fun getPlaylistById(id: Long): PlaylistEntity? = playlistDao.getPlaylistById(id)
+
+    private fun matchesQuery(trackId: Long, tagsByTrack: Map<Long, Set<Long>>, query: TagQuery): Boolean {
+        val trackTags = tagsByTrack[trackId] ?: emptySet()
+        val matchesInclude = query.include.isEmpty() || trackTags.containsAll(query.include)
+        val matchesExclude = query.exclude.any { trackTags.contains(it) }
+        return matchesInclude && !matchesExclude
+    }
+
+    // Regex tolerates whitespace, missing spaces, key order, and unknown keys.
+    // The old substring parser broke whenever the producer formatting changed
+    // and silently returned null (-> "Empty" playlist), so this is more forgiving.
+    private val tagArrayRegex = Regex("\"(include|exclude)\"\\s*:\\s*\\[([^\\]]*)\\]")
 
     private fun parseQuery(json: String?): TagQuery? {
         if (json == null) return null
-        // Simple manual parsing since we don't have a JSON lib yet
-        // In a real app, use kotlinx.serialization
         return try {
-            val include = json.substringAfter("\"include\": [").substringBefore("]").split(",").mapNotNull { it.trim().toLongOrNull() }
-            val exclude = json.substringAfter("\"exclude\": [").substringBefore("]").split(",").mapNotNull { it.trim().toLongOrNull() }
-            TagQuery(include, exclude)
+            val groups = tagArrayRegex.findAll(json).associate { match ->
+                val key = match.groupValues[1]
+                val ids = match.groupValues[2]
+                    .split(",")
+                    .mapNotNull { it.trim().toLongOrNull() }
+                key to ids
+            }
+            TagQuery(
+                include = groups["include"] ?: emptyList(),
+                exclude = groups["exclude"] ?: emptyList()
+            )
         } catch (e: Exception) {
             null
         }

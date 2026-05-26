@@ -116,8 +116,10 @@ fun MainScreen(
                             Column {
                                 AnimatedVisibility(
                                     visible = showMiniPlayer && !showPlayer,
-                                    enter = fadeIn(tween(420)),
-                                    exit = fadeOut(tween(420))
+                                    // Fade in/out matched to the 420ms shared-bounds morph so the
+                                    // mini bar's exit and the player's enter run as one motion.
+                                    enter = fadeIn(tween(420, easing = FastOutSlowInEasing)),
+                                    exit = fadeOut(tween(420, easing = FastOutSlowInEasing))
                                 ) {
                                     CompositionLocalProvider(
                                         LocalSharedTransitionScope provides sharedScope,
@@ -260,15 +262,15 @@ fun MainScreen(
                     }
 
                     // Full-screen player overlay — appears on top of the Scaffold via SharedTransitionLayout.
-                    // We deliberately use only fade for enter/exit and let the shared-bounds container
-                    // animate the actual geometric morph from the mini-player. A slide-in here would race
-                    // the shared title/artist elements (which animate against their *layout* position,
-                    // not the slide translation), making the text appear to "fly up" before the rest of
-                    // the player catches up.
+                    // Fade duration is locked to the 420ms shared-bounds morph so the rectangle's
+                    // expansion and the player's appearance hit "fully visible" on the same frame.
+                    // Previously these were 280ms / 220ms, causing the player to look "done" while
+                    // the bounds were still growing — that's what made it feel like two screens
+                    // crossfading instead of one unified expansion.
                     AnimatedVisibility(
                         visible = showPlayer,
-                        enter = fadeIn(tween(280, easing = FastOutSlowInEasing)),
-                        exit = fadeOut(tween(220, easing = FastOutSlowInEasing))
+                        enter = fadeIn(tween(420, easing = FastOutSlowInEasing)),
+                        exit = fadeOut(tween(420, easing = FastOutSlowInEasing))
                     ) {
                         // Registered here so this callback is added to OnBackPressedDispatcher
                         // AFTER NavHost's callback (which composes earlier in the tree). Because
@@ -280,11 +282,12 @@ fun MainScreen(
                             LocalSharedTransitionScope provides sharedScope,
                             LocalAnimatedVisibilityScope provides this@AnimatedVisibility
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(Color(0xFF12121A))
-                            ) {
+                            // NO background here on purpose. PlayerScreen's root Column carries the
+                            // dark background INSIDE the shared-bounds container, so the dark fill
+                            // grows from the mini-player's rect to fullscreen along with the morph.
+                            // A full-screen background here would fade in independently of the
+                            // morph and look like a separate sheet appearing over the app.
+                            Box(modifier = Modifier.fillMaxSize()) {
                             val playerPosition by playbackController.currentPosition.collectAsStateWithLifecycle()
                             val playerDuration by playbackController.duration.collectAsStateWithLifecycle()
                             PlayerScreen(

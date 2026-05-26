@@ -612,9 +612,13 @@ fun LibraryTrackItem(
                 else Modifier
             )
             .pointerInput(Unit) {
+                // Long-press now opens the same "more" menu the trailing icon
+                // shows (Add to Playlist / Delete from device). Jumping straight
+                // into the delete confirmation made the gesture feel destructive
+                // and removed any way to access the other action via long-press.
                 detectTapGestures(
                     onTap = { onClick() },
-                    onLongPress = { onRequestDelete?.invoke() }
+                    onLongPress = { showMenu = true }
                 )
             }
             .padding(12.dp),
@@ -851,6 +855,7 @@ fun PlaylistsTab(
     var playlistToDelete by remember { mutableStateOf<PlaylistEntity?>(null) }
     val expandedPlaylistId by viewModel.expandedPlaylistId.collectAsStateWithLifecycle()
     val expandedTracksFromVm by viewModel.expandedPlaylistTracks.collectAsStateWithLifecycle()
+    val playlistCounts by viewModel.playlistTrackCounts.collectAsStateWithLifecycle()
 
     // Virtual Playlists Data
     val allTracks by viewModel.allTracks.collectAsStateWithLifecycle()
@@ -942,15 +947,26 @@ fun PlaylistsTab(
                 }
             } else {
                 items(playlists, key = { it.id }) { playlist ->
-                    val customTrackCount = if (expandedPlaylistId == playlist.id) expandedTracks.size else -1
+                    val isExpandedThis = expandedPlaylistId == playlist.id
+                    // Prefer the live expanded tracks (immediately accurate) when
+                    // this row is the expanded one; otherwise read the cached count
+                    // from the playlistTrackCounts map so collapsed rows show
+                    // their real size instead of "Tap to load". null = map not
+                    // populated yet — keep -1 sentinel so PlaylistItem still
+                    // shows "Tap to load" briefly during the first emission
+                    // rather than a misleading "Empty".
+                    val customTrackCount: Int = when {
+                        isExpandedThis && expandedTracks.isNotEmpty() -> expandedTracks.size
+                        else -> playlistCounts[playlist.id] ?: -1
+                    }
                     PlaylistItem(
                         playlist = playlist,
                         trackCount = customTrackCount,
-                        isExpanded = expandedPlaylistId == playlist.id,
-                        expandedTracks = if (expandedPlaylistId == playlist.id) expandedTracks else emptyList(),
+                        isExpanded = isExpandedThis,
+                        expandedTracks = if (isExpandedThis) expandedTracks else emptyList(),
                         onExpand = {
                             viewModel.setExpandedPlaylist(
-                                if (expandedPlaylistId == playlist.id) null else playlist.id
+                                if (isExpandedThis) null else playlist.id
                             )
                         },
                         onPlay = { tracks, startIndex -> if (tracks.isNotEmpty()) playbackController.playQueue(tracks, startIndex) },

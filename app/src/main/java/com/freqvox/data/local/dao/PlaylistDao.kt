@@ -40,4 +40,16 @@ interface PlaylistDao {
         ORDER BY playlist_tracks.orderIndex ASC, playlist_tracks.addedAt DESC
     """)
     fun getTracksForPlaylist(playlistId: Long): Flow<List<TrackEntity>>
+
+    // Aggregate count of tracks per manual playlist. Returned as a list of
+    // (playlistId, count) rows; the repository maps it to a Map<Long, Int>
+    // and merges in smart-playlist counts derived from tags.
+    data class PlaylistTrackCount(val playlistId: Long, val count: Int)
+
+    @Query("""
+        SELECT playlistId, COUNT(*) AS count
+        FROM playlist_tracks
+        GROUP BY playlistId
+    """)
+    fun getManualPlaylistTrackCounts(): Flow<List<PlaylistTrackCount>>
 }

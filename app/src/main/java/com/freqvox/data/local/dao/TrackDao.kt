@@ -28,14 +28,23 @@ interface TrackDao {
     @Query("SELECT * FROM tracks WHERE id IN (:trackIds)")
     suspend fun getTracksByIds(trackIds: List<Long>): List<TrackEntity>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertTracks(tracks: List<TrackEntity>)
+    // Library scan path. MUST NOT use OnConflictStrategy.REPLACE — REPLACE is
+    // implemented as DELETE+INSERT in SQLite, which fires the ForeignKey.CASCADE
+    // on `playlist_tracks` (and any future cascaded child table) and wipes the
+    // user's playlist memberships every single scan. @Upsert performs an
+    // INSERT-or-UPDATE in place, so existing rows are mutated, no row is
+    // deleted, and no cascade fires for stable MediaStore IDs.
+    @Upsert
+    suspend fun upsertTracks(tracks: List<TrackEntity>)
 
     @Update
     suspend fun updateTrack(track: TrackEntity)
 
     @Query("DELETE FROM tracks WHERE id NOT IN (:remainingIds)")
     suspend fun deleteRemovedTracks(remainingIds: List<Long>)
+
+    @Query("DELETE FROM tracks WHERE id IN (:ids)")
+    suspend fun deleteTracksByIds(ids: List<Long>)
 
     @Query("DELETE FROM tracks WHERE id = :trackId")
     suspend fun deleteTrackById(trackId: Long)
@@ -48,6 +57,44 @@ interface TrackDao {
 
     @Query("DELETE FROM skip_history WHERE trackId = :trackId")
     suspend fun deleteSkipHistoryForTrack(trackId: Long)
+
+    @Query("DELETE FROM playlist_tracks WHERE trackId = :trackId")
+    suspend fun deletePlaylistTracksForTrack(trackId: Long)
+
+    // ── Track-id migration ────────────────────────────────────────────────
+    // MediaStore reissues IDs whenever it re-indexes a file (reboot, file edit,
+    // some content-provider events). The old PK row would otherwise be deleted
+    // by `deleteRemovedTracks`, CASCADE-wiping playlist_tracks/track_tags/etc.
+    // Instead we look up by path, then rewrite every cross-reference table from
+    // the old id to the new id BEFORE deleting the old row. UPDATE OR IGNORE
+    // is used so an already-existing (newId, x) row doesn't crash the update;
+    // the leftover (oldId, x) rows are then dropped explicitly.
+
+    @Query("UPDATE OR IGNORE playlist_tracks SET trackId = :newId WHERE trackId = :oldId")
+    suspend fun rewritePlaylistTrackId(oldId: Long, newId: Long)
+
+    @Query("UPDATE OR IGNORE track_tags SET trackId = :newId WHERE trackId = :oldId")
+    suspend fun rewriteTrackTagTrackId(oldId: Long, newId: Long)
+
+    @Query("UPDATE play_history SET trackId = :newId WHERE trackId = :oldId")
+    suspend fun rewritePlayHistoryTrackId(oldId: Long, newId: Long)
+
+    @Query("UPDATE skip_history SET trackId = :newId WHERE trackId = :oldId")
+    suspend fun rewriteSkipHistoryTrackId(oldId: Long, newId: Long)
+
+    @androidx.room.Transaction
+    suspend fun migrateTrackReferences(oldId: Long, newId: Long) {
+        // Order matters: rewrite refs first, drop leftover stale refs, only
+        // then delete the old PK row so CASCADE can't fire on anything we
+        // still want to keep.
+        rewritePlaylistTrackId(oldId, newId)
+        deletePlaylistTracksForTrack(oldId)
+        rewriteTrackTagTrackId(oldId, newId)
+        deleteTrackTagsForTrack(oldId)
+        rewritePlayHistoryTrackId(oldId, newId)
+        rewriteSkipHistoryTrackId(oldId, newId)
+        deleteTrackById(oldId)
+    }
 
     @Query("SELECT * FROM tracks ORDER BY playCount DESC LIMIT 50")
     fun getMostPlayedTracks(): Flow<List<TrackEntity>>

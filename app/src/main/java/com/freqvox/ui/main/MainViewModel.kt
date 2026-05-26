@@ -87,6 +87,15 @@ class MainViewModel @Inject constructor(
             initialValue = emptyList()
         )
 
+    // Per-playlist track count for every playlist in the table. Lets the
+    // Library render real counts on collapsed rows instead of "Tap to load".
+    val playlistTrackCounts: StateFlow<Map<Long, Int>> = playlistRepository.playlistTrackCounts
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyMap()
+        )
+
     private val _currentTrackId = MutableStateFlow<Long?>(null)
 
     val currentTrack: StateFlow<TrackEntity?> = combine(_currentTrackId, allTracks) { id, tracks ->
@@ -258,17 +267,33 @@ class MainViewModel @Inject constructor(
     private val _expandedPlaylistId = MutableStateFlow<Long?>(null)
     val expandedPlaylistId: StateFlow<Long?> = _expandedPlaylistId.asStateFlow()
 
+    // Internal flow that carries the playlist id alongside the tracks, so a
+    // consumer can ignore an emission whose id doesn't match what's currently
+    // expanded. This is the race-safe pattern: even if `stateIn` still holds
+    // the previously expanded playlist's tracks for a frame, the UI can see
+    // they belong to a stale id and render nothing instead of leaking them
+    // under the new row.
     @OptIn(ExperimentalCoroutinesApi::class)
+    private val expandedPlaylistTracksWithId: StateFlow<Pair<Long, List<TrackEntity>>?> =
+        _expandedPlaylistId
+            .flatMapLatest { id ->
+                if (id == null || id <= 0L) flowOf(null)
+                else allPlaylists
+                    .mapNotNull { lists -> lists.find { it.id == id } }
+                    .distinctUntilChanged()
+                    .flatMapLatest { playlist ->
+                        playlistRepository.observeTracksForPlaylist(playlist)
+                            .map { tracks -> playlist.id to tracks }
+                    }
+            }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
     val expandedPlaylistTracks: StateFlow<List<TrackEntity>> = combine(
-        _expandedPlaylistId, allPlaylists
-    ) { id, lists ->
-        if (id == null || id < 0L) null else lists.find { it.id == id }
-    }
-        .flatMapLatest { playlist ->
-            if (playlist == null) flowOf(emptyList())
-            else playlistRepository.observeTracksForPlaylist(playlist)
-        }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        _expandedPlaylistId, expandedPlaylistTracksWithId
+    ) { currentId, tagged ->
+        if (tagged != null && currentId != null && tagged.first == currentId) tagged.second
+        else emptyList()
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun setExpandedPlaylist(id: Long?) {
         _expandedPlaylistId.value = id

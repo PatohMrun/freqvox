@@ -43,8 +43,15 @@ class TrackRepository @Inject constructor(
         trackDao.getActiveTracks(recentThreshold)
 
     suspend fun scanLibrary() = withContext(Dispatchers.IO) {
-        val tracksInMediaStore = mutableListOf<TrackEntity>()
         val contentResolver: ContentResolver = context.contentResolver
+
+        // Snapshot of what's already in the DB, indexed by PATH so we can
+        // correlate to MediaStore rows even when the underlying numeric
+        // MediaStore ID has been reissued.
+        val existingByPath: Map<String, TrackEntity> =
+            trackDao.getAllTracks().first().associateBy { it.path }
+
+        val tracksInMediaStore = mutableListOf<TrackEntity>()
 
         val projection = arrayOf(
             MediaStore.Audio.Media._ID,
@@ -131,9 +138,13 @@ class TrackRepository @Inject constructor(
                     }
                 }
 
-                // Do NOT extract artwork here — it reads every audio file and takes O(n*fileIO) time.
-                // Preserve any artwork already cached from a previous scan; fill in null for new tracks.
-                val existingArtwork = trackDao.getTrackById(id)?.artworkPath
+                // STATS PRESERVATION: look up by PATH (stable across MediaStore
+                // re-indexes), not by id. Without this every scan would either
+                // miss the row entirely (id changed) or overwrite playCount /
+                // lastPlayed / totalPlayTime / skipCount with the defaults via
+                // @Upsert, making Recently/Most/Least Played go empty and any
+                // cached artwork be re-extracted on every launch.
+                val existing = existingByPath[path]
 
                 tracksInMediaStore.add(
                     TrackEntity(
@@ -145,15 +156,53 @@ class TrackRepository @Inject constructor(
                         dateAdded = dateAdded,
                         path = path,
                         folderPath = java.io.File(rawDataPath).parent ?: "Unknown",
-                        artworkPath = existingArtwork
+                        artworkPath = existing?.artworkPath,
+                        playCount = existing?.playCount ?: 0,
+                        lastPlayed = existing?.lastPlayed,
+                        totalPlayTime = existing?.totalPlayTime ?: 0,
+                        skipCount = existing?.skipCount ?: 0
                     )
                 )
             }
         }
 
         if (tracksInMediaStore.isNotEmpty()) {
-            trackDao.insertTracks(tracksInMediaStore)
-            trackDao.deleteRemovedTracks(tracksInMediaStore.map { it.id })
+            // PLAYLIST PRESERVATION PATH:
+            // MediaStore re-issues row IDs whenever it re-indexes a file (reboot,
+            // file edited externally, etc). The old approach — "delete every track
+            // whose MediaStore id isn't in this scan" — then cascaded into
+            // playlist_tracks/track_tags and wiped the user's playlists. Now we
+            // match existing tracks to the new scan by PATH (stable per file),
+            // and:
+            //   - if the same path comes back with a different id → migrate
+            //     all references to the new id, then drop the old PK row;
+            //   - if a path is truly gone from MediaStore → delete that row.
+            val newTracksByPath: Map<String, Long> = tracksInMediaStore.associate { it.path to it.id }
+
+            val idMigrations = mutableListOf<Pair<Long, Long>>() // oldId -> newId
+            val trulyRemoved = mutableListOf<Long>()
+            for (existing in existingByPath.values) {
+                val newId = newTracksByPath[existing.path]
+                when {
+                    newId == null -> trulyRemoved += existing.id
+                    newId != existing.id -> idMigrations += existing.id to newId
+                }
+            }
+
+            // Upsert (INSERT-or-UPDATE in place) instead of REPLACE. This is
+            // critical: REPLACE deletes the existing row before inserting the
+            // new one, which fires the ForeignKey.CASCADE on playlist_tracks
+            // and silently wipes every track's playlist membership on every
+            // scan. @Upsert mutates the row in place, so cross-refs survive.
+            trackDao.upsertTracks(tracksInMediaStore)
+
+            idMigrations.forEach { (oldId, newId) ->
+                trackDao.migrateTrackReferences(oldId, newId)
+            }
+
+            if (trulyRemoved.isNotEmpty()) {
+                trackDao.deleteTracksByIds(trulyRemoved)
+            }
         }
 
         ensureDefaultTags()

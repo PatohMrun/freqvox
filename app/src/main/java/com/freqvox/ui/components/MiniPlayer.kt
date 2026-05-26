@@ -90,6 +90,8 @@ fun MiniPlayer(
     // graphicsLayer (not .offset) so the swipe translates the entire mini-player —
     // background, shadow, content — as one piece, without changing its layout bounds
     // (keeps shared-bounds capture stable for the expand-to-player transition).
+    // Background color matches PlayerScreen's Column so the shared-bounds morph
+    // doesn't have a visible color jump from mini-bar to full-screen.
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -99,7 +101,7 @@ fun MiniPlayer(
                 translationY = offsetY
             }
             .shadow(8.dp, clip = false)
-            .background(Color(0xFF1A1A26))
+            .background(Color(0xFF12121A))
     ) {
         Box(modifier = Modifier.fillMaxWidth()) {
             // ── Content row ────────────────────────────────────────────────────
