@@ -449,9 +449,7 @@ fun PlayerScreen(
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
-                        modifier = Modifier
-                            .then(com.freqvox.ui.components.sharedElementModifier("player.title"))
-                            .basicMarquee()
+                        modifier = Modifier.basicMarquee()
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
@@ -459,8 +457,7 @@ fun PlayerScreen(
                         color = Color.White.copy(alpha = 0.55f),
                         fontSize = 16.sp,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.then(com.freqvox.ui.components.sharedElementModifier("player.artist"))
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {

@@ -31,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.platform.LocalDensity
@@ -38,12 +39,10 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.freqvox.playback.PlaybackController
-import kotlin.math.roundToInt
 
 @Composable
 fun MiniPlayer(
@@ -88,10 +87,17 @@ fun MiniPlayer(
 
     val interpolatedPos = rememberInterpolatedPositionMs(isPlaying, currentPosition, duration)
 
+    // graphicsLayer (not .offset) so the swipe translates the entire mini-player —
+    // background, shadow, content — as one piece, without changing its layout bounds
+    // (keeps shared-bounds capture stable for the expand-to-player transition).
     Box(
         modifier = modifier
             .fillMaxWidth()
             .then(sharedBoundsModifier("player.container"))
+            .graphicsLayer {
+                translationX = offsetX
+                translationY = offsetY
+            }
             .shadow(8.dp, clip = false)
             .background(Color(0xFF1A1A26))
     ) {
@@ -110,7 +116,6 @@ fun MiniPlayer(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight()
-                        .offset { IntOffset(offsetX.roundToInt(), offsetY.roundToInt()) }
                         .pointerInput(Unit) {
                             awaitEachGesture {
                                 val firstEvent = awaitPointerEvent()
@@ -194,9 +199,7 @@ fun MiniPlayer(
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
                             maxLines = 1,
-                            modifier = Modifier
-                                .then(sharedElementModifier("player.title"))
-                                .basicMarquee()
+                            modifier = Modifier.basicMarquee()
                         )
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -209,9 +212,7 @@ fun MiniPlayer(
                                 fontSize = 12.sp,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .then(sharedElementModifier("player.artist"))
+                                modifier = Modifier.weight(1f)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
