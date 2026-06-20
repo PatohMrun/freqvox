@@ -1,11 +1,14 @@
 package com.freqvox.ui.search
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
@@ -20,6 +23,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
@@ -27,6 +31,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.freqvox.data.local.entities.TagEntity
 import com.freqvox.data.local.entities.TrackEntity
 import com.freqvox.playback.PlaybackController
 import com.freqvox.ui.components.TrackActionsDialogs
@@ -43,6 +48,7 @@ fun SearchScreen(
     viewModel: MainViewModel = hiltViewModel()
 ) {
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
+    val searchTagFilter by viewModel.searchTagFilter.collectAsStateWithLifecycle()
     val searchResults by viewModel.searchResults.collectAsStateWithLifecycle()
     val allTags by viewModel.allTags.collectAsStateWithLifecycle()
     val dislikedTrackIds by viewModel.dislikedTrackIds.collectAsStateWithLifecycle()
@@ -55,7 +61,16 @@ fun SearchScreen(
     TrackActionsDialogs(state = trackActions, viewModel = viewModel, playlists = allPlaylists)
     
     val focusRequester = remember { FocusRequester() }
+    val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
+
+    // After the IME hides on the first back press, the next back should clear
+    // the active search — not pop the Search tab and land on Home.
+    BackHandler(enabled = searchQuery.isNotEmpty()) {
+        viewModel.clearSearch()
+        focusManager.clearFocus()
+        keyboardController?.hide()
+    }
 
     // Keep a local TextFieldValue to control cursor position
     var textFieldValue by remember {
@@ -109,7 +124,10 @@ fun SearchScreen(
             leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color.Gray) },
             trailingIcon = {
                 if (searchQuery.isNotEmpty()) {
-                    IconButton(onClick = { viewModel.onSearchQueryChange("") }) {
+                    IconButton(onClick = {
+                        viewModel.clearSearch()
+                        focusManager.clearFocus()
+                    }) {
                         Icon(Icons.Default.Clear, contentDescription = "Clear search", tint = Color.Gray)
                     }
                 }
@@ -170,6 +188,16 @@ fun SearchScreen(
                 TagsGrid(tags = allTags, onTagClick = { viewModel.applyTagFilter(it) })
             }
         } else {
+            // Chips stay visible while results are shown so tapping Disliked (or
+            // any tag) always re-applies chip mode — even after editing the bar.
+            if (allTags.isNotEmpty()) {
+                TagFilterRow(
+                    tags = allTags,
+                    selectedTagFilter = searchTagFilter,
+                    onTagClick = { viewModel.applyTagFilter(it) },
+                    modifier = Modifier.padding(bottom = 12.dp)
+                )
+            }
             if (searchResults.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text("No results found for \"$searchQuery\"", color = Color.Gray)
@@ -206,7 +234,43 @@ fun SearchScreen(
 }
 
 @Composable
-fun TagsGrid(tags: List<com.freqvox.data.local.entities.TagEntity>, onTagClick: (String) -> Unit) {
+fun TagFilterRow(
+    tags: List<TagEntity>,
+    selectedTagFilter: String?,
+    onTagClick: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        tags.forEach { tag ->
+            val isSelected = selectedTagFilter != null &&
+                tag.name.equals(selectedTagFilter, ignoreCase = true)
+            FilterChip(
+                selected = isSelected,
+                onClick = { onTagClick(tag.name) },
+                label = {
+                    Text(
+                        text = formatTagDisplayName(tag.name),
+                        fontSize = 13.sp
+                    )
+                },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = Color(tag.color).copy(alpha = 0.35f),
+                    selectedLabelColor = Color.White,
+                    containerColor = Color(0xFF1E1E2E),
+                    labelColor = Color.White.copy(alpha = 0.75f)
+                )
+            )
+        }
+    }
+}
+
+@Composable
+fun TagsGrid(tags: List<TagEntity>, onTagClick: (String) -> Unit) {
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(12.dp),
         contentPadding = PaddingValues(bottom = 120.dp)
