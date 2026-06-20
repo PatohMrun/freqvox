@@ -52,4 +52,9 @@ interface PlaylistDao {
         GROUP BY playlistId
     """)
     fun getManualPlaylistTrackCounts(): Flow<List<PlaylistTrackCount>>
+
+    // Whole-table snapshot used by backup/export. Ordered so a manual playlist's
+    // membership round-trips in the same order the user arranged it.
+    @Query("SELECT * FROM playlist_tracks ORDER BY playlistId, orderIndex ASC")
+    suspend fun getAllPlaylistTracks(): List<com.freqvox.data.local.entities.PlaylistTrackCrossRef>
 }

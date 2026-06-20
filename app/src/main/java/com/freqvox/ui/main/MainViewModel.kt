@@ -2,6 +2,8 @@ package com.freqvox.ui.main
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import android.net.Uri
+import com.freqvox.data.backup.BackupRepository
 import com.freqvox.data.repository.AddTrackResult
 import com.freqvox.data.repository.TrackRepository
 import com.freqvox.data.repository.PlaylistRepository
@@ -15,25 +17,35 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import java.util.Calendar
 import javax.inject.Inject
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
     private val trackRepository: TrackRepository,
     private val playlistRepository: PlaylistRepository,
+    private val backupRepository: BackupRepository,
     private val playbackController: PlaybackController
 ) : ViewModel() {
 
     // Threshold for skip tracker: 30 days
     private val skipThresholdMs = 30L * 24 * 60 * 60 * 1000
 
-    // All tracks for searching/displaying everything
-    val allTracks: StateFlow<List<TrackEntity>> = trackRepository.allTracks
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = emptyList()
-        )
+    // Hidden folders — declared first so the track flows below can filter on it.
+    private val _excludedFolders = MutableStateFlow(trackRepository.getExcludedFolders())
+    val excludedFolders: StateFlow<Set<String>> = _excludedFolders.asStateFlow()
+
+    // All tracks, minus any in hidden folders. Excluded tracks stay in the DB with
+    // their playlist/tag/stat relations intact — they're only hidden from view here.
+    val allTracks: StateFlow<List<TrackEntity>> = combine(
+        trackRepository.allTracks, _excludedFolders
+    ) { tracks, excluded ->
+        if (excluded.isEmpty()) tracks else tracks.filter { it.folderPath !in excluded }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
 
     val allTags: StateFlow<List<TagEntity>> = trackRepository.allTags
         .map { tags -> tags.distinctBy { it.name.lowercase() } }
@@ -70,10 +82,11 @@ class MainViewModel @Inject constructor(
     // Active tracks: skip-tracker hidden + disliked excluded from home/search/shuffle pools
     val activeTracks: StateFlow<List<TrackEntity>> = combine(
         trackRepository.getActiveTracks(System.currentTimeMillis() - skipThresholdMs),
-        taggedTrackIds
-    ) { tracks, tags ->
+        taggedTrackIds,
+        _excludedFolders
+    ) { tracks, tags, excluded ->
         val disliked = tags["disliked"] ?: emptySet()
-        tracks.filter { it.id !in disliked }
+        tracks.filter { it.id !in disliked && it.folderPath !in excluded }
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
@@ -247,6 +260,69 @@ class MainViewModel @Inject constructor(
         .map { tracks -> tracks.sumOf { it.duration } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0L)
 
+    // ── Listening stats ──────────────────────────────────────────────────────
+    // Surfaces the listening data the app already records (playCount / skipCount /
+    // totalPlayTime on each track + the recent play_history rows) as user-facing
+    // insight. Recomputed reactively from allTracks + playHistory.
+    data class ListeningStats(
+        val totalMinutes: Long = 0,
+        val totalPlays: Int = 0,
+        val uniqueTracks: Int = 0,
+        val addedThisMonth: Int = 0,
+        val peakHour: Int? = null,
+        val hourBuckets: List<Int> = List(24) { 0 },
+        val topTracks: List<Pair<TrackEntity, Int>> = emptyList(),
+        val mostSkipped: List<Pair<TrackEntity, Int>> = emptyList()
+    )
+
+    val listeningStats: StateFlow<ListeningStats> = combine(allTracks, playHistory) { tracks, history ->
+        // MediaStore DATE_ADDED is in seconds, so compare against a seconds threshold.
+        val monthAgoSec = System.currentTimeMillis() / 1000 - 30L * 86_400
+
+        val hourBuckets = IntArray(24)
+        history.forEach { ph ->
+            val hour = Calendar.getInstance().apply { timeInMillis = ph.playedAt }.get(Calendar.HOUR_OF_DAY)
+            if (hour in 0..23) hourBuckets[hour]++
+        }
+        val peakHour = if (history.isEmpty()) null
+            else hourBuckets.indices.maxByOrNull { hourBuckets[it] }
+
+        ListeningStats(
+            totalMinutes = tracks.sumOf { it.totalPlayTime } / 60_000,
+            totalPlays = tracks.sumOf { it.playCount },
+            uniqueTracks = tracks.count { it.playCount > 0 },
+            addedThisMonth = tracks.count { it.dateAdded > monthAgoSec },
+            peakHour = peakHour,
+            hourBuckets = hourBuckets.toList(),
+            topTracks = tracks.filter { it.playCount > 0 }
+                .sortedByDescending { it.playCount }
+                .take(5)
+                .map { it to it.playCount },
+            mostSkipped = tracks.filter { it.skipCount > 0 }
+                .sortedByDescending { it.skipCount }
+                .take(5)
+                .map { it to it.skipCount }
+        )
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ListeningStats())
+
+    // ── Hidden folders ─────────────────────────────────────────────────────────
+    // Draws from the UNFILTERED library so hidden folders remain listed (and can be
+    // re-enabled). Toggling just updates the flow; the filtered allTracks/activeTracks
+    // recompute reactively — no destructive rescan, so nothing is ever deleted.
+    val availableFolders: StateFlow<List<String>> = combine(
+        trackRepository.allTracks, _excludedFolders
+    ) { tracks, excluded ->
+        (tracks.map { it.folderPath }.toSet() + excluded).sorted()
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    fun toggleFolderExclusion(folder: String) {
+        val updated = _excludedFolders.value.toMutableSet().apply {
+            if (!add(folder)) remove(folder)
+        }
+        _excludedFolders.value = updated
+        trackRepository.setExcludedFolders(updated)
+    }
+
     init {
         scanLibrary()
     }
@@ -355,6 +431,19 @@ class MainViewModel @Inject constructor(
         }
     }
 
+    /** Saves the current playback queue as a new manual playlist. */
+    fun saveQueueAsPlaylist(name: String) {
+        val trackIds = playbackController.queue.value.mapNotNull { it.trackId.toLongOrNull() }
+        if (name.isBlank() || trackIds.isEmpty()) {
+            postSnackbar("Queue is empty")
+            return
+        }
+        viewModelScope.launch {
+            playlistRepository.createManualPlaylistWithTracks(name.trim(), trackIds)
+            postSnackbar("Saved \"${name.trim()}\" • ${trackIds.size} tracks")
+        }
+    }
+
     suspend fun addTrackToPlaylist(playlistId: Long, trackId: Long): AddTrackResult =
         playlistRepository.addTrackToPlaylist(playlistId, trackId)
 
@@ -443,6 +532,33 @@ class MainViewModel @Inject constructor(
         }
     }
 
+    // ── Backup / Restore ──────────────────────────────────────────────────────
+    // Both run off a user-picked SAF Uri, so no storage permission is involved.
+    // Feedback is routed through the global snackbar so it shows from any screen.
+    fun exportBackup(uri: Uri) {
+        viewModelScope.launch {
+            val result = backupRepository.exportToUri(uri)
+            postSnackbar(
+                when (result) {
+                    is BackupRepository.Result.Success -> result.message
+                    is BackupRepository.Result.Error -> "Backup failed: ${result.message}"
+                }
+            )
+        }
+    }
+
+    fun importBackup(uri: Uri) {
+        viewModelScope.launch {
+            val result = backupRepository.importFromUri(uri)
+            postSnackbar(
+                when (result) {
+                    is BackupRepository.Result.Success -> result.message
+                    is BackupRepository.Result.Error -> "Restore failed: ${result.message}"
+                }
+            )
+        }
+    }
+
     fun createCustomTag(name: String) {
         if (name.isBlank()) return
         viewModelScope.launch {
@@ -450,6 +566,23 @@ class MainViewModel @Inject constructor(
             val colors = listOf(0xFF7C4DFF, 0xFF4DFFB4, 0xFFFF4D7C, 0xFF42A5F5, 0xFFFF6D00, 0xFFFFA726, 0xFFE040FB)
             val randomColor = colors.random().toInt()
             trackRepository.createCustomTag(name.trim(), randomColor)
+        }
+    }
+
+    // ── Tag management ──────────────────────────────────────────────────────────
+    fun updateTag(tag: TagEntity, newName: String, newColor: Int) {
+        if (newName.isBlank()) return
+        viewModelScope.launch {
+            trackRepository.updateTag(tag.copy(name = newName.trim().lowercase(), color = newColor))
+        }
+    }
+
+    fun deleteTag(tag: TagEntity) {
+        viewModelScope.launch {
+            trackRepository.deleteTag(tag)
+            // Also strip the tag from any smart-playlist queries so they don't
+            // silently break with a dangling tag id.
+            playlistRepository.removeTagFromQueries(tag.id)
         }
     }
 }

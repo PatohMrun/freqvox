@@ -14,8 +14,16 @@ interface TagDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTag(tag: TagEntity)
 
+    @Update
+    suspend fun updateTag(tag: TagEntity)
+
     @Delete
     suspend fun deleteTag(tag: TagEntity)
+
+    // track_tags has no FK to tags, so a tag delete must clear its assignments
+    // explicitly or they orphan.
+    @Query("DELETE FROM track_tags WHERE tagId = :tagId")
+    suspend fun deleteCrossRefsForTag(tagId: Long)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTrackTagCrossRef(crossRef: TrackTagCrossRef)

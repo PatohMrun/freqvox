@@ -102,6 +102,11 @@ interface TrackDao {
     @Query("UPDATE tracks SET playCount = playCount + 1, lastPlayed = :timestamp, totalPlayTime = totalPlayTime + :durationPlayed WHERE id = :trackId")
     suspend fun incrementPlayCount(trackId: Long, timestamp: Long, durationPlayed: Long)
 
+    // Adds listen time + refreshes lastPlayed WITHOUT bumping playCount — used for
+    // the 2nd, 3rd… segment of a track that has already been counted as one play.
+    @Query("UPDATE tracks SET lastPlayed = :timestamp, totalPlayTime = totalPlayTime + :durationPlayed WHERE id = :trackId")
+    suspend fun addPlayTime(trackId: Long, timestamp: Long, durationPlayed: Long)
+
     @Query("UPDATE tracks SET skipCount = skipCount + 1 WHERE id = :trackId")
     suspend fun incrementTrackSkipCount(trackId: Long)
 

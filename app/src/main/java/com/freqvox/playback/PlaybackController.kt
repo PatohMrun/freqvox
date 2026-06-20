@@ -68,8 +68,15 @@ class PlaybackController(
     private val _repeatMode = MutableStateFlow(0)
     val repeatMode: StateFlow<Int> = _repeatMode.asStateFlow()
 
+    private val _playbackSpeed = MutableStateFlow(1f)
+    val playbackSpeed: StateFlow<Float> = _playbackSpeed.asStateFlow()
+
     val isTimerRunning: StateFlow<Boolean> = sleepTimerManager.isTimerRunning
     val timerTimeLeft: StateFlow<Long> = sleepTimerManager.timeLeft
+
+    // "Stop after the current track finishes" — a count-down-less sleep mode.
+    private val _stopAfterCurrentTrack = MutableStateFlow(false)
+    val stopAfterCurrentTrack: StateFlow<Boolean> = _stopAfterCurrentTrack.asStateFlow()
 
     private val _queue = MutableStateFlow<List<QueueItem>>(emptyList())
     val queue: StateFlow<List<QueueItem>> = _queue.asStateFlow()
@@ -79,9 +86,12 @@ class PlaybackController(
 
     private var pendingMediaItem: MediaItem? = null
 
-    // incrementPlayCount tracking (existing behaviour, untouched)
+    // incrementPlayCount tracking
     private var lastTrackId: Long? = null
     private var playStartTime: Long = 0L
+    // Whether the current track has already been counted as one play. Prevents a
+    // single listen (with pauses/resumes) from incrementing playCount multiple times.
+    private var playCounted: Boolean = false
 
     // Debounce job: suppresses brief isPlaying=false blips during seek buffering
     private var seekDebounceJob: kotlinx.coroutines.Job? = null
@@ -94,6 +104,10 @@ class PlaybackController(
     private var isFetchingAutoplay = false
     // Tracks the pool of songs to append from (the group/playlist the user is currently playing)
     private var sourcePool: List<TrackEntity> = emptyList()
+
+    // Pressing Next before this many ms into a track counts as a skip; after it,
+    // it's treated as ordinary navigation.
+    private val SKIP_THRESHOLD_MS = 15_000L
 
     init {
         startPositionPolling()
@@ -171,6 +185,18 @@ class PlaybackController(
                 insertHistoryRecord()
                 updateMetadata(mediaItem)
                 
+                // "Stop after current track": when the previous track ends and the
+                // player auto-advances, pause at the start of the next item.
+                if (_stopAfterCurrentTrack.value &&
+                    reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO
+                ) {
+                    mediaController?.let { c ->
+                        c.pause()
+                        c.seekTo(c.currentMediaItemIndex.coerceAtLeast(0), 0L)
+                    }
+                    _stopAfterCurrentTrack.value = false
+                }
+
                 val controller = mediaController
                 if (controller != null) {
                     _currentQueueIndex.value = controller.currentMediaItemIndex.coerceAtLeast(0)
@@ -210,6 +236,10 @@ class PlaybackController(
 
             override fun onRepeatModeChanged(repeatMode: Int) {
                 _repeatMode.value = repeatMode
+            }
+
+            override fun onPlaybackParametersChanged(playbackParameters: androidx.media3.common.PlaybackParameters) {
+                _playbackSpeed.value = playbackParameters.speed
             }
 
             override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
@@ -311,6 +341,7 @@ class PlaybackController(
             lastTrackId = newId
             _currentTrackId.value = newId   // drives like/tag state in ViewModel
             playStartTime = System.currentTimeMillis()
+            playCounted = false             // new track → eligible to be counted once
             // Reset history accumulation for the new track
             historyTrackId = newId
             historyAccumulated = 0L
@@ -321,9 +352,16 @@ class PlaybackController(
     private fun logPlayTime() {
         val id = lastTrackId ?: return
         val durationPlayed = System.currentTimeMillis() - playStartTime
-        if (durationPlayed > 5000L) {
-            scope.launch(Dispatchers.IO) {
+        if (durationPlayed <= 0L) return
+        // Count the play exactly once (first segment past the 5s threshold); every
+        // other segment only accrues listen time so playCount isn't inflated.
+        val countThisSegment = !playCounted && durationPlayed > 5000L
+        if (countThisSegment) playCounted = true
+        scope.launch(Dispatchers.IO) {
+            if (countThisSegment) {
                 trackDao.incrementPlayCount(id, System.currentTimeMillis(), durationPlayed)
+            } else {
+                trackDao.addPlayTime(id, System.currentTimeMillis(), durationPlayed)
             }
         }
     }
@@ -412,6 +450,8 @@ class PlaybackController(
         mediaController?.seekToNextMediaItem()
     }
 
+    /** Always records a skip then advances — used when the user explicitly rejects
+     *  a track (e.g. the dislike auto-skip). */
     fun skipNext() {
         val id = lastTrackId
         if (id != null) {
@@ -421,6 +461,21 @@ class PlaybackController(
             }
         }
         playNext()
+    }
+
+    /** User-facing "Next". Counts as a skip ONLY if they bailed early (before
+     *  [SKIP_THRESHOLD_MS]); advancing near the end of a track is just navigation,
+     *  not a dislike signal. Used by both the full player and the mini-player. */
+    fun nextTrack() {
+        val controller = mediaController ?: return
+        val id = lastTrackId
+        if (id != null && controller.currentPosition in 0 until SKIP_THRESHOLD_MS) {
+            scope.launch(Dispatchers.IO) {
+                trackDao.incrementTrackSkipCount(id)
+                trackDao.insertSkipEvent(SkipHistoryEntity(trackId = id))
+            }
+        }
+        controller.seekToNextMediaItem()
     }
 
     fun playPrevious() {
@@ -438,6 +493,11 @@ class PlaybackController(
         val new = !controller.shuffleModeEnabled
         controller.shuffleModeEnabled = new
         _shuffleEnabled.value = new
+    }
+
+    fun setPlaybackSpeed(speed: Float) {
+        mediaController?.setPlaybackSpeed(speed)
+        _playbackSpeed.value = speed
     }
 
     fun cycleRepeatMode() {
@@ -530,15 +590,26 @@ class PlaybackController(
         }
     }
 
-    fun addToQueue(track: TrackEntity) {
+    private fun buildMediaItem(track: TrackEntity): MediaItem {
         val meta = MediaMetadata.Builder().setTitle(track.title).setArtist(track.artist)
         track.artworkPath?.let { meta.setArtworkUri(Uri.parse("file://$it")) }
-        val item = MediaItem.Builder()
+        return MediaItem.Builder()
             .setMediaId(track.id.toString())
             .setUri(track.path)
             .setMediaMetadata(meta.build())
             .build()
-        mediaController?.addMediaItem(item)
+    }
+
+    fun addToQueue(track: TrackEntity) {
+        mediaController?.addMediaItem(buildMediaItem(track))
+    }
+
+    /** Inserts the track immediately after the one currently playing. */
+    fun playTrackNext(track: TrackEntity) {
+        val controller = mediaController ?: return
+        val insertIndex = (controller.currentMediaItemIndex + 1)
+            .coerceIn(0, controller.mediaItemCount)
+        controller.addMediaItem(insertIndex, buildMediaItem(track))
     }
 
     fun removeFromQueue(index: Int) {
@@ -558,13 +629,21 @@ class PlaybackController(
     }
 
     fun startSleepTimer(minutes: Int) {
+        // Minute-timer and end-of-track are mutually exclusive sleep modes.
+        _stopAfterCurrentTrack.value = false
         sleepTimerManager.startTimer(minutes) {
             mediaController?.pause()
         }
     }
 
+    fun setStopAfterCurrentTrack(enabled: Boolean) {
+        if (enabled) sleepTimerManager.stopTimer()
+        _stopAfterCurrentTrack.value = enabled
+    }
+
     fun stopSleepTimer() {
         sleepTimerManager.stopTimer()
+        _stopAfterCurrentTrack.value = false
     }
 
     fun release() {

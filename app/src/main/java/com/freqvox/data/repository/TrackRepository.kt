@@ -34,6 +34,17 @@ class TrackRepository @Inject constructor(
     val allTags: Flow<List<TagEntity>> = tagDao.getAllTags()
     val allTrackTagCrossRefs: Flow<List<TrackTagCrossRef>> = tagDao.getAllTrackTagCrossRefs()
 
+    // Folders the user has chosen to keep out of the library (ringtones, voice
+    // notes, etc.). Stored as raw folderPath strings, matched during scanLibrary.
+    private val scanPrefs = context.getSharedPreferences("freqvox_scan", Context.MODE_PRIVATE)
+
+    fun getExcludedFolders(): Set<String> =
+        scanPrefs.getStringSet("excluded_folders", emptySet()) ?: emptySet()
+
+    fun setExcludedFolders(folders: Set<String>) {
+        scanPrefs.edit().putStringSet("excluded_folders", folders).apply()
+    }
+
     fun getRecentPlayHistory(): Flow<List<PlayHistoryEntity>> {
         val since = System.currentTimeMillis() - 90L * 86_400_000
         return playHistoryDao.getHistorySinceFlow(since)
@@ -90,6 +101,11 @@ class TrackRepository @Inject constructor(
                 val duration = cursor.getLong(durationColumn)
                 val dateAdded = cursor.getLong(dateAddedColumn)
                 val rawDataPath = cursor.getString(dataColumn) ?: ""
+
+                // Excluded folders are NOT skipped here — they stay in the DB (so
+                // playlist/tag/stat relations survive) and are filtered out for display
+                // in MainViewModel instead.
+                val folder = java.io.File(rawDataPath).parent ?: "Unknown"
 
                 val path = android.content.ContentUris.withAppendedId(
                     MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id
@@ -155,7 +171,7 @@ class TrackRepository @Inject constructor(
                         duration = duration,
                         dateAdded = dateAdded,
                         path = path,
-                        folderPath = java.io.File(rawDataPath).parent ?: "Unknown",
+                        folderPath = folder,
                         artworkPath = existing?.artworkPath,
                         playCount = existing?.playCount ?: 0,
                         lastPlayed = existing?.lastPlayed,
@@ -322,6 +338,16 @@ class TrackRepository @Inject constructor(
         if (name.lowercase() !in existingNames) {
             tagDao.insertTag(TagEntity(name = name.lowercase(), color = color))
         }
+    }
+
+    suspend fun updateTag(tag: TagEntity) {
+        tagDao.updateTag(tag)
+    }
+
+    /** Deletes a tag and removes it from every track it was applied to. */
+    suspend fun deleteTag(tag: TagEntity) {
+        tagDao.deleteCrossRefsForTag(tag.id)
+        tagDao.deleteTag(tag)
     }
 
     /** Used by the media notification like action and in-app like toggle. */

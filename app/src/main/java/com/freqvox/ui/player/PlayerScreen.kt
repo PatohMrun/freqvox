@@ -19,6 +19,7 @@ import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.text.KeyboardOptions
@@ -95,6 +96,8 @@ fun PlayerScreen(
     repeatMode: Int,
     sleepTimerActive: Boolean,
     sleepTimerTimeLeft: Long,
+    stopAfterTrack: Boolean = false,
+    onStopAfterTrack: () -> Unit = {},
     onBack: () -> Unit,
     onPlayPauseClick: () -> Unit,
     onNextClick: () -> Unit,
@@ -111,9 +114,12 @@ fun PlayerScreen(
     onQueueItemClick: (Int) -> Unit,
     onQueueItemRemove: (Int) -> Unit,
     onQueueItemMove: (Int, Int) -> Unit,
+    onSaveQueueAsPlaylist: (String) -> Unit = {},
     onTagSwipeUp: () -> Unit,
     equalizerManager: FreqvoxEqualizerManager,
     currentTrack: TrackEntity?,
+    playbackSpeed: Float = 1f,
+    onSetSpeed: (Float) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val interpolatedPos = com.freqvox.ui.components.rememberInterpolatedPositionMs(
@@ -248,6 +254,7 @@ fun PlayerScreen(
     var showLyricsSheet  by remember { mutableStateOf(false) }
     var showQueueSheet   by remember { mutableStateOf(false) }
     var showEqSheet      by remember { mutableStateOf(false) }
+    var showSpeedSheet   by remember { mutableStateOf(false) }
     var showMoreMenu     by remember { mutableStateOf(false) }
 
     Column(
@@ -316,6 +323,12 @@ fun PlayerScreen(
                         text = { Text("Tag this track", color = Color.White.copy(alpha = 0.85f), fontSize = 14.sp) },
                         leadingIcon = { Icon(Icons.Default.Label, contentDescription = null, tint = Color.White.copy(alpha = 0.6f), modifier = Modifier.size(18.dp)) },
                         onClick = { showMoreMenu = false; onTagSwipeUp() }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Playback speed", color = Color.White.copy(alpha = 0.85f), fontSize = 14.sp) },
+                        leadingIcon = { Icon(Icons.Default.Speed, contentDescription = null, tint = if (playbackSpeed != 1f) Color(0xFF7C4DFF) else Color.White.copy(alpha = 0.6f), modifier = Modifier.size(18.dp)) },
+                        trailingIcon = { if (playbackSpeed != 1f) Text("${formatSpeed(playbackSpeed)}×", color = Color(0xFF7C4DFF), fontSize = 12.sp, fontWeight = FontWeight.SemiBold) },
+                        onClick = { showMoreMenu = false; showSpeedSheet = true }
                     )
                 }
             }
@@ -387,13 +400,23 @@ fun PlayerScreen(
                     ),
                 contentAlignment = Alignment.Center
             ) {
-                FreqvoxVisualizer(
-                    isPlaying = isPlaying,
-                    trackTitle = trackTitle,
-                    accentPrimary = accentPrimary,
-                    accentSecondary = accentSecondary,
-                    modifier = Modifier.fillMaxSize()
-                )
+                val artPath = currentTrack?.artworkPath
+                if (artPath != null) {
+                    coil.compose.AsyncImage(
+                        model = java.io.File(artPath),
+                        contentDescription = null,
+                        contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    FreqvoxVisualizer(
+                        isPlaying = isPlaying,
+                        trackTitle = trackTitle,
+                        accentPrimary = accentPrimary,
+                        accentSecondary = accentSecondary,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
 
                 // Double-tap seek bubble
                 if (seekBubbleAlpha > 0f) {
@@ -662,7 +685,7 @@ fun PlayerScreen(
                 ExtraControlButton(
                     icon = Icons.Default.Bedtime,
                     label = "Sleep",
-                    isActive = sleepTimerActive,
+                    isActive = sleepTimerActive || stopAfterTrack,
                     onClick = { showSleepSheet = true }
                 )
                 ExtraControlButton(
@@ -714,8 +737,51 @@ fun PlayerScreen(
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium
                     )
+                } else if (stopAfterTrack) {
+                    Text(
+                        text = "Stops at the end of this track",
+                        color = Color(0xFF7C4DFF),
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium
+                    )
                 }
                 Spacer(modifier = Modifier.height(20.dp))
+
+                // End-of-track option — a count-down-less "finish this song, then stop".
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(
+                            if (stopAfterTrack) Color(0xFF7C4DFF).copy(alpha = 0.22f)
+                            else Color.White.copy(alpha = 0.07f)
+                        )
+                        .border(
+                            1.dp,
+                            if (stopAfterTrack) Color(0xFF7C4DFF).copy(alpha = 0.6f) else Color.White.copy(alpha = 0.1f),
+                            RoundedCornerShape(12.dp)
+                        )
+                        .clickable { onStopAfterTrack(); showSleepSheet = false }
+                        .padding(vertical = 14.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Default.MusicNote,
+                            contentDescription = null,
+                            tint = if (stopAfterTrack) Color(0xFF7C4DFF) else Color.White.copy(alpha = 0.7f),
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            "End of current track",
+                            color = if (stopAfterTrack) Color.White else Color.White.copy(alpha = 0.85f),
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
 
                 val presets = listOf(5, 10, 15, 30, 45, 60)
                 presets.chunked(3).forEach { row ->
@@ -822,7 +888,7 @@ fun PlayerScreen(
                     }
                 }
 
-                if (sleepTimerActive) {
+                if (sleepTimerActive || stopAfterTrack) {
                     Spacer(modifier = Modifier.height(8.dp))
                     TextButton(
                         onClick = { onStopSleepTimer(); showSleepSheet = false },
@@ -853,6 +919,7 @@ fun PlayerScreen(
             onQueueItemClick   = onQueueItemClick,
             onQueueItemRemove  = onQueueItemRemove,
             onQueueItemMove    = onQueueItemMove,
+            onSaveAsPlaylist   = onSaveQueueAsPlaylist,
             onDismiss          = { showQueueSheet = false }
         )
     }
@@ -864,7 +931,65 @@ fun PlayerScreen(
             onDismiss = { showEqSheet = false }
         )
     }
+
+    // ── Playback Speed Sheet ────────────────────────────────────────────────────
+    if (showSpeedSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showSpeedSheet = false },
+            containerColor = Color(0xFF1A1A26),
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            contentWindowInsets = { WindowInsets(0, 0, 0, 0) }
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+                    .padding(horizontal = 24.dp)
+                    .padding(bottom = 32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text("Playback Speed", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(18.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f).forEach { speed ->
+                        val selected = kotlin.math.abs(playbackSpeed - speed) < 0.01f
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(
+                                    if (selected) Color(0xFF7C4DFF).copy(alpha = 0.25f)
+                                    else Color.White.copy(alpha = 0.06f)
+                                )
+                                .border(
+                                    1.dp,
+                                    if (selected) Color(0xFF7C4DFF).copy(alpha = 0.6f) else Color.White.copy(alpha = 0.1f),
+                                    RoundedCornerShape(12.dp)
+                                )
+                                .clickable { onSetSpeed(speed); showSpeedSheet = false }
+                                .padding(horizontal = 18.dp, vertical = 12.dp)
+                        ) {
+                            Text(
+                                "${formatSpeed(speed)}×",
+                                color = if (selected) Color.White else Color.White.copy(alpha = 0.6f),
+                                fontSize = 15.sp,
+                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
+
+private fun formatSpeed(speed: Float): String =
+    if (speed == speed.toLong().toFloat()) speed.toLong().toString()
+    else speed.toString().trimEnd('0').trimEnd('.')
 
 @Composable
 private fun ExtraControlButton(

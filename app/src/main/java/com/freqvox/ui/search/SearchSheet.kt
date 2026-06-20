@@ -205,7 +205,15 @@ fun SearchSheet(
                                 },
                                 onAddToPlaylist = { trackActions.openAddToPlaylist(track) },
                                 onRequestDelete = { trackActions.openDeleteFlow(track) },
-                                onToggleDislike = { viewModel.toggleDislikeForTrack(track.id) }
+                                onToggleDislike = { viewModel.toggleDislikeForTrack(track.id) },
+                                onPlayNext = {
+                                    playbackController.playTrackNext(track)
+                                    viewModel.postSnackbar("Playing next")
+                                },
+                                onAddToQueue = {
+                                    playbackController.addToQueue(track)
+                                    viewModel.postSnackbar("Added to queue")
+                                }
                             )
                         }
                     }

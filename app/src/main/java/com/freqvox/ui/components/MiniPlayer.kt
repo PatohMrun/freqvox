@@ -157,7 +157,7 @@ fun MiniPlayer(
                                 when {
                                     gesture == "v" && offsetY < -expandThresholdPx -> onSwipeUpToExpand()
                                     gesture == "h" && offsetX > 150f -> playbackController.playPrevious()
-                                    gesture == "h" && offsetX < -150f -> playbackController.playNext()
+                                    gesture == "h" && offsetX < -150f -> playbackController.nextTrack()
                                     gesture == null && kotlin.math.abs(totalX) < 12f && kotlin.math.abs(totalY) < 12f ->
                                         onMiniPlayerClick()
                                 }
@@ -261,7 +261,7 @@ fun MiniPlayer(
                             )
                         }
                     }
-                    IconButton(onClick = { playbackController.playNext() }) {
+                    IconButton(onClick = { playbackController.nextTrack() }) {
                         Icon(
                             Icons.Default.SkipNext,
                             contentDescription = "Next",

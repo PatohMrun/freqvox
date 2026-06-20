@@ -37,6 +37,20 @@ class PlaylistRepository @Inject constructor(
         )
     }
 
+    /** Creates a manual playlist pre-populated with [trackIds], preserving order. */
+    suspend fun createManualPlaylistWithTracks(name: String, trackIds: List<Long>) {
+        val playlistId = playlistDao.insertPlaylist(PlaylistEntity(name = name, type = "manual"))
+        trackIds.forEachIndexed { index, trackId ->
+            playlistDao.insertPlaylistTrack(
+                com.freqvox.data.local.entities.PlaylistTrackCrossRef(
+                    playlistId = playlistId,
+                    trackId = trackId,
+                    orderIndex = index
+                )
+            )
+        }
+    }
+
     suspend fun addTrackToPlaylist(playlistId: Long, trackId: Long): AddTrackResult {
         if (playlistDao.isTrackInPlaylist(playlistId, trackId)) {
             return AddTrackResult.AlreadyInPlaylist
@@ -53,6 +67,19 @@ class PlaylistRepository @Inject constructor(
 
     suspend fun getTracksForPlaylist(playlist: PlaylistEntity): List<TrackEntity> =
         observeTracksForPlaylist(playlist).first()
+
+    /** Strips [tagId] from every smart-playlist query so deleting a tag doesn't
+     *  leave a dead id behind (which would silently make the playlist match nothing). */
+    suspend fun removeTagFromQueries(tagId: Long) {
+        val queryPlaylists = playlistDao.getAllPlaylists().first().filter { it.type == "query" }
+        for (pl in queryPlaylists) {
+            val q = parseQuery(pl.queryJson) ?: continue
+            if (tagId in q.include || tagId in q.exclude) {
+                val newJson = """{"include": ${q.include - tagId}, "exclude": ${q.exclude - tagId}}"""
+                playlistDao.insertPlaylist(pl.copy(queryJson = newJson)) // REPLACE by id
+            }
+        }
+    }
 
     /**
      * Observes the live track list for a playlist. The returned flow re-emits

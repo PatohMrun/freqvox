@@ -71,9 +71,13 @@ object FeedGenerator {
         if (tracks.isEmpty()) return FeedPage(emptyList(), session)
 
         val now = System.currentTimeMillis()
+        // These are in MILLISECONDS — compared against TrackEntity.lastPlayed (millis).
         val sevenDaysAgo   = now - 7L  * 86_400_000
         val fourteenDays   = now - 14L * 86_400_000
         val thirtyDaysAgo  = now - 30L * 86_400_000
+        // TrackEntity.dateAdded comes straight from MediaStore.DATE_ADDED, which is in
+        // SECONDS. Date-added thresholds must use this, not the millisecond values above.
+        val sevenDaysAgoSec = now / 1000 - 7L * 86_400
 
         val cal = Calendar.getInstance()
         val currentHour = cal.get(Calendar.HOUR_OF_DAY)
@@ -220,7 +224,7 @@ object FeedGenerator {
             .entries.shuffled(random)
             .firstOrNull()
             ?.let { (album, list) -> album.replaceFirstChar { c -> c.uppercase() } to list.take(12) }
-        val freshThisWeek = tracks.filter { it.dateAdded > sevenDaysAgo }.sortedByDescending { it.dateAdded }.take(12)
+        val freshThisWeek = tracks.filter { it.dateAdded > sevenDaysAgoSec }.sortedByDescending { it.dateAdded }.take(12)
         val oldestPicks   = tracks.sortedBy { it.dateAdded }.take(12).shuffled(random)
         val mediumLength  = tracks.filter { it.duration in (3 * 60_000L)..(6 * 60_000L) }.shuffled(random).take(12)
         val highSkipPlay  = tracks.filter { it.skipCount > 0 && it.playCount > 0 && it.playCount >= it.skipCount }

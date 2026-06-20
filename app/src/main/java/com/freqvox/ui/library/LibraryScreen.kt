@@ -64,7 +64,7 @@ import com.freqvox.data.local.entities.TagEntity
 import com.freqvox.data.local.entities.TrackEntity
 import com.freqvox.playback.PlaybackController
 import com.freqvox.ui.tag.formatTagDisplayName
-import com.freqvox.ui.home.ProceduralArtwork
+import com.freqvox.ui.home.TrackArtwork
 import com.freqvox.ui.main.MainViewModel
 import com.freqvox.ui.search.SearchSheet
 import kotlinx.coroutines.launch
@@ -93,6 +93,7 @@ fun LibraryScreen(
     playbackController: PlaybackController,
     onTrackClick: (TrackEntity) -> Unit,
     onSearchClick: () -> Unit,
+    onOpenPanel: () -> Unit = {},
     viewModel: MainViewModel = hiltViewModel()
 ) {
     val tracks by viewModel.allTracks.collectAsStateWithLifecycle()
@@ -140,6 +141,7 @@ fun LibraryScreen(
         )
     }
 
+
     Column(
         modifier = Modifier.fillMaxSize()
     ) {
@@ -178,13 +180,15 @@ fun LibraryScreen(
                 }
                 Spacer(modifier = Modifier.width(8.dp))
                 Surface(
-                    modifier = Modifier.size(44.dp),
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clickable { onOpenPanel() },
                     shape = CircleShape,
                     color = Color.White.copy(alpha = 0.1f)
                 ) {
                     Image(
                         painter = painterResource(id = com.freqvox.R.drawable.splash_logo),
-                        contentDescription = "App Logo",
+                        contentDescription = "Menu",
                         modifier = Modifier.fillMaxSize()
                     )
                 }
@@ -263,7 +267,15 @@ fun LibraryScreen(
                                 deleteDialogStep = 1
                             },
                             onAddToPlaylist = { trackToAdd = track },
-                            onToggleDislike = { viewModel.toggleDislikeForTrack(track.id) }
+                            onToggleDislike = { viewModel.toggleDislikeForTrack(track.id) },
+                            onPlayNext = {
+                                playbackController.playTrackNext(track)
+                                scope.launch { snackbarHostState.showSnackbar("Playing next") }
+                            },
+                            onAddToQueue = {
+                                playbackController.addToQueue(track)
+                                scope.launch { snackbarHostState.showSnackbar("Added to queue") }
+                            }
                         )
                     }
                 }
@@ -600,7 +612,9 @@ fun LibraryTrackItem(
     onClick: () -> Unit,
     onRequestDelete: (() -> Unit)? = null,
     onAddToPlaylist: (() -> Unit)? = null,
-    onToggleDislike: (() -> Unit)? = null
+    onToggleDislike: (() -> Unit)? = null,
+    onPlayNext: (() -> Unit)? = null,
+    onAddToQueue: (() -> Unit)? = null
 ) {
     val accent = Color(0xFF7C4DFF)
     var showMenu by remember { mutableStateOf(false) }
@@ -636,7 +650,7 @@ fun LibraryTrackItem(
             shape = RoundedCornerShape(12.dp),
             color = Color.Transparent
         ) {
-            ProceduralArtwork(track = track, modifier = Modifier.fillMaxSize())
+            TrackArtwork(track = track, modifier = Modifier.fillMaxSize())
         }
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
@@ -695,6 +709,30 @@ fun LibraryTrackItem(
                     onDismissRequest = { showMenu = false },
                     modifier = Modifier.background(Color(0xFF1E1E2E))
                 ) {
+                    if (onPlayNext != null) {
+                        DropdownMenuItem(
+                            text = { Text("Play next", color = Color.White) },
+                            onClick = {
+                                showMenu = false
+                                onPlayNext.invoke()
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Default.PlaylistPlay, contentDescription = null, tint = Color.White)
+                            }
+                        )
+                    }
+                    if (onAddToQueue != null) {
+                        DropdownMenuItem(
+                            text = { Text("Add to queue", color = Color.White) },
+                            onClick = {
+                                showMenu = false
+                                onAddToQueue.invoke()
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Default.QueueMusic, contentDescription = null, tint = Color.White)
+                            }
+                        )
+                    }
                     if (onAddToPlaylist != null) {
                         DropdownMenuItem(
                             text = { Text("Add to Playlist", color = Color.White) },
@@ -777,7 +815,7 @@ fun AlbumItem(
                     shape = RoundedCornerShape(12.dp),
                     color = Color.Transparent
                 ) {
-                    ProceduralArtwork(track = representativeTrack, modifier = Modifier.fillMaxSize())
+                    TrackArtwork(track = representativeTrack, modifier = Modifier.fillMaxSize())
                 }
                 Spacer(modifier = Modifier.width(14.dp))
                 Column(modifier = Modifier.weight(1f)) {
@@ -848,7 +886,7 @@ fun ArtistItem(
             shape = CircleShape,
             color = Color.Transparent
         ) {
-            ProceduralArtwork(track = representativeTrack, modifier = Modifier.fillMaxSize())
+            TrackArtwork(track = representativeTrack, modifier = Modifier.fillMaxSize())
         }
                 Spacer(modifier = Modifier.width(14.dp))
                 Column(modifier = Modifier.weight(1f)) {

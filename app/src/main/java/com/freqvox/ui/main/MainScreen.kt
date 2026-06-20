@@ -66,8 +66,10 @@ fun MainScreen(
     val repeatMode by playbackController.repeatMode.collectAsStateWithLifecycle()
     val sleepTimerActive by playbackController.isTimerRunning.collectAsStateWithLifecycle()
     val sleepTimerTimeLeft by playbackController.timerTimeLeft.collectAsStateWithLifecycle()
+    val stopAfterTrack by playbackController.stopAfterCurrentTrack.collectAsStateWithLifecycle()
     val queue by playbackController.queue.collectAsStateWithLifecycle()
     val currentQueueIndex by playbackController.currentQueueIndex.collectAsStateWithLifecycle()
+    val playbackSpeed by playbackController.playbackSpeed.collectAsStateWithLifecycle()
 
     val isLiked by viewModel.isCurrentTrackLiked.collectAsStateWithLifecycle()
     val isDisliked by viewModel.isCurrentTrackDisliked.collectAsStateWithLifecycle()
@@ -75,11 +77,28 @@ fun MainScreen(
     val allTags by viewModel.allTags.collectAsStateWithLifecycle()
     val currentTrackTags by viewModel.currentTrackTags.collectAsStateWithLifecycle()
 
+    // Data for the right-side panel + the sheets it opens.
+    val totalSongs by viewModel.totalSongs.collectAsStateWithLifecycle()
+    val totalDuration by viewModel.totalDuration.collectAsStateWithLifecycle()
+    val allPlaylists by viewModel.allPlaylists.collectAsStateWithLifecycle()
+    val listeningStats by viewModel.listeningStats.collectAsStateWithLifecycle()
+    val availableFolders by viewModel.availableFolders.collectAsStateWithLifecycle()
+    val excludedFolders by viewModel.excludedFolders.collectAsStateWithLifecycle()
+
     val scope = rememberCoroutineScope()
     var showTagSheet by remember { mutableStateOf(false) }
     var searchFocusTrigger by remember { mutableStateOf(0L) }
     var showPlayer by rememberSaveable { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
+
+    // Right-side "more features" panel + the sheets it launches.
+    val drawerState = rememberDrawerState(DrawerValue.Closed)
+    var showStatsSheet by remember { mutableStateOf(false) }
+    var showFoldersSheet by remember { mutableStateOf(false) }
+    var showTagManagerSheet by remember { mutableStateOf(false) }
+    var showEqSheet by remember { mutableStateOf(false) }
+    var showSleepSheet by remember { mutableStateOf(false) }
+    val openPanel: () -> Unit = { scope.launch { drawerState.open() } }
 
     // Sync current track to ViewModel using the exposed ID for reliability
     LaunchedEffect(currentTrackId) {
@@ -147,6 +166,39 @@ fun MainScreen(
                 trackTitle = currentTrackTitle,
                 modifier = Modifier.fillMaxSize()
             )
+            com.freqvox.ui.components.RightNavigationDrawer(
+                drawerState = drawerState,
+                gesturesEnabled = drawerState.isOpen || !showPlayer,
+                drawerContent = {
+                    com.freqvox.ui.components.AppSidePanel(
+                        viewModel = viewModel,
+                        totalSongs = totalSongs,
+                        totalDurationMs = totalDuration,
+                        playlists = allPlaylists,
+                        tags = allTags,
+                        onOpenStats = { scope.launch { drawerState.close() }; showStatsSheet = true },
+                        onOpenEqualizer = { scope.launch { drawerState.close() }; showEqSheet = true },
+                        onOpenSleep = { scope.launch { drawerState.close() }; showSleepSheet = true },
+                        onOpenFolders = { scope.launch { drawerState.close() }; showFoldersSheet = true },
+                        onOpenTags = { scope.launch { drawerState.close() }; showTagManagerSheet = true },
+                        onPlaylistClick = { pl ->
+                            scope.launch {
+                                drawerState.close()
+                                val tracks = viewModel.getTracksForPlaylist(pl)
+                                if (tracks.isNotEmpty()) playbackController.playQueue(tracks, 0)
+                            }
+                        },
+                        onTagClick = { tag ->
+                            scope.launch {
+                                drawerState.close()
+                                val ids = viewModel.taggedTrackIds.value[tag.name.lowercase()] ?: emptySet()
+                                val tracks = viewModel.allTracks.value.filter { it.id in ids }.shuffled()
+                                if (tracks.isNotEmpty()) playbackController.playQueue(tracks, 0)
+                            }
+                        }
+                    )
+                }
+            ) {
             SharedTransitionLayout(modifier = Modifier.fillMaxSize()) {
                 val sharedScope = this
                 Box(modifier = Modifier.fillMaxSize()) {
@@ -221,6 +273,7 @@ fun MainScreen(
                                 composable(Screen.Home.route) {
                                     HomeScreen(
                                         playbackController = playbackController,
+                                        onOpenPanel = openPanel,
                                         onTrackClick = { track, contextTracks ->
                                             val currentTitle = playbackController.currentTrackTitle.value
                                             if (currentTitle == track.title) {
@@ -249,6 +302,7 @@ fun MainScreen(
                                 composable(Screen.Library.route) {
                                     LibraryScreen(
                                         playbackController = playbackController,
+                                        onOpenPanel = openPanel,
                                         onTrackClick = { track ->
                                             val currentTitle = playbackController.currentTrackTitle.value
                                             if (currentTitle == track.title) {
@@ -345,9 +399,11 @@ fun MainScreen(
                                 repeatMode = repeatMode,
                                 sleepTimerActive = sleepTimerActive,
                                 sleepTimerTimeLeft = sleepTimerTimeLeft,
+                                stopAfterTrack = stopAfterTrack,
+                                onStopAfterTrack = { playbackController.setStopAfterCurrentTrack(true) },
                                 onBack = { showPlayer = false },
                                 onPlayPauseClick = { playbackController.togglePlayPause() },
-                                onNextClick = { playbackController.skipNext() },
+                                onNextClick = { playbackController.nextTrack() },
                                 onPreviousClick = { playbackController.playPrevious() },
                                 onSeek = { playbackController.seekTo((it * playerDuration.toFloat()).toLong()) },
                                 onLikeClick = { viewModel.toggleLike() },
@@ -361,15 +417,19 @@ fun MainScreen(
                                 onQueueItemClick = { index -> playbackController.jumpToQueueItem(index) },
                                 onQueueItemRemove = { index -> playbackController.removeFromQueue(index) },
                                 onQueueItemMove = { from, to -> playbackController.moveQueueItem(from, to) },
+                                onSaveQueueAsPlaylist = { name -> viewModel.saveQueueAsPlaylist(name) },
                                 onTagSwipeUp = { showTagSheet = true },
                                 equalizerManager = playbackController.equalizerManager,
-                                currentTrack = currentTrack
+                                currentTrack = currentTrack,
+                                playbackSpeed = playbackSpeed,
+                                onSetSpeed = { playbackController.setPlaybackSpeed(it) }
                             )
                             }
                         }
                     }
                 }
             }
+            } // RightNavigationDrawer
 
             // Global snackbar host. Sits at the root so feedback (e.g. dislike
             // toggles fired from Home/Library/Search/Player) is visible from any
@@ -383,6 +443,47 @@ fun MainScreen(
                     .navigationBarsPadding()
                     .padding(bottom = snackbarBottomPadding)
             )
+
+            // ── Panel-launched sheets (hosted at root so they overlay everything) ──
+            if (showStatsSheet) {
+                com.freqvox.ui.settings.StatsSheet(
+                    stats = listeningStats,
+                    onDismiss = { showStatsSheet = false }
+                )
+            }
+            if (showFoldersSheet) {
+                com.freqvox.ui.settings.FoldersSheet(
+                    folders = availableFolders,
+                    excluded = excludedFolders,
+                    onToggle = { viewModel.toggleFolderExclusion(it) },
+                    onDismiss = { showFoldersSheet = false }
+                )
+            }
+            if (showTagManagerSheet) {
+                com.freqvox.ui.settings.TagManagerSheet(
+                    tags = allTags,
+                    onSave = { tag, name, color -> viewModel.updateTag(tag, name, color) },
+                    onDelete = { viewModel.deleteTag(it) },
+                    onDismiss = { showTagManagerSheet = false }
+                )
+            }
+            if (showEqSheet) {
+                com.freqvox.ui.player.components.EqualizerSheet(
+                    equalizerManager = playbackController.equalizerManager,
+                    onDismiss = { showEqSheet = false }
+                )
+            }
+            if (showSleepSheet) {
+                com.freqvox.ui.settings.SleepTimerSheet(
+                    isActive = sleepTimerActive,
+                    timeLeftMs = sleepTimerTimeLeft,
+                    stopAfterTrack = stopAfterTrack,
+                    onSelectMinutes = { playbackController.startSleepTimer(it) },
+                    onEndOfTrack = { playbackController.setStopAfterCurrentTrack(true) },
+                    onCancel = { playbackController.stopSleepTimer() },
+                    onDismiss = { showSleepSheet = false }
+                )
+            }
         }
     }
 }

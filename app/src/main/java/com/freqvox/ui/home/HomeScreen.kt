@@ -40,6 +40,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -71,6 +73,7 @@ fun HomeScreen(
     playbackController: PlaybackController,
     onTrackClick: (TrackEntity, List<TrackEntity>) -> Unit,
     onSearchClick: () -> Unit,
+    onOpenPanel: () -> Unit = {},
     viewModel: MainViewModel = hiltViewModel()
 ) {
     val activeTracks by viewModel.activeTracks.collectAsStateWithLifecycle()
@@ -205,6 +208,7 @@ fun HomeScreen(
                 totalSongs = totalSongs,
                 totalDurationMs = totalDuration,
                 onSearchClick = { showSearchSheet = true },
+                onOpenPanel = onOpenPanel,
                 modifier = Modifier.padding(horizontal = 24.dp)
             )
             Spacer(modifier = Modifier.height(32.dp))
@@ -413,7 +417,7 @@ fun GridFeedBlock(
                             shape = RoundedCornerShape(12.dp),
                             color = Color.Transparent
                         ) {
-                            ProceduralArtwork(track = track, modifier = Modifier.fillMaxSize())
+                            TrackArtwork(track = track, modifier = Modifier.fillMaxSize())
                         }
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
@@ -532,7 +536,7 @@ fun SpotlightFeedBlock(
 }
 
 @Composable
-fun Header(greeting: String, totalSongs: Int, totalDurationMs: Long, onSearchClick: () -> Unit, modifier: Modifier = Modifier) {
+fun Header(greeting: String, totalSongs: Int, totalDurationMs: Long, onSearchClick: () -> Unit, onOpenPanel: () -> Unit = {}, modifier: Modifier = Modifier) {
     val hours = totalDurationMs / (1000 * 60 * 60)
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -563,15 +567,17 @@ fun Header(greeting: String, totalSongs: Int, totalDurationMs: Long, onSearchCli
                 )
             }
             Spacer(modifier = Modifier.width(8.dp))
-            // Profile Placeholder / Logo
+            // Logo → opens the right-side "more features" panel
             Surface(
-                modifier = Modifier.size(44.dp),
+                modifier = Modifier
+                    .size(44.dp)
+                    .clickable { onOpenPanel() },
                 shape = CircleShape,
                 color = Color.White.copy(alpha = 0.1f)
             ) {
                 Image(
                     painter = painterResource(id = com.freqvox.R.drawable.splash_logo),
-                    contentDescription = "App Logo",
+                    contentDescription = "Menu",
                     modifier = Modifier.fillMaxSize()
                 )
             }
@@ -700,7 +706,7 @@ fun FeedTrackCard(
             shape = RoundedCornerShape(12.dp),
             color = Color.Transparent
         ) {
-            ProceduralArtwork(track = track, modifier = Modifier.fillMaxSize())
+            TrackArtwork(track = track, modifier = Modifier.fillMaxSize())
         }
         Spacer(modifier = Modifier.width(16.dp))
         Column(modifier = Modifier.weight(1f)) {
@@ -779,7 +785,7 @@ fun QuickPicksRow(
                     shape = RoundedCornerShape(16.dp),
                     color = Color.Transparent
                 ) {
-                    ProceduralArtwork(track = track, modifier = Modifier.fillMaxSize())
+                    TrackArtwork(track = track, modifier = Modifier.fillMaxSize())
                 }
                 Spacer(modifier = Modifier.height(10.dp))
                 Text(
@@ -832,6 +838,28 @@ fun getColorsForTrack(title: String): List<Color> {
 
 fun getGradientForTrack(title: String): Brush {
     return Brush.linearGradient(getColorsForTrack(title))
+}
+
+/**
+ * Shows the track's real embedded cover art when it exists, falling back to the
+ * generated [ProceduralArtwork] otherwise. The procedural pattern is drawn as the
+ * base layer so it also shows through if the cached art file was evicted from the
+ * cache dir (in which case AsyncImage simply fails to load over it).
+ */
+@Composable
+fun TrackArtwork(track: TrackEntity, modifier: Modifier = Modifier) {
+    Box(modifier) {
+        ProceduralArtwork(track = track, modifier = Modifier.matchParentSize())
+        val path = track.artworkPath
+        if (path != null) {
+            AsyncImage(
+                model = java.io.File(path),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.matchParentSize()
+            )
+        }
+    }
 }
 
 @Composable

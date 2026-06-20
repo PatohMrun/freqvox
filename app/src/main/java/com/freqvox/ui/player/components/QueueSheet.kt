@@ -16,6 +16,7 @@ import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DragHandle
+import androidx.compose.material.icons.filled.PlaylistAdd
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -47,11 +48,14 @@ fun QueueSheet(
     onQueueItemClick: (Int) -> Unit,
     onQueueItemRemove: (Int) -> Unit,
     onQueueItemMove: (Int, Int) -> Unit,
+    onSaveAsPlaylist: (String) -> Unit = {},
     onDismiss: () -> Unit
 ) {
     val haptic     = LocalHapticFeedback.current
     val listState  = rememberLazyListState()
     val localQueue = remember { mutableStateListOf<QueueItem>() }
+    var showSaveDialog by remember { mutableStateOf(false) }
+    var newPlaylistName by remember { mutableStateOf("") }
 
     // Highlight tracks the playing item by stable id so it follows the track across reorders.
     val playingTrackId = queue.getOrNull(currentQueueIndex)?.trackId
@@ -117,13 +121,65 @@ fun QueueSheet(
     ) {
         Column(Modifier.fillMaxWidth().navigationBarsPadding()) {
 
+            if (showSaveDialog) {
+                AlertDialog(
+                    onDismissRequest = { showSaveDialog = false },
+                    containerColor = Color(0xFF1E1E2E),
+                    title = { Text("Save queue as playlist", color = Color.White, fontWeight = FontWeight.SemiBold) },
+                    text = {
+                        OutlinedTextField(
+                            value = newPlaylistName,
+                            onValueChange = { newPlaylistName = it },
+                            label = { Text("Playlist name") },
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = accentColor,
+                                unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
+                                focusedLabelColor = accentColor,
+                                unfocusedLabelColor = Color.Gray,
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White,
+                                cursorColor = accentColor
+                            )
+                        )
+                    },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                onSaveAsPlaylist(newPlaylistName.trim())
+                                showSaveDialog = false
+                            },
+                            enabled = newPlaylistName.isNotBlank()
+                        ) {
+                            Text("Save", color = if (newPlaylistName.isNotBlank()) accentColor else Color.Gray, fontWeight = FontWeight.SemiBold)
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showSaveDialog = false }) {
+                            Text("Cancel", color = Color.White.copy(alpha = 0.6f))
+                        }
+                    }
+                )
+            }
+
             Row(
-                Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 14.dp),
+                Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp, top = 14.dp, bottom = 14.dp),
                 Arrangement.SpaceBetween, Alignment.CenterVertically
             ) {
                 Text("Queue", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                if (queue.isNotEmpty())
-                    Text("${queue.size} tracks", color = Color.White.copy(.4f), fontSize = 13.sp)
+                if (queue.isNotEmpty()) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("${queue.size} tracks", color = Color.White.copy(.4f), fontSize = 13.sp)
+                        IconButton(onClick = { newPlaylistName = ""; showSaveDialog = true }) {
+                            Icon(
+                                Icons.Default.PlaylistAdd,
+                                contentDescription = "Save queue as playlist",
+                                tint = accentColor,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                }
             }
 
             if (queue.isEmpty()) {
