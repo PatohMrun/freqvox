@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.Equalizer
 import androidx.compose.material.icons.filled.FolderOff
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.QueryStats
 import androidx.compose.material.icons.filled.QueueMusic
 import androidx.compose.material.icons.filled.Restore
@@ -84,6 +85,7 @@ fun AppSidePanel(
     onOpenSleep: () -> Unit,
     onOpenFolders: () -> Unit,
     onOpenTags: () -> Unit,
+    onOpenArtwork: () -> Unit,
     onPlaylistClick: (PlaylistEntity) -> Unit,
     onTagClick: (TagEntity) -> Unit
 ) {
@@ -115,7 +117,7 @@ fun AppSidePanel(
                     color = Color.White.copy(alpha = 0.1f)
                 ) {
                     androidx.compose.foundation.Image(
-                        painter = androidx.compose.ui.res.painterResource(id = R.drawable.splash_logo),
+                        painter = androidx.compose.ui.res.painterResource(id = R.drawable.brand_icon),
                         contentDescription = null,
                         modifier = Modifier.fillMaxSize()
                     )
@@ -141,6 +143,7 @@ fun AppSidePanel(
             PanelSection("LIBRARY")
             PanelRow(Icons.Default.FolderOff, "Hidden folders", onOpenFolders)
             PanelRow(Icons.Default.Sell, "Manage tags", onOpenTags)
+            PanelRow(Icons.Default.Image, "Album art", onOpenArtwork)
 
             PanelSection("BACKUP")
             PanelRow(Icons.Default.Backup, "Back up library") {

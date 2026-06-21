@@ -3,6 +3,8 @@ package com.freqvox.ui.main
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import android.net.Uri
+import com.freqvox.data.artwork.ArtworkPreferences
+import com.freqvox.data.artwork.VidmateThumbnailSource
 import com.freqvox.data.backup.BackupRepository
 import com.freqvox.data.repository.AddTrackResult
 import com.freqvox.data.repository.TrackRepository
@@ -15,6 +17,7 @@ import com.freqvox.data.local.entities.TrackEntity
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.util.Calendar
@@ -25,11 +28,19 @@ class MainViewModel @Inject constructor(
     private val trackRepository: TrackRepository,
     private val playlistRepository: PlaylistRepository,
     private val backupRepository: BackupRepository,
-    private val playbackController: PlaybackController
+    private val playbackController: PlaybackController,
+    private val artworkPrefs: ArtworkPreferences,
+    private val vidmateSource: VidmateThumbnailSource
 ) : ViewModel() {
 
     // Threshold for skip tracker: 30 days
     private val skipThresholdMs = 30L * 24 * 60 * 60 * 1000
+
+    // True while a library scan is running. The UI uses it (together with an empty
+    // library) to show a "Scanning…" state, so a fresh install doesn't look like the
+    // app failed to detect any music.
+    private val _isScanning = MutableStateFlow(false)
+    val isScanning: StateFlow<Boolean> = _isScanning.asStateFlow()
 
     // Hidden folders — declared first so the track flows below can filter on it.
     private val _excludedFolders = MutableStateFlow(trackRepository.getExcludedFolders())
@@ -323,13 +334,117 @@ class MainViewModel @Inject constructor(
         trackRepository.setExcludedFolders(updated)
     }
 
+    // ── Online album-art: one-time consent + per-transport settings ────────────
+    // consentShown is the only default-false flag: online fetching stays blocked
+    // until the user has seen the disclosure, so a fresh install never fires network
+    // traffic before they've read anything. The toggles default on ("works out of
+    // the box") and are surfaced for granular control.
+    private val _showArtworkConsent = MutableStateFlow(!artworkPrefs.consentShown)
+    val showArtworkConsent: StateFlow<Boolean> = _showArtworkConsent.asStateFlow()
+
+    private val _artworkOnlineEnabled = MutableStateFlow(artworkPrefs.onlineEnabled)
+    val artworkOnlineEnabled: StateFlow<Boolean> = _artworkOnlineEnabled.asStateFlow()
+
+    private val _artworkAllowCellular = MutableStateFlow(artworkPrefs.allowCellular)
+    val artworkAllowCellular: StateFlow<Boolean> = _artworkAllowCellular.asStateFlow()
+
+    private val _artworkAllowMeteredWifi = MutableStateFlow(artworkPrefs.allowMeteredWifi)
+    val artworkAllowMeteredWifi: StateFlow<Boolean> = _artworkAllowMeteredWifi.asStateFlow()
+
+    private var artworkBackfillJob: Job? = null
+
+    /** Called when the user dismisses the one-time disclosure. Unblocks online fetching. */
+    fun onArtworkConsentAcknowledged() {
+        artworkPrefs.consentShown = true
+        _showArtworkConsent.value = false
+        launchArtworkBackfill()
+    }
+
+    fun setArtworkOnlineEnabled(enabled: Boolean) {
+        artworkPrefs.onlineEnabled = enabled
+        _artworkOnlineEnabled.value = enabled
+        if (enabled) launchArtworkBackfill()
+    }
+
+    fun setArtworkAllowCellular(allow: Boolean) {
+        artworkPrefs.allowCellular = allow
+        _artworkAllowCellular.value = allow
+        if (allow) launchArtworkBackfill()
+    }
+
+    fun setArtworkAllowMeteredWifi(allow: Boolean) {
+        artworkPrefs.allowMeteredWifi = allow
+        _artworkAllowMeteredWifi.value = allow
+        if (allow) launchArtworkBackfill()
+    }
+
+    /** Clears the negative cache and re-attempts art for everything still missing it. */
+    fun retryFailedArtwork() {
+        artworkPrefs.clearFailedLookups()
+        launchArtworkBackfill()
+    }
+
+    // Number of songs linked from a VidMate folder (0 = not linked). Drives the settings row.
+    private val _vidmateLinkedCount = MutableStateFlow(vidmateSource.linkedCount())
+    val vidmateLinkedCount: StateFlow<Int> = _vidmateLinkedCount.asStateFlow()
+
+    /** Persists the SAF-granted VidMate folder, parses its DB, and re-runs the backfill so
+     *  previously-missed tracks get their exact thumbnail. (Caller must already have taken
+     *  persistable read permission on [uri].) */
+    fun linkVidmateFolder(uri: Uri) {
+        viewModelScope.launch {
+            artworkPrefs.vidmateTreeUri = uri.toString()
+            val count = vidmateSource.rebuildFromTree(uri)
+            _vidmateLinkedCount.value = count
+            artworkPrefs.clearFailedLookups()
+            launchArtworkBackfill()
+            postSnackbar(
+                if (count > 0) "VidMate linked · $count songs"
+                else "Couldn't read that VidMate folder"
+            )
+        }
+    }
+
+    // Single in-flight backfill; cancel any previous so settings changes don't stack.
+    private fun launchArtworkBackfill() {
+        if (!artworkPrefs.consentShown) return
+        artworkBackfillJob?.cancel()
+        artworkBackfillJob = viewModelScope.launch {
+            trackRepository.backfillOnlineArtwork()
+        }
+    }
+
+    // Demand-driven priority: whenever the playing track lacks art, fetch it first
+    // (post-consent) so the user sees a cover for what they're actually listening to.
+    private fun observeNowPlayingArtwork() {
+        viewModelScope.launch {
+            currentTrack.collect { track ->
+                if (track != null && track.artworkPath == null && artworkPrefs.consentShown) {
+                    launch { trackRepository.fetchOnlineArtwork(track) }
+                }
+            }
+        }
+    }
+
     init {
         scanLibrary()
+        observeNowPlayingArtwork()
     }
 
     fun scanLibrary() {
         viewModelScope.launch {
-            trackRepository.scanLibrary()
+            // isScanning drives the "Scanning…" UI on an empty library. It clears once
+            // the scan returns; tracks appear via the allTracks flow as soon as they're
+            // upserted, so the list replaces the indicator without waiting for artwork.
+            _isScanning.value = true
+            try {
+                trackRepository.scanLibrary()
+            } finally {
+                _isScanning.value = false
+            }
+            // Local art is resolved inside scanLibrary(); kick off the online backfill
+            // afterward so cheap offline sources win first. No-op until consent is given.
+            launchArtworkBackfill()
         }
     }
 

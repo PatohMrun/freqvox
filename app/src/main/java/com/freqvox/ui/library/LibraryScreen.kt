@@ -97,6 +97,7 @@ fun LibraryScreen(
     viewModel: MainViewModel = hiltViewModel()
 ) {
     val tracks by viewModel.allTracks.collectAsStateWithLifecycle()
+    val isScanning by viewModel.isScanning.collectAsStateWithLifecycle()
     val currentTrackTitle by playbackController.currentTrackTitle.collectAsStateWithLifecycle()
     val isPlaying by playbackController.isPlaying.collectAsStateWithLifecycle()
     val allPlaylists by viewModel.allPlaylists.collectAsStateWithLifecycle()
@@ -187,7 +188,7 @@ fun LibraryScreen(
                     color = Color.White.copy(alpha = 0.1f)
                 ) {
                     Image(
-                        painter = painterResource(id = com.freqvox.R.drawable.splash_logo),
+                        painter = painterResource(id = com.freqvox.R.drawable.brand_icon),
                         contentDescription = "Menu",
                         modifier = Modifier.fillMaxSize()
                     )
@@ -221,7 +222,20 @@ fun LibraryScreen(
 
         if (tracks.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("No music found in your library", color = Color.Gray)
+                // Scan-aware: don't claim "no music" while a scan is still running.
+                if (isScanning) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        CircularProgressIndicator(
+                            color = Color(0xFF7C4DFF),
+                            strokeWidth = 3.dp,
+                            modifier = Modifier.size(40.dp)
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text("Scanning your library…", color = Color.White.copy(alpha = 0.7f))
+                    }
+                } else {
+                    Text("No music found in your library", color = Color.Gray)
+                }
             }
         } else {
             val sortedTracks = remember(tracks, sortOrder) {

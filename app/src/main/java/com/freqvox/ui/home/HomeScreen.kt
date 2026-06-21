@@ -24,8 +24,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -38,12 +41,16 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.layout.ContentScale
 import coil.compose.AsyncImage
 import androidx.compose.material.icons.filled.Pause
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -88,6 +95,7 @@ fun HomeScreen(
     val taggingTrackId by viewModel.taggingTrackId.collectAsStateWithLifecycle()
     val taggingTrackTags by viewModel.taggingTrackTags.collectAsStateWithLifecycle()
     val dislikedTrackIds by viewModel.dislikedTrackIds.collectAsStateWithLifecycle()
+    val isScanning by viewModel.isScanning.collectAsStateWithLifecycle()
 
     val greeting = rememberGreeting()
     val onTagLongPress: (TrackEntity) -> Unit = { viewModel.openTagPicker(it.id) }
@@ -212,6 +220,21 @@ fun HomeScreen(
                 modifier = Modifier.padding(horizontal = 24.dp)
             )
             Spacer(modifier = Modifier.height(32.dp))
+        }
+
+        // Empty library → make it obvious the app is working (scanning) or that no
+        // music was found, instead of leaving a blank feed that reads as "broken".
+        if (totalSongs == 0) {
+            item {
+                LibraryStatusState(
+                    isScanning = isScanning,
+                    onRescan = { viewModel.scanLibrary() },
+                    modifier = Modifier
+                        .fillParentMaxHeight(0.7f)
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp)
+                )
+            }
         }
 
         // 2. The Hero "Jump Back In" Card (Always shows last played or first available)
@@ -459,33 +482,56 @@ fun SpotlightFeedBlock(
             .aspectRatio(1f) // huge square
             .clip(RoundedCornerShape(24.dp))
             .combinedClickable(onClick = onClick, onLongClick = onLongPress)
-            .background(Color(0xFF1A1A26))
             .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(24.dp)),
         contentAlignment = Alignment.Center
     ) {
-        // Draw a static "pulse" spotlight design
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val center = Offset(size.width / 2, size.height / 2)
-            val radius = size.minDimension * 0.35f
-            
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(Color(0xFF7C4DFF).copy(alpha = 0.4f), Color.Transparent),
+        val artPath = track.artworkPath
+        if (artPath != null) {
+            // Album art fills the square; signature scrim overlaid for legibility.
+            AsyncImage(
+                model = java.io.File(artPath),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.matchParentSize()
+            )
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color(0xFF7C4DFF).copy(alpha = 0.25f),
+                                Color(0xFF12121A).copy(alpha = 0.80f)
+                            )
+                        )
+                    )
+            )
+        } else {
+            // No art → original solid background + static "pulse" spotlight design.
+            Box(modifier = Modifier.matchParentSize().background(Color(0xFF1A1A26)))
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val center = Offset(size.width / 2, size.height / 2)
+                val radius = size.minDimension * 0.35f
+
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(Color(0xFF7C4DFF).copy(alpha = 0.4f), Color.Transparent),
+                        center = center,
+                        radius = radius * 1.5f
+                    ),
+                    radius = radius * 1.5f,
+                    center = center
+                )
+
+                drawCircle(
+                    color = Color.White.copy(alpha = 0.05f),
+                    radius = radius,
                     center = center,
-                    radius = radius * 1.5f
-                ),
-                radius = radius * 1.5f,
-                center = center
-            )
-            
-            drawCircle(
-                color = Color.White.copy(alpha = 0.05f),
-                radius = radius,
-                center = center,
-                style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.dp.toPx())
-            )
+                    style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.dp.toPx())
+                )
+            }
         }
-        
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -506,13 +552,15 @@ fun SpotlightFeedBlock(
                 )
             }
             
-            Text(
-                text = track.title.take(1).uppercase(),
-                color = Color.White.copy(alpha = 0.8f),
-                fontSize = 80.sp,
-                fontWeight = FontWeight.Black
-            )
-            
+            if (artPath == null) {
+                Text(
+                    text = track.title.take(1).uppercase(),
+                    color = Color.White.copy(alpha = 0.8f),
+                    fontSize = 80.sp,
+                    fontWeight = FontWeight.Black
+                )
+            }
+
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
                 Text(
                     text = track.title,
@@ -567,6 +615,14 @@ fun Header(greeting: String, totalSongs: Int, totalDurationMs: Long, onSearchCli
                 )
             }
             Spacer(modifier = Modifier.width(8.dp))
+            IconButton(onClick = onOpenPanel) {
+                Icon(
+                    imageVector = Icons.Default.Settings,
+                    contentDescription = "Settings",
+                    tint = Color.White
+                )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
             // Logo → opens the right-side "more features" panel
             Surface(
                 modifier = Modifier
@@ -576,7 +632,7 @@ fun Header(greeting: String, totalSongs: Int, totalDurationMs: Long, onSearchCli
                 color = Color.White.copy(alpha = 0.1f)
             ) {
                 Image(
-                    painter = painterResource(id = com.freqvox.R.drawable.splash_logo),
+                    painter = painterResource(id = com.freqvox.R.drawable.brand_icon),
                     contentDescription = "Menu",
                     modifier = Modifier.fillMaxSize()
                 )
@@ -598,23 +654,52 @@ fun HeroFeedCard(
             .height(200.dp)
             .clip(RoundedCornerShape(24.dp))
             .combinedClickable(onClick = onClick, onLongClick = onLongPress)
-            .background(
-                Brush.linearGradient(
-                    colors = listOf(Color(0xFF7C4DFF).copy(alpha = 0.3f), Color(0xFF12121A))
-                )
-            )
             .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(24.dp))
     ) {
-        // Abstract Monogram Background
-        Text(
-            text = track.title.take(1).uppercase(),
-            fontSize = 180.sp,
-            fontWeight = FontWeight.Black,
-            color = Color.White.copy(alpha = 0.03f),
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .offset(x = 20.dp, y = 40.dp)
-        )
+        val artPath = track.artworkPath
+        if (artPath != null) {
+            // Album art fills the card; the card's signature purple→dark gradient is then
+            // overlaid as a translucent scrim so the art reads through while the title/
+            // artist at the bottom stay legible.
+            AsyncImage(
+                model = java.io.File(artPath),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.matchParentSize()
+            )
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color(0xFF7C4DFF).copy(alpha = 0.25f),
+                                Color(0xFF12121A).copy(alpha = 0.80f)
+                            )
+                        )
+                    )
+            )
+        } else {
+            // No art → keep the original solid gradient + faint monogram look.
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.linearGradient(
+                            colors = listOf(Color(0xFF7C4DFF).copy(alpha = 0.3f), Color(0xFF12121A))
+                        )
+                    )
+            )
+            Text(
+                text = track.title.take(1).uppercase(),
+                fontSize = 180.sp,
+                fontWeight = FontWeight.Black,
+                color = Color.White.copy(alpha = 0.03f),
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .offset(x = 20.dp, y = 40.dp)
+            )
+        }
 
         Column(
             modifier = Modifier
@@ -808,6 +893,79 @@ fun QuickPicksRow(
     }
 }
 
+/**
+ * Shown in place of the feed when the library has no tracks. While a scan is running
+ * it reassures the user the app is actively looking for music; once the scan finishes
+ * empty it explains why and offers a manual rescan. This is the fix for "the scanner is
+ * silent, so users think the app can't detect their music."
+ */
+@Composable
+private fun LibraryStatusState(
+    isScanning: Boolean,
+    onRescan: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        if (isScanning) {
+            CircularProgressIndicator(
+                color = Color(0xFF7C4DFF),
+                strokeWidth = 3.dp,
+                modifier = Modifier.size(44.dp)
+            )
+            Spacer(Modifier.height(20.dp))
+            Text(
+                "Scanning your library…",
+                color = Color.White,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                "Looking for music on your device",
+                color = Color.White.copy(alpha = 0.5f),
+                fontSize = 13.sp,
+                textAlign = TextAlign.Center
+            )
+        } else {
+            Icon(
+                imageVector = Icons.Default.LibraryMusic,
+                contentDescription = null,
+                tint = Color.White.copy(alpha = 0.25f),
+                modifier = Modifier.size(56.dp)
+            )
+            Spacer(Modifier.height(16.dp))
+            Text(
+                "No music found",
+                color = Color.White,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                "Make sure you have audio files on this device and that Freqvox has " +
+                    "permission to access them.",
+                color = Color.White.copy(alpha = 0.5f),
+                fontSize = 13.sp,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
+            Spacer(Modifier.height(20.dp))
+            OutlinedButton(
+                onClick = onRescan,
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF7C4DFF))
+            ) {
+                Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Rescan")
+            }
+        }
+    }
+}
+
 @Composable
 fun rememberGreeting(): String {
     val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
@@ -862,67 +1020,102 @@ fun TrackArtwork(track: TrackEntity, modifier: Modifier = Modifier) {
     }
 }
 
+/**
+ * Initials for the generated monogram fallback. Prefers the artist (the more
+ * recognizable identity in a library view), falling back to the title, and to a
+ * music note when neither yields a letter/digit (e.g. an all-symbol filename).
+ * Returns at most two characters so it stays legible even in a 56dp thumbnail.
+ */
+fun monogramInitials(track: TrackEntity): String {
+    val source = track.artist
+        .takeIf { it.isNotBlank() && !it.equals("Unknown Artist", ignoreCase = true) }
+        ?: track.title
+    val words = source.split(Regex("[^\\p{L}\\p{N}]+")).filter { it.isNotBlank() }
+    return when {
+        words.isEmpty() -> "♪" // ♪
+        words.size == 1 -> words[0].take(1).uppercase()
+        else -> (words[0].take(1) + words[1].take(1)).uppercase()
+    }
+}
+
+/** Memoized per-track procedural parameters (seeded by title → stable per track). */
+private class ProcParams(hash: Int) {
+    val shapeType: Int
+    val shapeAlpha: Float
+    val scale: Float
+    val offsetX: Float
+    val offsetY: Float
+    init {
+        val r = java.util.Random(hash.toLong())
+        shapeType = r.nextInt(3)
+        shapeAlpha = 0.18f + r.nextFloat() * 0.16f
+        scale = 0.5f + r.nextFloat() * 1.3f
+        offsetX = -0.5f + r.nextFloat()
+        offsetY = -0.5f + r.nextFloat()
+    }
+}
+
+/**
+ * Generated fallback art (gradient + texture + centered monogram), drawn entirely in a
+ * single [Canvas] draw pass. Everything per-track is memoized and the monogram is rendered
+ * via the native canvas — so there's NO subcomposition (no BoxWithConstraints) and no Text
+ * layout node. That matters because this is the base layer of every thumbnail in the lists.
+ */
 @Composable
 fun ProceduralArtwork(track: TrackEntity, modifier: Modifier = Modifier) {
-    val hash = track.title.hashCode()
-    val random = java.util.Random(hash.toLong())
-    
-    val shapeType = random.nextInt(3)
-    val shapeAlpha = 0.20f + random.nextFloat() * 0.2f // Balanced shape visibility
-    val scale = 0.5f + random.nextFloat() * 1.5f
-    val offsetX = -0.5f + random.nextFloat()
-    val offsetY = -0.5f + random.nextFloat()
-    
-    Box(
-        modifier = modifier
-            .background(getGradientForTrack(track.title))
-            .clipToBounds()
-    ) {
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val centerPoint = Offset(
-                size.width / 2 + size.width * offsetX,
-                size.height / 2 + size.height * offsetY
+    val params = remember(track.title) { ProcParams(track.title.hashCode()) }
+    val gradient = remember(track.title) { getGradientForTrack(track.title) }
+    val initials = remember(track.artist, track.title) { monogramInitials(track) }
+    val monogramPaint = remember {
+        android.graphics.Paint().apply {
+            isAntiAlias = true
+            color = android.graphics.Color.WHITE
+            alpha = 235 // ~0.92
+            textAlign = android.graphics.Paint.Align.CENTER
+            typeface = android.graphics.Typeface.create(
+                android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD
             )
-            val radius = size.minDimension * scale
-            
-            when (shapeType) {
-                0 -> {
-                    drawCircle(color = Color.White.copy(alpha = shapeAlpha), radius = radius, center = centerPoint)
-                    drawCircle(color = Color.Black.copy(alpha = shapeAlpha * 0.5f), radius = radius * 0.6f, center = Offset(centerPoint.x + radius * 0.3f, centerPoint.y - radius * 0.3f))
-                }
-                1 -> {
-                    val strokeWidth = size.minDimension * 0.4f
-                    drawLine(color = Color.Black.copy(alpha = shapeAlpha), start = Offset(-size.width * scale, size.height + size.height * scale), end = Offset(size.width + size.width * scale, -size.height * scale), strokeWidth = strokeWidth)
-                }
-                2 -> {
-                    drawCircle(
-                        brush = Brush.radialGradient(colors = listOf(Color.White.copy(alpha = shapeAlpha), Color.Transparent), center = centerPoint, radius = radius),
-                        radius = radius,
-                        center = centerPoint
-                    )
-                }
+            setShadowLayer(8f, 0f, 2f, 0x59000000) // ~0.35 black
+        }
+    }
+
+    Canvas(modifier = modifier.clipToBounds()) {
+        drawRect(brush = gradient)
+
+        val centerPoint = Offset(
+            size.width / 2 + size.width * params.offsetX,
+            size.height / 2 + size.height * params.offsetY
+        )
+        val radius = size.minDimension * params.scale
+        when (params.shapeType) {
+            0 -> {
+                drawCircle(color = Color.White.copy(alpha = params.shapeAlpha), radius = radius, center = centerPoint)
+                drawCircle(color = Color.Black.copy(alpha = params.shapeAlpha * 0.5f), radius = radius * 0.6f, center = Offset(centerPoint.x + radius * 0.3f, centerPoint.y - radius * 0.3f))
+            }
+            1 -> {
+                val strokeWidth = size.minDimension * 0.4f
+                drawLine(color = Color.Black.copy(alpha = params.shapeAlpha), start = Offset(-size.width * params.scale, size.height + size.height * params.scale), end = Offset(size.width + size.width * params.scale, -size.height * params.scale), strokeWidth = strokeWidth)
+            }
+            2 -> {
+                drawCircle(
+                    brush = Brush.radialGradient(colors = listOf(Color.White.copy(alpha = params.shapeAlpha), Color.Transparent), center = centerPoint, radius = radius),
+                    radius = radius,
+                    center = centerPoint
+                )
             }
         }
-        
-        Text(
-            text = track.title.take(3).uppercase(),
-            color = Color.White.copy(alpha = 0.12f), // Balanced typography
-            fontWeight = FontWeight.Black,
-            fontSize = 80.sp,
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .offset(x = 10.dp, y = 10.dp)
-                .graphicsLayer {
-                    rotationZ = -15f
-                    scaleX = 1.5f
-                    scaleY = 1.5f
-                }
-        )
-        
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color(0xFF1A1A26).copy(alpha = 0.55f)) // Sweet spot: not too bright, not too dark
+
+        // Light scrim so the gradient stays muted behind the monogram.
+        drawRect(color = Color(0xFF1A1A26).copy(alpha = 0.28f))
+
+        // Centered monogram, drawn natively — scales with the tile via size.minDimension.
+        monogramPaint.textSize = size.minDimension * 0.42f
+        val fm = monogramPaint.fontMetrics
+        drawContext.canvas.nativeCanvas.drawText(
+            initials,
+            size.width / 2f,
+            size.height / 2f - (fm.ascent + fm.descent) / 2f,
+            monogramPaint
         )
     }
 }
@@ -940,25 +1133,53 @@ fun FeaturedBannerBlock(
             .height(130.dp)
             .clip(RoundedCornerShape(20.dp))
             .combinedClickable(onClick = onClick, onLongClick = onLongPress)
-            .background(
-                Brush.horizontalGradient(
-                    colors = listOf(Color(0xFF6B3FA0), Color(0xFF1A1A26))
-                )
-            )
             .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(20.dp))
     ) {
-        // Massive faded typography bleeding off the edge
-        Text(
-            text = track.title.uppercase(),
-            fontSize = 80.sp,
-            fontWeight = FontWeight.Black,
-            color = Color.White.copy(alpha = 0.05f),
-            maxLines = 1,
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .offset(x = 20.dp)
-        )
-        
+        val artPath = track.artworkPath
+        if (artPath != null) {
+            // Album art fills the banner; horizontal scrim keeps the left-aligned text
+            // legible (dark on the left) while the art shows through on the right.
+            AsyncImage(
+                model = java.io.File(artPath),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.matchParentSize()
+            )
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.horizontalGradient(
+                            colors = listOf(
+                                Color(0xFF1A1A26).copy(alpha = 0.82f),
+                                Color(0xFF6B3FA0).copy(alpha = 0.25f)
+                            )
+                        )
+                    )
+            )
+        } else {
+            // No art → original solid gradient + faded typography bleeding off the edge.
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.horizontalGradient(
+                            colors = listOf(Color(0xFF6B3FA0), Color(0xFF1A1A26))
+                        )
+                    )
+            )
+            Text(
+                text = track.title.uppercase(),
+                fontSize = 80.sp,
+                fontWeight = FontWeight.Black,
+                color = Color.White.copy(alpha = 0.05f),
+                maxLines = 1,
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .offset(x = 20.dp)
+            )
+        }
+
         Row(
             modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp),
             verticalAlignment = Alignment.CenterVertically,

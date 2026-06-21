@@ -85,6 +85,13 @@ fun MainScreen(
     val availableFolders by viewModel.availableFolders.collectAsStateWithLifecycle()
     val excludedFolders by viewModel.excludedFolders.collectAsStateWithLifecycle()
 
+    // Online album-art consent + settings.
+    val showArtworkConsent by viewModel.showArtworkConsent.collectAsStateWithLifecycle()
+    val artworkOnlineEnabled by viewModel.artworkOnlineEnabled.collectAsStateWithLifecycle()
+    val artworkAllowCellular by viewModel.artworkAllowCellular.collectAsStateWithLifecycle()
+    val artworkAllowMeteredWifi by viewModel.artworkAllowMeteredWifi.collectAsStateWithLifecycle()
+    val vidmateLinkedCount by viewModel.vidmateLinkedCount.collectAsStateWithLifecycle()
+
     val scope = rememberCoroutineScope()
     var showTagSheet by remember { mutableStateOf(false) }
     var searchFocusTrigger by remember { mutableStateOf(0L) }
@@ -98,6 +105,7 @@ fun MainScreen(
     var showTagManagerSheet by remember { mutableStateOf(false) }
     var showEqSheet by remember { mutableStateOf(false) }
     var showSleepSheet by remember { mutableStateOf(false) }
+    var showArtworkSheet by remember { mutableStateOf(false) }
     val openPanel: () -> Unit = { scope.launch { drawerState.open() } }
 
     // Sync current track to ViewModel using the exposed ID for reliability
@@ -181,6 +189,7 @@ fun MainScreen(
                         onOpenSleep = { scope.launch { drawerState.close() }; showSleepSheet = true },
                         onOpenFolders = { scope.launch { drawerState.close() }; showFoldersSheet = true },
                         onOpenTags = { scope.launch { drawerState.close() }; showTagManagerSheet = true },
+                        onOpenArtwork = { scope.launch { drawerState.close() }; showArtworkSheet = true },
                         onPlaylistClick = { pl ->
                             scope.launch {
                                 drawerState.close()
@@ -357,6 +366,13 @@ fun MainScreen(
                         }
                     }
 
+                    // Closing the right-side panel takes priority over nav back. Registered
+                    // after NavHost so the dispatcher (LIFO) routes Back here while the panel is
+                    // open — closing it, instead of popping the nav stack (which finished the app).
+                    BackHandler(enabled = drawerState.isOpen) {
+                        scope.launch { drawerState.close() }
+                    }
+
                     // Full-screen player overlay — appears on top of the Scaffold via SharedTransitionLayout.
                     // Fade duration is locked to the 420ms shared-bounds morph so the rectangle's
                     // expansion and the player's appearance hit "fully visible" on the same frame.
@@ -482,6 +498,31 @@ fun MainScreen(
                     onEndOfTrack = { playbackController.setStopAfterCurrentTrack(true) },
                     onCancel = { playbackController.stopSleepTimer() },
                     onDismiss = { showSleepSheet = false }
+                )
+            }
+            if (showArtworkSheet) {
+                com.freqvox.ui.settings.ArtworkSheet(
+                    onlineEnabled = artworkOnlineEnabled,
+                    allowCellular = artworkAllowCellular,
+                    allowMeteredWifi = artworkAllowMeteredWifi,
+                    onToggleOnline = { viewModel.setArtworkOnlineEnabled(it) },
+                    onToggleCellular = { viewModel.setArtworkAllowCellular(it) },
+                    onToggleMeteredWifi = { viewModel.setArtworkAllowMeteredWifi(it) },
+                    onRetryFailed = { viewModel.retryFailedArtwork() },
+                    onPhotoAccessGranted = { viewModel.scanLibrary() },
+                    vidmateLinkedCount = vidmateLinkedCount,
+                    onLinkVidmate = { viewModel.linkVidmateFolder(it) },
+                    onDismiss = { showArtworkSheet = false }
+                )
+            }
+            // One-time disclosure; blocks online fetching until acknowledged (Gate A).
+            if (showArtworkConsent) {
+                com.freqvox.ui.settings.ArtworkConsentDialog(
+                    onManageSettings = {
+                        viewModel.onArtworkConsentAcknowledged()
+                        showArtworkSheet = true
+                    },
+                    onAcknowledge = { viewModel.onArtworkConsentAcknowledged() }
                 )
             }
         }

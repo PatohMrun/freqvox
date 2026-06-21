@@ -2,10 +2,8 @@ package com.freqvox.data.repository
 
 import android.content.ContentResolver
 import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.media.MediaMetadataRetriever
 import android.provider.MediaStore
+import com.freqvox.data.artwork.ArtworkResolver
 import com.freqvox.data.local.dao.PlayHistoryDao
 import com.freqvox.data.local.dao.TagDao
 import com.freqvox.data.local.dao.TrackDao
@@ -15,11 +13,12 @@ import com.freqvox.data.local.entities.TrackEntity
 import com.freqvox.data.local.entities.TrackTagCrossRef
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import java.io.File
-import java.io.FileOutputStream
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -28,7 +27,8 @@ class TrackRepository @Inject constructor(
     @ApplicationContext private val context: Context,
     private val trackDao: TrackDao,
     private val tagDao: TagDao,
-    private val playHistoryDao: PlayHistoryDao
+    private val playHistoryDao: PlayHistoryDao,
+    private val artworkResolver: ArtworkResolver
 ) {
     val allTracks: Flow<List<TrackEntity>> = trackDao.getAllTracks()
     val allTags: Flow<List<TagEntity>> = tagDao.getAllTags()
@@ -111,7 +111,9 @@ class TrackRepository @Inject constructor(
                     MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id
                 ).toString()
 
-                var finalTitle = cleanMetadata(rawTitle).replace("_", " ")
+                // Underscores → spaces FIRST so the space-based cleanup regexes match
+                // (side-loaded filenames like "Artist_-_Title_Official_Video" use underscores).
+                var finalTitle = cleanMetadata(rawTitle.replace("_", " "))
                 var finalArtist = when {
                     rawArtist.isNullOrBlank() || rawArtist == "<unknown>" -> "Unknown Artist"
                     else -> rawArtist
@@ -223,12 +225,63 @@ class TrackRepository @Inject constructor(
 
         ensureDefaultTags()
 
-        // Extract artwork for tracks that don't have it yet — runs after tracks are visible in UI
+        // Resolve LOCAL artwork for tracks that don't have it yet — runs after tracks
+        // are visible in UI. Online lookup is deliberately NOT done here (it would be a
+        // network burst over the whole library); it happens on demand, post-consent.
         tracksInMediaStore.filter { it.artworkPath == null }.forEach { track ->
-            val artworkPath = getOrExtractArtwork(track.id)
+            val artworkPath = artworkResolver.resolveLocalArtwork(track)
             if (artworkPath != null) {
                 trackDao.updateTrack(track.copy(artworkPath = artworkPath))
             }
+        }
+    }
+
+    // ── Online artwork (demand-driven, never a launch-time burst) ───────────────
+    // Spacing between backfill fetches; keeps the long-tail sweep gentle on free APIs.
+    private val backfillThrottleMs = 600L
+
+    // Tracks currently being fetched, so a now-playing priority fetch and the
+    // background backfill never hit the network twice for the same track.
+    private val inFlightArtwork = mutableSetOf<Long>()
+    private val inFlightMutex = Mutex()
+
+    /**
+     * Fetches online art for a single track on demand (e.g. the now-playing one) and
+     * persists it. No-ops if the track already has art or a fetch is already running for
+     * it. All gating (consent, policy, negative cache) lives in [ArtworkResolver].
+     */
+    suspend fun fetchOnlineArtwork(track: TrackEntity): Boolean {
+        if (track.artworkPath != null) return false
+        val claimed = inFlightMutex.withLock {
+            if (track.id in inFlightArtwork) false else inFlightArtwork.add(track.id)
+        }
+        if (!claimed) return false
+        return try {
+            val path = artworkResolver.resolveOnlineArtwork(track)
+            if (path != null) {
+                trackDao.updateTrack(track.copy(artworkPath = path))
+                true
+            } else false
+        } finally {
+            inFlightMutex.withLock { inFlightArtwork.remove(track.id) }
+        }
+    }
+
+    /**
+     * Slowly backfills online art for the rest of the library. Throttled and one-at-a-time
+     * so a large library never produces a request burst, and it bails the moment
+     * consent/connection no longer permits fetching. Negative-cached tracks are filtered
+     * out so we don't re-walk them on every launch.
+     */
+    suspend fun backfillOnlineArtwork() = withContext(Dispatchers.IO) {
+        if (!artworkResolver.canFetchOnline()) return@withContext
+        val candidates = allTracks.first().filter {
+            it.artworkPath == null && !artworkResolver.alreadyTriedOnline(it.id)
+        }
+        for (track in candidates) {
+            if (!artworkResolver.canFetchOnline()) break
+            fetchOnlineArtwork(track)
+            delay(backfillThrottleMs)
         }
     }
 
@@ -260,48 +313,37 @@ class TrackRepository @Inject constructor(
         }
     }
 
-    private fun getOrExtractArtwork(trackId: Long): String? {
-        val artworkDir = File(context.cacheDir, "artworks")
-        if (!artworkDir.exists()) artworkDir.mkdirs()
-
-        val artworkFile = File(artworkDir, "$trackId.jpg")
-        if (artworkFile.exists()) return artworkFile.absolutePath
-
-        return try {
-            val retriever = MediaMetadataRetriever()
-            val contentUri = android.content.ContentUris.withAppendedId(
-                MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, trackId
-            )
-            retriever.setDataSource(context, contentUri)
-            val art = retriever.embeddedPicture
-            retriever.release()
-
-            if (art != null) {
-                val bitmap = BitmapFactory.decodeByteArray(art, 0, art.size)
-                FileOutputStream(artworkFile).use { out ->
-                    bitmap.compress(Bitmap.CompressFormat.JPEG, 80, out)
-                }
-                artworkFile.absolutePath
-            } else {
-                null
-            }
-        } catch (e: Exception) {
-            null
-        }
-    }
-
     private fun cleanMetadata(title: String): String {
-        return title
-            .replace(Regex("\\(Official Video\\)", RegexOption.IGNORE_CASE), "")
-            .replace(Regex("\\(Official Audio\\)", RegexOption.IGNORE_CASE), "")
-            .replace(Regex("\\(4K\\)", RegexOption.IGNORE_CASE), "")
-            .replace(Regex("\\[HD\\]", RegexOption.IGNORE_CASE), "")
-            .replace(Regex("\\(Lyrics\\)", RegexOption.IGNORE_CASE), "")
-            .replace(Regex("\\(Official Music Video\\)", RegexOption.IGNORE_CASE), "")
-            .replace(Regex("\\[Official Video\\]", RegexOption.IGNORE_CASE), "")
-            .trim()
-            .removeSuffix("-")
-            .trim()
+        // Strips the promo/format junk common in side-loaded (YouTube/Vidmate) filenames
+        // so BOTH the displayed title and the online art-lookup query stay clean — noisy
+        // tokens otherwise return wrong matches and trip the lookup's confidence gate.
+        // Order matters: remove tagged blocks first, then collapse the gaps they leave.
+        val ci = RegexOption.IGNORE_CASE
+        var t = title
+
+        // Bitrate/quality tags Vidmate appends: (256k), (128kbps), (0)
+        t = t.replace(Regex("\\(\\s*\\d+\\s*k(bps)?\\s*\\)", ci), "")
+        t = t.replace(Regex("\\(\\s*0\\s*\\)"), "")
+
+        // Skiza ringtone promos: "[Skiza 8545083]", "SMS SKIZA 8548829 to 811",
+        // "For Skiza SmS skiza 69813080 To 811", "DIAL 811 174# To set as Skiza".
+        t = t.replace(Regex("\\[[^\\]]*skiza[^\\]]*\\]", ci), "")
+        t = t.replace(Regex("dial\\s+[0-9#\\s]+to\\s+set\\s+as\\s+skiza", ci), "")
+        t = t.replace(Regex("(for\\s+)?(sms\\s+)?skiza[\\s\\d#]*to\\s+\\d+", ci), "")
+
+        // "Official"/format tags — parenthesized, bracketed, or bare.
+        t = t.replace(Regex("[\\(\\[]\\s*(official\\s+)?(music\\s+)?(lyric\\s+)?(video|audio|lyrics?|visuali[sz]er)\\s*[\\)\\]]", ci), "")
+        t = t.replace(Regex("\\bofficial\\s+(music\\s+)?(lyric\\s+)?(video|audio)\\b", ci), "")
+        t = t.replace(Regex("\\b(visuali[sz]er|lyric\\s+video)\\b", ci), "")
+
+        // Resolution tags: (4K), [HD], (1080p)
+        t = t.replace(Regex("[\\(\\[]\\s*(4k|8k|hd|fhd|\\d{3,4}p)\\s*[\\)\\]]", ci), "")
+
+        // Collapse the whitespace / empty brackets / stray separators left behind.
+        t = t.replace(Regex("[\\(\\[]\\s*[\\)\\]]"), "")
+        t = t.replace(Regex("\\s{2,}"), " ").trim()
+        t = t.trim(' ', '-', '|', '_', '·', '•').trim()
+        return t
     }
 
     fun getTagsForTrack(trackId: Long): Flow<List<TagEntity>> = tagDao.getTagsForTrack(trackId)
@@ -325,8 +367,7 @@ class TrackRepository @Inject constructor(
         trackDao.deletePlayHistoryForTrack(trackId)
         trackDao.deleteSkipHistoryForTrack(trackId)
         trackDao.deleteTrackById(trackId)
-        val artworkFile = File(context.cacheDir, "artworks/$trackId.jpg")
-        if (artworkFile.exists()) artworkFile.delete()
+        artworkResolver.deleteArtwork(trackId)
     }
 
     suspend fun getTracksByFolder(folderPath: String): List<TrackEntity> {

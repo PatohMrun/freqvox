@@ -13,8 +13,8 @@ android {
         applicationId = "com.freqvox"
         minSdk = 26
         targetSdk = 35
-        versionCode = 36
-        versionName = "1.47"
+        versionCode = 40
+        versionName = "2.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -105,4 +105,12 @@ dependencies {
     implementation("androidx.palette:palette-ktx:1.0.0")
 
     implementation("sh.calvin.reorderable:reorderable:3.1.0")
+
+    // Lightweight HTTP for online album-art lookup (iTunes/Deezer). Already present
+    // transitively via media3-datasource-okhttp; declared explicitly so the version
+    // is pinned and not left to a transitive resolution.
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+
+    // SAF DocumentFile navigation, for reading the user-picked VidMate folder's DB.
+    implementation("androidx.documentfile:documentfile:1.0.1")
 }

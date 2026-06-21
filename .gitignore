@@ -56,3 +56,6 @@ captures/
 .idea/libraries
 .idea/caches
 .idea/modules.xml
+
+# Local sample data — explored for the Vidmate art feature, not part of the app
+VidMate/
