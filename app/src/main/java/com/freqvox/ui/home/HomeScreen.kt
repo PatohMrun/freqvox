@@ -19,7 +19,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.basicMarquee
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -568,7 +569,7 @@ fun SpotlightFeedBlock(
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
-                    modifier = Modifier.basicMarquee()
+                    overflow = TextOverflow.Ellipsis
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
@@ -576,7 +577,7 @@ fun SpotlightFeedBlock(
                     color = Color.White.copy(alpha = 0.5f),
                     fontSize = 16.sp,
                     maxLines = 1,
-                    modifier = Modifier.basicMarquee()
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
@@ -746,7 +747,7 @@ fun HeroFeedCard(
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
-                    modifier = Modifier.basicMarquee()
+                    overflow = TextOverflow.Ellipsis
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
@@ -754,7 +755,7 @@ fun HeroFeedCard(
                     color = Color.White.copy(alpha = 0.7f),
                     fontSize = 16.sp,
                     maxLines = 1,
-                    modifier = Modifier.basicMarquee()
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
@@ -801,7 +802,7 @@ fun FeedTrackCard(
                 fontSize = 16.sp,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
-                modifier = Modifier.basicMarquee()
+                overflow = TextOverflow.Ellipsis
             )
             Spacer(modifier = Modifier.height(2.dp))
             Text(
@@ -809,7 +810,7 @@ fun FeedTrackCard(
                 color = Color.White.copy(alpha = 0.5f),
                 fontSize = 14.sp,
                 maxLines = 1,
-                modifier = Modifier.basicMarquee()
+                overflow = TextOverflow.Ellipsis
             )
         }
         Icon(
@@ -852,7 +853,23 @@ fun QuickPicksRow(
     onTrackClick: (TrackEntity, List<TrackEntity>) -> Unit,
     onTagLongPress: (TrackEntity) -> Unit = {}
 ) {
+    val verticalScrollConsumer = remember {
+        object : androidx.compose.ui.input.nestedscroll.NestedScrollConnection {
+            override fun onPreScroll(
+                available: Offset,
+                source: androidx.compose.ui.input.nestedscroll.NestedScrollSource
+            ): Offset {
+                return if (kotlin.math.abs(available.y) > kotlin.math.abs(available.x)) {
+                    Offset(available.x, 0f)
+                } else {
+                    Offset.Zero
+                }
+            }
+        }
+    }
+
     LazyRow(
+        modifier = Modifier.nestedScroll(verticalScrollConsumer),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         contentPadding = PaddingValues(horizontal = 24.dp)
     ) {
@@ -879,14 +896,14 @@ fun QuickPicksRow(
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
-                    modifier = Modifier.basicMarquee()
+                    overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     text = track.artist,
                     color = Color.White.copy(alpha = 0.5f),
                     fontSize = 12.sp,
                     maxLines = 1,
-                    modifier = Modifier.basicMarquee()
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
@@ -1205,14 +1222,14 @@ fun FeaturedBannerBlock(
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
-                    modifier = Modifier.basicMarquee()
+                    overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     text = track.artist,
                     color = Color.White.copy(alpha = 0.6f),
                     fontSize = 14.sp,
                     maxLines = 1,
-                    modifier = Modifier.basicMarquee()
+                    overflow = TextOverflow.Ellipsis
                 )
             }
             
