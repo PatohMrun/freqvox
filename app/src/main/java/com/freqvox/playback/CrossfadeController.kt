@@ -48,8 +48,8 @@ class CrossfadeController(
 
     private val poller = object : Runnable {
         override fun run() {
-            maybeCrossfade()
-            handler.postDelayed(this, POLL_MS)
+            val nextPollMs = maybeCrossfade()
+            handler.postDelayed(this, nextPollMs)
         }
     }
 
@@ -63,6 +63,11 @@ class CrossfadeController(
             // can't misfire on the crossfade's own start. No-op outside a crossfade.
             if (!crossfading) return
             if (playWhenReady) tailPlayer.play() else tailPlayer.pause()
+        }
+
+        override fun onIsPlayingChanged(isPlaying: Boolean) {
+            handler.removeCallbacks(poller)
+            if (isPlaying) handler.post(poller)
         }
 
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
@@ -85,7 +90,7 @@ class CrossfadeController(
 
     fun start() {
         mainPlayer.addListener(mainListener)
-        handler.post(poller)
+        if (mainPlayer.isPlaying) handler.post(poller)
     }
 
     fun release() {
@@ -93,18 +98,18 @@ class CrossfadeController(
         mainPlayer.removeListener(mainListener)
     }
 
-    private fun maybeCrossfade() {
+    private fun maybeCrossfade(): Long {
         val windowMs = prefs.durationSeconds * 1000L
-        if (windowMs <= 0L) { resetArming(); return }      // OFF — inert
-        if (crossfading) return
-        if (!mainPlayer.isPlaying) return
-        if (mainPlayer.repeatMode == Player.REPEAT_MODE_ONE) return
-        if (!mainPlayer.hasNextMediaItem()) return         // last track — nothing to fade into
+        if (windowMs <= 0L) { resetArming(); return 1000L }      // OFF — inert
+        if (crossfading) return 1000L
+        if (!mainPlayer.isPlaying) return 1000L
+        if (mainPlayer.repeatMode == Player.REPEAT_MODE_ONE) return 1000L
+        if (!mainPlayer.hasNextMediaItem()) return 1000L         // last track — nothing to fade into
 
         val duration = mainPlayer.duration
-        if (duration == C.TIME_UNSET || duration <= 0L) return
+        if (duration == C.TIME_UNSET || duration <= 0L) return 1000L
         // Don't crossfade tracks too short to give both a fade and some solo time.
-        if (duration < windowMs * 2) return
+        if (duration < windowMs * 2) return 1000L
 
         val remaining = duration - mainPlayer.currentPosition
 
@@ -115,6 +120,15 @@ class CrossfadeController(
         // Phase 2 — trigger the actual crossfade.
         if (preArmed && remaining <= windowMs) {
             startCrossfade(windowMs)
+            return 1000L // ramp takes over
+        }
+        
+        // Dynamic polling: slow down the poll rate when far from the crossfade window.
+        val timeUntilPrearm = remaining - (windowMs + PREARM_LEAD_MS)
+        return when {
+            timeUntilPrearm > 5000L -> 1000L // Far away: check once a second
+            timeUntilPrearm > 0L -> 100L     // Getting closer: check 10 times a second
+            else -> POLL_MS                  // Inside critical window: check 50 times a second
         }
     }
 

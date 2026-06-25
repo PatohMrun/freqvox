@@ -122,23 +122,24 @@ fun WaveformScrubber(
             val gap          = 2.dp.toPx()
             val p            = displayedProgress
 
+            val activeBrush = Brush.verticalGradient(
+                colors = listOf(accentPrimary, accentSecondary),
+                startY = 0f,
+                endY   = canvasHeight
+            )
+            val inactiveBrush = Brush.verticalGradient(
+                colors = listOf(Color.White.copy(alpha = 0.12f), Color.White.copy(alpha = 0.06f)),
+                startY = 0f,
+                endY   = canvasHeight
+            )
+
             heights.forEachIndexed { index, heightFactor ->
                 val barProgress = index.toFloat() / barCount
                 val isPlayed    = barProgress < p
                 val barHeight   = canvasHeight * heightFactor
                 val x           = index * barWidth
 
-                val brush = if (isPlayed) {
-                    Brush.verticalGradient(
-                        colors = listOf(accentPrimary, accentSecondary),
-                        startY = (canvasHeight - barHeight) / 2,
-                        endY   = (canvasHeight + barHeight) / 2
-                    )
-                } else {
-                    Brush.verticalGradient(
-                        colors = listOf(Color.White.copy(alpha = 0.12f), Color.White.copy(alpha = 0.06f))
-                    )
-                }
+                val brush = if (isPlayed) activeBrush else inactiveBrush
 
                 drawRect(
                     brush   = brush,

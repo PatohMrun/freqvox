@@ -48,6 +48,16 @@ fun FreqvoxVisualizer(
         }
     }
 
+    val sweepBrush = remember(accentPrimary, accentSecondary) {
+        Brush.sweepGradient(
+            colors = listOf(
+                accentPrimary,
+                accentSecondary,
+                accentPrimary
+            )
+        )
+    }
+
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
     Canvas(modifier = Modifier.fillMaxSize()) {
         val center = Offset(size.width / 2, size.height / 2)
@@ -56,15 +66,6 @@ fun FreqvoxVisualizer(
         
         val barCount = 48
         val angleStep = (2 * Math.PI) / barCount
-
-        val sweepBrush = Brush.sweepGradient(
-            colors = listOf(
-                accentPrimary,
-                accentSecondary,
-                accentPrimary
-            ),
-            center = center
-        )
 
         for (i in 0 until barCount) {
             val angle = i * angleStep

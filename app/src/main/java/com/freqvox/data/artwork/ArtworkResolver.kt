@@ -190,7 +190,23 @@ class ArtworkResolver @Inject constructor(
         val retriever = MediaMetadataRetriever()
         return try {
             retriever.setDataSource(context, audioUri(trackId))
-            retriever.embeddedPicture?.let { BitmapFactory.decodeByteArray(it, 0, it.size) }
+            retriever.embeddedPicture?.let { bytes ->
+                val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
+                
+                var inSampleSize = 1
+                val reqSize = 512
+                if (options.outHeight > reqSize || options.outWidth > reqSize) {
+                    val halfHeight = options.outHeight / 2
+                    val halfWidth = options.outWidth / 2
+                    while (halfHeight / inSampleSize >= reqSize && halfWidth / inSampleSize >= reqSize) {
+                        inSampleSize *= 2
+                    }
+                }
+                
+                val finalOptions = BitmapFactory.Options().apply { this.inSampleSize = inSampleSize }
+                BitmapFactory.decodeByteArray(bytes, 0, bytes.size, finalOptions)
+            }
         } catch (e: Exception) {
             null
         } finally {
@@ -245,8 +261,25 @@ class ArtworkResolver @Inject constructor(
                         val imageUri = ContentUris.withAppendedId(
                             MediaStore.Images.Media.EXTERNAL_CONTENT_URI, cursor.getLong(idCol)
                         )
+                        
+                        val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
                         context.contentResolver.openInputStream(imageUri)?.use { input ->
-                            return BitmapFactory.decodeStream(input)
+                            BitmapFactory.decodeStream(input, null, options)
+                        }
+                        
+                        var inSampleSize = 1
+                        val reqSize = 512
+                        if (options.outHeight > reqSize || options.outWidth > reqSize) {
+                            val halfHeight = options.outHeight / 2
+                            val halfWidth = options.outWidth / 2
+                            while (halfHeight / inSampleSize >= reqSize && halfWidth / inSampleSize >= reqSize) {
+                                inSampleSize *= 2
+                            }
+                        }
+                        
+                        context.contentResolver.openInputStream(imageUri)?.use { input ->
+                            val finalOptions = BitmapFactory.Options().apply { this.inSampleSize = inSampleSize }
+                            return BitmapFactory.decodeStream(input, null, finalOptions)
                         }
                     }
                 }
