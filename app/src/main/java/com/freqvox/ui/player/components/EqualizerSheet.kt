@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -37,6 +38,7 @@ fun EqualizerSheet(
     val isEnabled by equalizerManager.isEnabled.collectAsStateWithLifecycle()
     val bandLevels by equalizerManager.bandLevels.collectAsStateWithLifecycle()
     val currentPreset by equalizerManager.currentPreset.collectAsStateWithLifecycle()
+    val eqParams by equalizerManager.params.collectAsStateWithLifecycle()
     val presets = remember { equalizerManager.getPresets() }
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -141,21 +143,22 @@ fun EqualizerSheet(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
                     .height(360.dp)
                     .clip(RoundedCornerShape(20.dp))
                     .background(Color.White.copy(alpha = 0.03f))
                     .padding(vertical = 20.dp, horizontal = 4.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly
+                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
             ) {
-                for (i in 0 until equalizerManager.numBands) {
-                    val freq = equalizerManager.centerFreqs[i]
+                for (i in 0 until eqParams.numBands) {
+                    val freq = eqParams.centerFreqs.getOrNull(i) ?: 0
                     val level = bandLevels[i] ?: 0
 
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier
                             .fillMaxHeight()
-                            .weight(1f)
+                            .width(48.dp)
                     ) {
                         Text(
                             text = "${level / 100}",
@@ -167,7 +170,7 @@ fun EqualizerSheet(
                         VerticalEqSlider(
                             value = level.toFloat(),
                             onValueChange = { equalizerManager.setBandLevel(i, it.toInt()) },
-                            valueRange = equalizerManager.minLevel.toFloat()..equalizerManager.maxLevel.toFloat(),
+                            valueRange = eqParams.minLevel.toFloat()..eqParams.maxLevel.toFloat(),
                             enabled = isEnabled,
                             modifier = Modifier
                                 .weight(1f)

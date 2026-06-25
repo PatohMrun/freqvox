@@ -8,6 +8,13 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
+data class EqParams(
+    val numBands: Int = 0,
+    val centerFreqs: List<Int> = emptyList(),
+    val minLevel: Int = -1500,
+    val maxLevel: Int = 1500
+)
+
 class FreqvoxEqualizerManager(context: Context) {
     private val prefs: SharedPreferences =
         context.getSharedPreferences("freqvox_eq", Context.MODE_PRIVATE)
@@ -22,6 +29,9 @@ class FreqvoxEqualizerManager(context: Context) {
 
     private val _currentPreset = MutableStateFlow(prefs.getInt(KEY_PRESET, -1).toShort())
     val currentPreset: StateFlow<Short> = _currentPreset.asStateFlow()
+
+    private val _params = MutableStateFlow(EqParams())
+    val params: StateFlow<EqParams> = _params.asStateFlow()
 
     var numBands: Int = 0
         private set
@@ -66,6 +76,8 @@ class FreqvoxEqualizerManager(context: Context) {
                 _bandLevels.value = initialLevels
                 saveBandLevels(initialLevels)
             }
+            
+            _params.value = EqParams(numBands, centerFreqs, minLevel, maxLevel)
         } catch (e: Exception) {
             Log.e(TAG, "Init failed", e)
         }

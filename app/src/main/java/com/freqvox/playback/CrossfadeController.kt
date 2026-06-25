@@ -41,7 +41,7 @@ class CrossfadeController(
     // apart from a user pressing "next" mid-crossfade.
     private var selfTriggeredJump = false
 
-    private val POLL_MS = 200L
+    private val POLL_MS = 20L
     private val RAMP_STEP_MS = 50L
     // How early to warm the tail before the crossfade window opens.
     private val PREARM_LEAD_MS = 2000L
@@ -133,11 +133,10 @@ class CrossfadeController(
         crossfading = true
         preArmed = false   // consumed
 
-        // Align the tail to EXACTLY where the main player is right now, then play. The poll
-        // granularity means main is slightly past the pre-arm point; this corrects that so
-        // the tail continues seamlessly instead of replaying a sliver. The tail is already
-        // buffered around here, so the seek is in-buffer = no decode hitch.
-        tailPlayer.seekTo(mainPlayer.currentPosition)
+        // Play the pre-armed tail immediately. Because the poll interval is extremely tight (20ms),
+        // the tail is already poised at exactly the right spot. We deliberately DO NOT call
+        // tailPlayer.seekTo() here because any seek forces the ExoPlayer decoder to flush its
+        // buffers, which causes a split-second gap/pause before the audio track resumes.
         tailPlayer.play()
 
         // Incoming track: jump the session player forward NOW (so UI/notification update),
