@@ -2,6 +2,56 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.14] - 2026-06-26
+First public release since 1.48. Internal versions 2.2–2.13 were never shipped on their own; all of their work is consolidated here.
+
+### Added — Album Artwork
+- **Online Album-Art Lookup**: Missing cover art is now fetched automatically from the network (iTunes / Deezer) for tracks with no embedded artwork.
+- **VidMate Artwork Source**: Recovers the exact original thumbnail for tracks downloaded via VidMate by reading its folder database. Used as the final fallback, after online lookup.
+- **Network Policy & Consent**: An explicit consent gate before any network fetch, with granular control (Wi-Fi only / any connection), surfaced in a new **Album Art** settings sheet.
+- **Retry Failed Lookups**: Manually re-check missing art, with a live spinner while it runs.
+- **Zoom-Fill Artwork**: Covers fill the card with no black letterbox bars, handling non-square aspect ratios.
+
+### Added — Playback
+- **Crossfade Engine**: Configurable overlap (Off / 3 / 5 / 8 / 10 / 12s), off by default. Uses a two-player design with pre-arming to avoid stutter, an equal-power volume curve, and pauses the outgoing track on calls / interruptions.
+- **Audio-Focus Ducking**: Lowers volume for transient interruptions (notifications) instead of going silent, while still fully pausing for phone calls.
+- **Volume Auto-Pause / Resume**: Pauses at volume 0 and resumes when raised — but only when volume was the cause of the pause.
+- **Auto-Rescan Library**: A debounced observer rescans automatically when songs are added or removed on the device.
+
+### Added — Playlists & Library
+- **In-Place Playlist Editing**: Rename, remove individual tracks, and add songs from within a playlist (manual playlists), plus inline creation of a new playlist on the fly.
+- **Sidebar Playlist Tap**: Opens, expands, and scrolls to the selected playlist.
+- **Home Long-Press Menu**: A rich track-options sheet (Tag / Add to Playlist / Play Next / Delete).
+- **Persisted Library Pills**: Remembers your last-selected tab and supports drag-to-reorder.
+- **Locked Headers**: Page headers stay fixed instead of scrolling away.
+
+### Added — Branding
+- New brand assets: full launcher icon set (all densities), brand icon, splash logo, and transparent SVG logo variants; updated brand color.
+- Dynamic copyright line fixed at the bottom of the settings drawer (auto-updating year, proper © / • glyphs).
+
+### Fixed — Equalizer
+- Restored EQ bands, which failed because ExoPlayer creates the audio session lazily; bands are now read after the session exists.
+- Added the missing `MODIFY_AUDIO_SETTINGS` permission.
+
+### Fixed — Crossfade
+- Eliminated the split-second silence / pop on handoff (tail AudioTrack warm-up).
+- Fixed the mid-fade volume dip via the equal-power curve; reverted the warmup-stagger hack that caused echo.
+
+### Fixed — Playback & Notifications
+- Bumped **Media3 1.5.1 → 1.7.1** to fix notifications not updating on track change.
+- Fixed the **Play-Next crash** (duplicate Compose keys → unique queue IDs).
+- Deleted songs are now purged by id *and* path, so they no longer appear in search until restart.
+
+### Performance & Stability
+- **Batched Artwork Backfill**: No per-row DB re-emit, scoped VidMate re-queue, and batched negative-cache writes. Fixes the app becoming very slow when linking VidMate.
+- Dynamic crossfade polling intervals to cut CPU wakeups / battery drain.
+- Bitmap downsampling (`inSampleSize`) in artwork to prevent RAM bloat / OOM crashes.
+- Hoisted Canvas brushes in the visualizer & waveform scrubber to stop GC thrashing / frame drops.
+
+### Library / Backup
+- Prune dead hidden folders on rescan.
+- Backup now includes excluded (hidden) folders.
+
 ## [1.48] - 2026-06-20
 ### Added
 - **Right Side Navigation Panel (`AppSidePanel`)**: A new centralized slide-out menu that houses all application settings and library management tools.
