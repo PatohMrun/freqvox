@@ -106,13 +106,14 @@ fun AppSidePanel(
         drawerContainerColor = Color(0xFF0E0E15),
         modifier = Modifier.width(320.dp)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp)
-                .padding(top = 24.dp, bottom = 24.dp)
-        ) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp)
+                    .padding(top = 24.dp, bottom = 16.dp)
+            ) {
             // ── Library header ──────────────────────────────────────────────────
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Surface(
@@ -218,6 +219,24 @@ fun AppSidePanel(
                     }
                 }
             }
+
+            }
+            
+            val currentYear = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)
+            val copyrightText = if (currentYear > 2026) {
+                "© Copyright 2026 - $currentYear • Signiqe"
+            } else {
+                "© Copyright 2026 • Signiqe"
+            }
+            Text(
+                text = copyrightText,
+                color = Color.White.copy(alpha = 0.2f),
+                fontSize = 10.sp,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .wrapContentWidth(Alignment.CenterHorizontally)
+                    .padding(top = 8.dp, bottom = 32.dp)
+            )
         }
     }
 }
