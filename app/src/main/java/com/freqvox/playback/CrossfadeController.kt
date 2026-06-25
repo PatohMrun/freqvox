@@ -147,32 +147,19 @@ class CrossfadeController(
         crossfading = true
         preArmed = false   // consumed
 
-        // The "Flicker" fix: 
-        // When we call tailPlayer.play(), Android's AudioTrack takes ~50-150ms to 
-        // initialize and start pushing sound. If we jump the mainPlayer immediately, 
-        // the user hears a gap. 
-        // Instead, we start the tailPlayer SILENTLY. Since it was pre-armed to the 
-        // exact same position mainPlayer is currently at, they will play in perfect 
-        // parallel sync.
-        tailPlayer.volume = 0f
+        // Start tailPlayer exactly at the handoff point to maintain perfect beat-sync.
+        // While there is a microscopic hardware gap as AudioTrack wakes up, attempting 
+        // to stagger this causes overlapping echoes because ExoPlayer decoder warmup 
+        // times are unpredictable across devices.
         tailPlayer.play()
 
-        val staggerMs = 150L
+        // Incoming track: jump the session player forward NOW
+        selfTriggeredJump = true
+        mainPlayer.seekToNextMediaItem()
+        mainPlayer.volume = 0f
+        mainPlayer.play()
 
-        handler.postDelayed({
-            // 150ms later, tailPlayer's AudioTrack is fully hot and perfectly aligned 
-            // with where mainPlayer is. We snap it to full volume instantly.
-            if (!crossfading) return@postDelayed
-            tailPlayer.volume = 1f
-
-            // Incoming track: jump the session player forward NOW
-            selfTriggeredJump = true
-            mainPlayer.seekToNextMediaItem()
-            mainPlayer.volume = 0f
-            mainPlayer.play()
-
-            ramp(windowMs)
-        }, staggerMs)
+        ramp(windowMs)
     }
 
     private fun ramp(windowMs: Long) {
@@ -183,8 +170,14 @@ class CrossfadeController(
                 if (!crossfading) return                // cancelled
                 i++
                 val t = (i.toFloat() / steps).coerceIn(0f, 1f)
-                mainPlayer.volume = t
-                tailPlayer.volume = 1f - t
+                
+                // Equal-Power Crossfade: Human hearing perceives audio power logarithmically.
+                // A linear crossfade (t and 1-t) causes acoustic power to drop by 50% in the middle 
+                // of the fade, creating an audible "volume dip".
+                // Using sine/cosine curves maintains a constant 100% power output throughout the entire transition.
+                mainPlayer.volume = kotlin.math.sin(t * (Math.PI / 2)).toFloat()
+                tailPlayer.volume = kotlin.math.cos(t * (Math.PI / 2)).toFloat()
+                
                 if (t >= 1f) finishCrossfade() else handler.postDelayed(this, RAMP_STEP_MS)
             }
         }
