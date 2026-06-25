@@ -147,21 +147,32 @@ class CrossfadeController(
         crossfading = true
         preArmed = false   // consumed
 
-        // Play the pre-armed tail immediately. Because the poll interval is extremely tight (20ms),
-        // the tail is already poised at exactly the right spot. We deliberately DO NOT call
-        // tailPlayer.seekTo() here because any seek forces the ExoPlayer decoder to flush its
-        // buffers, which causes a split-second gap/pause before the audio track resumes.
+        // The "Flicker" fix: 
+        // When we call tailPlayer.play(), Android's AudioTrack takes ~50-150ms to 
+        // initialize and start pushing sound. If we jump the mainPlayer immediately, 
+        // the user hears a gap. 
+        // Instead, we start the tailPlayer SILENTLY. Since it was pre-armed to the 
+        // exact same position mainPlayer is currently at, they will play in perfect 
+        // parallel sync.
+        tailPlayer.volume = 0f
         tailPlayer.play()
 
-        // Incoming track: jump the session player forward NOW (so UI/notification update),
-        // start it silent, and ramp it up. The flag is cleared by the listener when the
-        // resulting transition actually arrives — not raced here.
-        selfTriggeredJump = true
-        mainPlayer.seekToNextMediaItem()
-        mainPlayer.volume = 0f
-        mainPlayer.play()
+        val staggerMs = 150L
 
-        ramp(windowMs)
+        handler.postDelayed({
+            // 150ms later, tailPlayer's AudioTrack is fully hot and perfectly aligned 
+            // with where mainPlayer is. We snap it to full volume instantly.
+            if (!crossfading) return@postDelayed
+            tailPlayer.volume = 1f
+
+            // Incoming track: jump the session player forward NOW
+            selfTriggeredJump = true
+            mainPlayer.seekToNextMediaItem()
+            mainPlayer.volume = 0f
+            mainPlayer.play()
+
+            ramp(windowMs)
+        }, staggerMs)
     }
 
     private fun ramp(windowMs: Long) {
