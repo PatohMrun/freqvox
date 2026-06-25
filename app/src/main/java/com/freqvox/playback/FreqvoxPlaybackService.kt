@@ -109,6 +109,10 @@ class FreqvoxPlaybackService : MediaLibraryService() {
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                 refreshLikeNotificationButton()
             }
+
+            override fun onAudioSessionIdChanged(audioSessionId: Int) {
+                equalizerManager.init(audioSessionId)
+            }
         })
 
         val intent = Intent(this, Class.forName("com.freqvox.MainActivity"))
