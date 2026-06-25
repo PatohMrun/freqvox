@@ -5,6 +5,7 @@ import android.net.Uri
 import com.freqvox.data.local.dao.PlaylistDao
 import com.freqvox.data.local.dao.TagDao
 import com.freqvox.data.local.dao.TrackDao
+import com.freqvox.data.repository.TrackRepository
 import com.freqvox.data.local.entities.PlaylistEntity
 import com.freqvox.data.local.entities.PlaylistTrackCrossRef
 import com.freqvox.data.local.entities.TagEntity
@@ -39,7 +40,8 @@ class BackupRepository @Inject constructor(
     @ApplicationContext private val context: Context,
     private val trackDao: TrackDao,
     private val tagDao: TagDao,
-    private val playlistDao: PlaylistDao
+    private val playlistDao: PlaylistDao,
+    private val trackRepository: TrackRepository
 ) {
     sealed class Result {
         data class Success(val message: String) : Result()
@@ -126,6 +128,12 @@ class BackupRepository @Inject constructor(
             plArr.put(o)
         }
         root.put("playlists", plArr)
+
+        // Hidden folders — user curation that's otherwise lost on a restore. Stored as
+        // raw folderPath strings (matched by name on import), same as in TrackRepository.
+        val foldersArr = JSONArray()
+        trackRepository.getExcludedFolders().forEach { foldersArr.put(it) }
+        root.put("excludedFolders", foldersArr)
 
         return root.toString(2)
     }
@@ -247,6 +255,17 @@ class BackupRepository @Inject constructor(
             }
         }
 
+        // 4) Hidden folders — merge (union) with whatever's already excluded, so a
+        //    restore never un-hides folders nor erases existing hides.
+        val foldersArr = root.optJSONArray("excludedFolders")
+        if (foldersArr != null && foldersArr.length() > 0) {
+            val merged = trackRepository.getExcludedFolders().toMutableSet()
+            for (i in 0 until foldersArr.length()) {
+                foldersArr.optString(i).takeIf { it.isNotBlank() }?.let { merged.add(it) }
+            }
+            trackRepository.setExcludedFolders(merged)
+        }
+
         return Result.Success(
             "Restored: $tagsApplied tag(s) on $tracksMatched track(s), $playlistsRestored playlist(s)"
         )
@@ -268,6 +287,8 @@ class BackupRepository @Inject constructor(
     }
 
     companion object {
-        private const val BACKUP_VERSION = 1
+        // v2 adds "excludedFolders". v1 files simply lack the key and restore fine
+        // (the importer treats a missing array as "nothing to merge").
+        private const val BACKUP_VERSION = 2
     }
 }

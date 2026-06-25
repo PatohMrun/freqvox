@@ -24,7 +24,12 @@ import com.freqvox.data.local.entities.TrackEntity
 data class QueueItem(
     val trackId: String,
     val title: String,
-    val artist: String
+    val artist: String,
+    // Stable, unique key for the queue UI. The SAME song can legitimately appear twice
+    // (e.g. "Play next" on a track already queued); keying the list by trackId then
+    // produced duplicate Compose keys and crashed the queue sheet. uid = queue position
+    // at build time, which is unique and travels with the item across reorders.
+    val uid: Int = 0
 )
 
 class PlaybackController(
@@ -539,7 +544,8 @@ class PlaybackController(
             QueueItem(
                 trackId = item.mediaId,
                 title   = item.mediaMetadata.title?.toString() ?: "Unknown",
-                artist  = item.mediaMetadata.artist?.toString() ?: "Unknown"
+                artist  = item.mediaMetadata.artist?.toString() ?: "Unknown",
+                uid     = i
             )
         }
         _currentQueueIndex.value = controller.currentMediaItemIndex.coerceAtLeast(0)

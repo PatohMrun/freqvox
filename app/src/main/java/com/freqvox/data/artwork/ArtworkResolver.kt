@@ -73,10 +73,14 @@ class ArtworkResolver @Inject constructor(
      *   - Gate A: nothing happens until the consent dialog has been acknowledged;
      *   - negative cache: tracks already looked up and missed are skipped (no network);
      *   - network policy: re-checked live, honoring the per-transport toggles.
-     * On a miss the track is recorded in the negative cache. Returns the persisted
-     * file path on success, or null otherwise.
+     * On a miss the track is recorded in the negative cache (unless [markFailures] is
+     * false, in which case the caller batches that — see the backfill). Returns the
+     * persisted file path on success, or null otherwise.
      */
-    suspend fun resolveOnlineArtwork(track: TrackEntity): String? = withContext(Dispatchers.IO) {
+    suspend fun resolveOnlineArtwork(
+        track: TrackEntity,
+        markFailures: Boolean = true
+    ): String? = withContext(Dispatchers.IO) {
         if (!prefs.consentShown) return@withContext null
         if (prefs.isLookupFailed(track.id)) return@withContext null
         if (!networkPolicy.canFetch()) return@withContext null
@@ -99,11 +103,56 @@ class ArtworkResolver @Inject constructor(
             if (url != null) bytes = remoteClient.fetchFromUrl(url)
         }
         if (bytes == null) {
-            prefs.markLookupFailed(track.id)
+            if (markFailures) prefs.markLookupFailed(track.id)
             return@withContext null
         }
         file.writeBytes(bytes)
         file.absolutePath
+    }
+
+    /** Batched negative-cache mark, for callers that collect misses and record them once. */
+    fun markLookupFailed(ids: Collection<Long>) = prefs.markLookupFailed(ids)
+
+    /**
+     * After a VidMate folder is linked, give another online attempt to ONLY the
+     * tracks that now have a known thumbnail and still lack art — rather than
+     * wiping the whole negative cache and re-probing the entire library on every
+     * link (the old behaviour, which is what made linking grind).
+     *
+     * Matching is done with a single MediaStore query (id → file name) intersected
+     * against [VidmateThumbnailSource.knownFileNames], so it costs one query, not
+     * one per track. Returns how many tracks were re-queued.
+     */
+    suspend fun requeueVidmateLinkable(missingArtIds: Set<Long>): Int = withContext(Dispatchers.IO) {
+        if (missingArtIds.isEmpty()) return@withContext 0
+        val known = vidmateSource.knownFileNames()
+        if (known.isEmpty()) return@withContext 0
+        val linkable = fileNamesByTrackId(missingArtIds)
+            .filterValues { it in known }
+            .keys
+        prefs.clearFailedLookups(linkable)
+        linkable.size
+    }
+
+    /** trackId → on-disk file name for the given ids, via ONE MediaStore query. */
+    private fun fileNamesByTrackId(ids: Set<Long>): Map<Long, String> {
+        val out = HashMap<Long, String>(ids.size)
+        runCatching {
+            context.contentResolver.query(
+                MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                arrayOf(MediaStore.Audio.Media._ID, MediaStore.Audio.Media.DISPLAY_NAME),
+                null, null, null
+            )?.use { c ->
+                val idCol = c.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
+                val nameCol = c.getColumnIndexOrThrow(MediaStore.Audio.Media.DISPLAY_NAME)
+                while (c.moveToNext()) {
+                    val id = c.getLong(idCol)
+                    if (id !in ids) continue
+                    c.getString(nameCol)?.let { out[id] = it }
+                }
+            }
+        }
+        return out
     }
 
     /** The on-disk file name for a track, used to match Vidmate's download records. */

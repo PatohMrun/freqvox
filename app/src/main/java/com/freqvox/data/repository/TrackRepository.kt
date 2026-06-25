@@ -259,7 +259,9 @@ class TrackRepository @Inject constructor(
         return try {
             val path = artworkResolver.resolveOnlineArtwork(track)
             if (path != null) {
-                trackDao.updateTrack(track.copy(artworkPath = path))
+                // Single-column write: can't clobber play stats accrued during the
+                // (slow) fetch, unlike updateTrack(track.copy(...)) on a stale row.
+                trackDao.setArtworkPath(track.id, path)
                 true
             } else false
         } finally {
@@ -267,22 +269,75 @@ class TrackRepository @Inject constructor(
         }
     }
 
+    // How many resolved covers to accumulate before committing them in one
+    // transaction. Each flush is a single Room invalidation, so the whole
+    // library's worth of art writes costs ~candidates/this many re-emits instead
+    // of one per track — which is what made the UI grind during a link/backfill.
+    private val artFlushBatch = 12
+
     /**
      * Slowly backfills online art for the rest of the library. Throttled and one-at-a-time
      * so a large library never produces a request burst, and it bails the moment
      * consent/connection no longer permits fetching. Negative-cached tracks are filtered
      * out so we don't re-walk them on every launch.
+     *
+     * Resolved covers are written in batches (one transaction per [artFlushBatch]) so a
+     * library-wide sweep doesn't re-emit the tracks Flow — and recompute everything derived
+     * from it (listening stats, totals, search, the list itself) — once per track.
      */
     suspend fun backfillOnlineArtwork() = withContext(Dispatchers.IO) {
         if (!artworkResolver.canFetchOnline()) return@withContext
         val candidates = allTracks.first().filter {
             it.artworkPath == null && !artworkResolver.alreadyTriedOnline(it.id)
         }
+        val pending = LinkedHashMap<Long, String>()
+        // Misses are collected and written to the negative cache ONCE at the end, not
+        // per miss: each markLookupFailed rewrites the whole growing set, so per-miss
+        // marking is O(n²) over a full-library sweep. Failures don't need to surface
+        // mid-sweep, so a single write is enough (and any interruption just means those
+        // tracks get retried next time, which is harmless).
+        val failed = ArrayList<Long>()
+        suspend fun flushArt() {
+            if (pending.isEmpty()) return
+            trackDao.setArtworkPaths(pending)
+            pending.clear()
+        }
         for (track in candidates) {
             if (!artworkResolver.canFetchOnline()) break
-            fetchOnlineArtwork(track)
+            // Claim the in-flight guard so a now-playing priority fetch and this
+            // backfill never hit the network twice for the same track.
+            val claimed = inFlightMutex.withLock {
+                if (track.id in inFlightArtwork) false else inFlightArtwork.add(track.id)
+            }
+            if (!claimed) { delay(backfillThrottleMs); continue }
+            val path = try {
+                artworkResolver.resolveOnlineArtwork(track, markFailures = false)
+            } finally {
+                inFlightMutex.withLock { inFlightArtwork.remove(track.id) }
+            }
+            if (path != null) {
+                pending[track.id] = path
+                if (pending.size >= artFlushBatch) flushArt()
+            } else {
+                failed.add(track.id)
+            }
             delay(backfillThrottleMs)
         }
+        flushArt()
+        if (failed.isNotEmpty()) artworkResolver.markLookupFailed(failed)
+    }
+
+    /**
+     * Called after a VidMate folder is linked. Re-queues ONLY the tracks that now have a
+     * known thumbnail and still lack art (scoped negative-cache clear), instead of wiping
+     * the whole cache and re-probing the entire library. Returns how many were re-queued;
+     * the caller then runs [backfillOnlineArtwork], which will pick exactly these up.
+     */
+    suspend fun requeueVidmateLinkable(): Int = withContext(Dispatchers.IO) {
+        val missing = allTracks.first()
+            .filter { it.artworkPath == null }
+            .mapTo(HashSet()) { it.id }
+        artworkResolver.requeueVidmateLinkable(missing)
     }
 
     private suspend fun ensureDefaultTags() {
@@ -363,10 +418,14 @@ class TrackRepository @Inject constructor(
 
     /** Removes all app data for a track after the media file has been deleted (or user chose library-only removal). */
     suspend fun purgeTrackFromLibrary(trackId: Long) = withContext(Dispatchers.IO) {
+        val path = trackDao.getTrackById(trackId)?.path
         trackDao.deleteTrackTagsForTrack(trackId)
         trackDao.deletePlayHistoryForTrack(trackId)
         trackDao.deleteSkipHistoryForTrack(trackId)
         trackDao.deleteTrackById(trackId)
+        // Also drop any stale duplicate of the same file (old MediaStore id, never
+        // migrated) so the deleted song can't linger in the list/search until a rescan.
+        if (path != null) trackDao.deleteTracksByPath(path)
         artworkResolver.deleteArtwork(trackId)
     }
 

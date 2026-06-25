@@ -40,6 +40,26 @@ interface TrackDao {
     @Update
     suspend fun updateTrack(track: TrackEntity)
 
+    // Art backfill path. Updates ONLY the artworkPath column for a single id.
+    // Two reasons this exists instead of updateTrack(track.copy(...)):
+    //   1. It can't clobber play stats — the backfill works off a snapshot of the
+    //      track taken before the (slow, network) fetch, so writing the whole row
+    //      back would overwrite any playCount/lastPlayed change that happened in
+    //      between. A single-column UPDATE touches nothing else.
+    //   2. Paired with setArtworkPaths below it lets the backfill collapse many
+    //      writes into one transaction (one Room invalidation), so a library-wide
+    //      sweep doesn't re-emit the whole tracks Flow once per track.
+    @Query("UPDATE tracks SET artworkPath = :path WHERE id = :id")
+    suspend fun setArtworkPath(id: Long, path: String)
+
+    // Batched art write. Room fires a single table-invalidation when the
+    // transaction commits, so N rows updated here cost ONE getAllTracks() re-emit
+    // (and therefore one recompute of everything derived from it) instead of N.
+    @Transaction
+    suspend fun setArtworkPaths(paths: Map<Long, String>) {
+        paths.forEach { (id, path) -> setArtworkPath(id, path) }
+    }
+
     @Query("DELETE FROM tracks WHERE id NOT IN (:remainingIds)")
     suspend fun deleteRemovedTracks(remainingIds: List<Long>)
 
@@ -48,6 +68,12 @@ interface TrackDao {
 
     @Query("DELETE FROM tracks WHERE id = :trackId")
     suspend fun deleteTrackById(trackId: Long)
+
+    // Deletes by file path, catching any stale duplicate row left behind when
+    // MediaStore reissued the file's id without a migration — the row the UI shows
+    // can be the duplicate, so an id-only delete would leave it visible until a rescan.
+    @Query("DELETE FROM tracks WHERE path = :path")
+    suspend fun deleteTracksByPath(path: String)
 
     @Query("DELETE FROM track_tags WHERE trackId = :trackId")
     suspend fun deleteTrackTagsForTrack(trackId: Long)

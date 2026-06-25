@@ -38,6 +38,11 @@ class VidmateThumbnailSource @Inject constructor(
     /** How many songs are currently linked (drives the settings status line). */
     fun linkedCount(): Int = loadMap().size
 
+    /** All file names we have a known thumbnail for. Lets the backfill re-queue
+     *  exactly the tracks a fresh link can newly resolve, without wiping the whole
+     *  negative cache. */
+    fun knownFileNames(): Set<String> = loadMap().keys
+
     /**
      * Re-reads the Vidmate DB under the SAF-granted [treeUri], rebuilds and persists the map.
      * Returns the number of entries (0 if the folder couldn't be read — leaves any existing

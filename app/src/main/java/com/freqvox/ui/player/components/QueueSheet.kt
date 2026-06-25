@@ -213,10 +213,10 @@ fun QueueSheet(
                 contentPadding = PaddingValues(start = 8.dp, end = 8.dp, bottom = 48.dp),
                 modifier       = Modifier.heightIn(max = 540.dp)
             ) {
-                itemsIndexed(localQueue, key = { _, item -> item.trackId }) { index, item ->
+                itemsIndexed(localQueue, key = { _, item -> item.uid }) { index, item ->
                     ReorderableItem(
                         state               = reorderState,
-                        key                 = item.trackId,
+                        key                 = item.uid,
                         animateItemModifier = Modifier.animateItem(placementSpec = flowSpec)
                     ) { isDragging ->
                         val isCurrent = item.trackId == playingTrackId

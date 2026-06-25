@@ -68,6 +68,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.LaunchedEffect
 import com.freqvox.ui.components.TagPickerSheet
+import com.freqvox.ui.components.TrackActionsDialogs
+import com.freqvox.ui.components.TrackOptionsSheet
+import com.freqvox.ui.components.rememberTrackActionsState
 import com.freqvox.ui.search.SearchSheet
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -99,7 +102,12 @@ fun HomeScreen(
     val isScanning by viewModel.isScanning.collectAsStateWithLifecycle()
 
     val greeting = rememberGreeting()
-    val onTagLongPress: (TrackEntity) -> Unit = { viewModel.openTagPicker(it.id) }
+    val allPlaylists by viewModel.allPlaylists.collectAsStateWithLifecycle()
+    val trackActions = rememberTrackActionsState()
+    var optionsTrack by remember { mutableStateOf<TrackEntity?>(null) }
+    // Long-press now opens a richer options menu (Tag is one entry inside) instead of
+    // jumping straight to the tag sheet.
+    val onTagLongPress: (TrackEntity) -> Unit = { optionsTrack = it }
 
     var refreshTrigger by remember { mutableStateOf(0) }
     var isRefreshing by remember { mutableStateOf(false) }
@@ -126,6 +134,19 @@ fun HomeScreen(
             onToggleDislike = targetId?.let { id -> { viewModel.toggleDislikeForTrack(id) } }
         )
     }
+
+    // Rich long-press menu for a Home track, plus the shared add-to-playlist / delete dialogs.
+    optionsTrack?.let { track ->
+        TrackOptionsSheet(
+            track = track,
+            onTag = { viewModel.openTagPicker(track.id) },
+            onAddToPlaylist = { trackActions.openAddToPlaylist(track) },
+            onPlayNext = { playbackController.playTrackNext(track) },
+            onDelete = { trackActions.openDeleteFlow(track) },
+            onDismiss = { optionsTrack = null }
+        )
+    }
+    TrackActionsDialogs(state = trackActions, viewModel = viewModel, playlists = allPlaylists)
 
     // Endless feed — every page is a fresh remix of the same library with a
     // different per-page seed. Pulling to refresh resets back to page 1 AND
@@ -205,23 +226,21 @@ fun HomeScreen(
             }
         }
 
+        Column(modifier = Modifier.fillMaxSize()) {
+        // Fixed header — stays locked in place while the feed scrolls beneath it.
+        Header(
+            greeting = greeting,
+            totalSongs = totalSongs,
+            totalDurationMs = totalDuration,
+            onSearchClick = { showSearchSheet = true },
+            onOpenPanel = onOpenPanel,
+            modifier = Modifier.padding(horizontal = 24.dp, vertical = 24.dp)
+        )
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(top = 24.dp, bottom = 120.dp) // Space for bottom nav/player
+            contentPadding = PaddingValues(top = 8.dp, bottom = 120.dp) // Space for bottom nav/player
         ) {
-        // 1. Header with inline metrics
-        item {
-            Header(
-                greeting = greeting,
-                totalSongs = totalSongs,
-                totalDurationMs = totalDuration,
-                onSearchClick = { showSearchSheet = true },
-                onOpenPanel = onOpenPanel,
-                modifier = Modifier.padding(horizontal = 24.dp)
-            )
-            Spacer(modifier = Modifier.height(32.dp))
-        }
 
         // Empty library → make it obvious the app is working (scanning) or that no
         // music was found, instead of leaving a blank feed that reads as "broken".
@@ -353,6 +372,7 @@ fun HomeScreen(
             }
         }
     } // Close LazyColumn
+    } // Close fixed-header Column
 
         // Back-to-top pill — compact and unobtrusive, sits just above the mini-player.
         AnimatedVisibility(
@@ -1027,6 +1047,9 @@ fun TrackArtwork(track: TrackEntity, modifier: Modifier = Modifier) {
         ProceduralArtwork(track = track, modifier = Modifier.matchParentSize())
         val path = track.artworkPath
         if (path != null) {
+            // Crop = zoom-to-fill. Off-aspect art (VidMate's 16:9 thumbnails) is scaled up
+            // to cover the square and the slight overflow is cropped — fills cleanly with no
+            // black letterbox bars. Square online covers are unaffected.
             AsyncImage(
                 model = java.io.File(path),
                 contentDescription = null,

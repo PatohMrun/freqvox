@@ -2,8 +2,12 @@ package com.freqvox
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.database.ContentObserver
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.provider.MediaStore
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -92,12 +96,57 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    // ── Auto-recheck library when songs are added/removed externally ────────────
+    // While the app is foreground, watch MediaStore for audio changes (a download
+    // finishing, a file deleted elsewhere) and trigger an incremental rescan. The
+    // rescan only upserts changed rows and the art backfill only fetches covers for
+    // genuinely-new tracks, so new songs get their art automatically. Debounced so a
+    // burst of changes (a bulk download) coalesces into one scan, and lifecycle-tied
+    // so nothing runs while backgrounded.
+    private val mediaChangeHandler = Handler(Looper.getMainLooper())
+    private var pendingRescan: Runnable? = null
+    private var mediaObserver: ContentObserver? = null
+
     override fun onStart() {
         super.onStart()
         playbackController.reconnectIfNeeded()
+        registerMediaObserver()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        unregisterMediaObserver()
+    }
+
+    private fun registerMediaObserver() {
+        if (mediaObserver != null) return
+        val observer = object : ContentObserver(mediaChangeHandler) {
+            override fun onChange(selfChange: Boolean) {
+                pendingRescan?.let { mediaChangeHandler.removeCallbacks(it) }
+                val rescan = Runnable { viewModel.scanLibrary() }
+                pendingRescan = rescan
+                mediaChangeHandler.postDelayed(rescan, MEDIA_RESCAN_DEBOUNCE_MS)
+            }
+        }
+        contentResolver.registerContentObserver(
+            MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, true, observer
+        )
+        mediaObserver = observer
+    }
+
+    private fun unregisterMediaObserver() {
+        mediaObserver?.let { contentResolver.unregisterContentObserver(it) }
+        mediaObserver = null
+        pendingRescan?.let { mediaChangeHandler.removeCallbacks(it) }
+        pendingRescan = null
     }
 
     override fun onDestroy() {
         super.onDestroy()
+    }
+
+    companion object {
+        // Long enough to coalesce a bulk download's MediaStore events into one scan.
+        private const val MEDIA_RESCAN_DEBOUNCE_MS = 2500L
     }
 }

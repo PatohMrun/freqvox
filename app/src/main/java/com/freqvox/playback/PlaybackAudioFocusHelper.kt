@@ -129,6 +129,11 @@ class PlaybackAudioFocusHelper(
     }
 
     private fun onFocusLoss(permanent: Boolean) {
+        // Pause for a real focus loss (a call, another media app, etc.) — we should yield,
+        // not keep playing quietly underneath. Short, duckable interruptions are handled
+        // separately by onFocusDuck (AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK), which is the
+        // "lower the volume instead of silence" case. On a transient loss we pause and
+        // auto-resume on the matching focus gain; on a permanent loss we also abandon.
         restoreVolumeAfterDuck()
         if (player.isPlaying) {
             player.pause()

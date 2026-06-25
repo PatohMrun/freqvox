@@ -107,6 +107,11 @@ fun TrackActionsDialogs(
                     state.closeAddDialog()
                 }
             },
+            onCreateNew = { name ->
+                viewModel.createPlaylistAndAddTrack(name, track.id)
+                viewModel.postSnackbar("Added to \"$name\"")
+                state.closeAddDialog()
+            },
             onDismiss = { state.closeAddDialog() }
         )
     }

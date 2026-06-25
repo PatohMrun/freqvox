@@ -65,6 +65,15 @@ class PlaylistRepository @Inject constructor(
         return AddTrackResult.Added
     }
 
+    suspend fun renamePlaylist(id: Long, name: String) {
+        val trimmed = name.trim()
+        if (trimmed.isNotEmpty()) playlistDao.renamePlaylist(id, trimmed)
+    }
+
+    suspend fun removeTrackFromPlaylist(playlistId: Long, trackId: Long) {
+        playlistDao.removeTrackFromPlaylist(playlistId, trackId)
+    }
+
     suspend fun getTracksForPlaylist(playlist: PlaylistEntity): List<TrackEntity> =
         observeTracksForPlaylist(playlist).first()
 

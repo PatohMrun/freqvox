@@ -49,6 +49,11 @@ import javax.inject.Inject
 class FreqvoxPlaybackService : MediaLibraryService() {
     private var mediaSession: MediaLibrarySession? = null
     private var audioFocusHelper: PlaybackAudioFocusHelper? = null
+    private var volumeHelper: VolumePlaybackHelper? = null
+    private var crossfadeController: CrossfadeController? = null
+    private var tailPlayer: ExoPlayer? = null
+
+    @Inject lateinit var crossfadePrefs: CrossfadePreferences
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     @Inject lateinit var equalizerManager: FreqvoxEqualizerManager
@@ -84,6 +89,17 @@ class FreqvoxPlaybackService : MediaLibraryService() {
             .build()
 
         audioFocusHelper = PlaybackAudioFocusHelper(this, player).also { it.start() }
+        volumeHelper = VolumePlaybackHelper(this, player).also { it.start() }
+
+        // Secondary player used only to bleed the outgoing track's tail during a crossfade.
+        // Built with the same media-source factory so it decodes the same URIs. Idle (and
+        // costless) whenever crossfade is off, which is the default.
+        val tail = ExoPlayer.Builder(this)
+            .setMediaSourceFactory(DefaultMediaSourceFactory(defaultDataSourceFactory))
+            .setAudioAttributes(audioAttributes, /* handleAudioFocus= */ false)
+            .build()
+        tailPlayer = tail
+        crossfadeController = CrossfadeController(player, tail, crossfadePrefs).also { it.start() }
 
         player.addListener(object : Player.Listener {
             override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -314,6 +330,12 @@ class FreqvoxPlaybackService : MediaLibraryService() {
     override fun onDestroy() {
         audioFocusHelper?.stop()
         audioFocusHelper = null
+        volumeHelper?.stop()
+        volumeHelper = null
+        crossfadeController?.release()
+        crossfadeController = null
+        tailPlayer?.release()
+        tailPlayer = null
         serviceScope.cancel()
         mediaSession?.run {
             player.release()

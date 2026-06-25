@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import android.net.Uri
 import com.freqvox.data.artwork.ArtworkPreferences
 import com.freqvox.data.artwork.VidmateThumbnailSource
+import com.freqvox.data.prefs.LibraryUiPreferences
+import com.freqvox.playback.CrossfadePreferences
 import com.freqvox.data.backup.BackupRepository
 import com.freqvox.data.repository.AddTrackResult
 import com.freqvox.data.repository.TrackRepository
@@ -30,8 +32,27 @@ class MainViewModel @Inject constructor(
     private val backupRepository: BackupRepository,
     private val playbackController: PlaybackController,
     private val artworkPrefs: ArtworkPreferences,
-    private val vidmateSource: VidmateThumbnailSource
+    private val vidmateSource: VidmateThumbnailSource,
+    private val libraryUiPrefs: LibraryUiPreferences,
+    private val crossfadePrefs: CrossfadePreferences
 ) : ViewModel() {
+
+    // ── Crossfade (0s = off / gapless) ─────────────────────────────────────────
+    private val _crossfadeSeconds = MutableStateFlow(crossfadePrefs.durationSeconds)
+    val crossfadeSeconds: StateFlow<Int> = _crossfadeSeconds.asStateFlow()
+    fun setCrossfadeSeconds(seconds: Int) {
+        crossfadePrefs.durationSeconds = seconds
+        _crossfadeSeconds.value = crossfadePrefs.durationSeconds
+    }
+
+    // ── Library pill state (persisted so it survives navigation + restarts) ────
+    /** Last-opened Library tab name, or null if never set. */
+    val libraryLastTab: String? get() = libraryUiPrefs.lastTab
+    fun setLibraryLastTab(name: String) { libraryUiPrefs.lastTab = name }
+
+    /** Persisted Library pill order as tab names (empty = default order). */
+    val libraryTabOrder: List<String> get() = libraryUiPrefs.tabOrder
+    fun setLibraryTabOrder(order: List<String>) { libraryUiPrefs.tabOrder = order }
 
     // Threshold for skip tracker: 30 days
     private val skipThresholdMs = 30L * 24 * 60 * 60 * 1000
@@ -326,6 +347,18 @@ class MainViewModel @Inject constructor(
         (tracks.map { it.folderPath }.toSet() + excluded).sorted()
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    /** Removes hidden-folder entries whose folder no longer exists in the library (no
+     *  tracks under it), keeping both the live filter and the persisted set in sync. */
+    private suspend fun pruneDeadExcludedFolders() {
+        val present = trackRepository.allTracks.first().mapTo(HashSet()) { it.folderPath }
+        val current = _excludedFolders.value
+        val pruned = current.filterTo(LinkedHashSet()) { it in present }
+        if (pruned.size != current.size) {
+            _excludedFolders.value = pruned
+            trackRepository.setExcludedFolders(pruned)
+        }
+    }
+
     fun toggleFolderExclusion(folder: String) {
         val updated = _excludedFolders.value.toMutableSet().apply {
             if (!add(folder)) remove(folder)
@@ -378,10 +411,30 @@ class MainViewModel @Inject constructor(
         if (allow) launchArtworkBackfill()
     }
 
-    /** Clears the negative cache and re-attempts art for everything still missing it. */
+    // True while a user-triggered "retry failed lookups" sweep is running, so the
+    // button can show a spinner instead of being a silent tap.
+    private val _artworkRetrying = MutableStateFlow(false)
+    val artworkRetrying: StateFlow<Boolean> = _artworkRetrying.asStateFlow()
+
+    /** Clears the negative cache and re-attempts art for everything still missing it,
+     *  with a snackbar AND a button spinner (artworkRetrying) so the action isn't silent. */
     fun retryFailedArtwork() {
-        artworkPrefs.clearFailedLookups()
-        launchArtworkBackfill()
+        viewModelScope.launch {
+            val missing = allTracks.value.count { it.artworkPath == null }
+            when {
+                !artworkPrefs.onlineEnabled -> { postSnackbar("Turn on online lookup to fetch covers"); return@launch }
+                missing == 0 -> { postSnackbar("Every track already has a cover"); return@launch }
+            }
+            artworkPrefs.clearFailedLookups()
+            postSnackbar("Looking for covers · $missing track${if (missing == 1) "" else "s"}")
+            if (!artworkPrefs.consentShown) return@launch
+            // Run the backfill and keep the spinner up until the sweep finishes.
+            artworkBackfillJob?.cancel()
+            _artworkRetrying.value = true
+            val job = viewModelScope.launch { trackRepository.backfillOnlineArtwork() }
+            artworkBackfillJob = job
+            try { job.join() } finally { _artworkRetrying.value = false }
+        }
     }
 
     // Number of songs linked from a VidMate folder (0 = not linked). Drives the settings row.
@@ -396,7 +449,9 @@ class MainViewModel @Inject constructor(
             artworkPrefs.vidmateTreeUri = uri.toString()
             val count = vidmateSource.rebuildFromTree(uri)
             _vidmateLinkedCount.value = count
-            artworkPrefs.clearFailedLookups()
+            // Re-queue ONLY the tracks this link can newly resolve — not the whole
+            // library — so linking doesn't kick off a full-library online re-sweep.
+            if (count > 0) trackRepository.requeueVidmateLinkable()
             launchArtworkBackfill()
             postSnackbar(
                 if (count > 0) "VidMate linked · $count songs"
@@ -442,6 +497,9 @@ class MainViewModel @Inject constructor(
             } finally {
                 _isScanning.value = false
             }
+            // Drop hidden-folder entries whose folder no longer has any tracks (everything
+            // in it was deleted/moved), so the hidden list doesn't accumulate dead folders.
+            pruneDeadExcludedFolders()
             // Local art is resolved inside scanLibrary(); kick off the online backfill
             // afterward so cheap offline sources win first. No-op until consent is given.
             launchArtworkBackfill()
@@ -562,6 +620,31 @@ class MainViewModel @Inject constructor(
     suspend fun addTrackToPlaylist(playlistId: Long, trackId: Long): AddTrackResult =
         playlistRepository.addTrackToPlaylist(playlistId, trackId)
 
+    // ── Playlist editing ───────────────────────────────────────────────────────
+    /** Fire-and-forget add (used by the in-playlist "Add songs" picker, which tracks
+     *  its own added state). */
+    fun addTrackToPlaylistAsync(playlistId: Long, trackId: Long) {
+        viewModelScope.launch { playlistRepository.addTrackToPlaylist(playlistId, trackId) }
+    }
+
+    fun renamePlaylist(id: Long, name: String) {
+        viewModelScope.launch { playlistRepository.renamePlaylist(id, name) }
+    }
+
+    /** Creates a new manual playlist and drops the given track into it — lets the
+     *  "Add to playlist" sheet create a playlist inline instead of dead-ending on
+     *  "no playlists". */
+    fun createPlaylistAndAddTrack(name: String, trackId: Long) {
+        if (name.isBlank()) return
+        viewModelScope.launch {
+            playlistRepository.createManualPlaylistWithTracks(name.trim(), listOf(trackId))
+        }
+    }
+
+    fun removeTrackFromPlaylist(playlistId: Long, trackId: Long) {
+        viewModelScope.launch { playlistRepository.removeTrackFromPlaylist(playlistId, trackId) }
+    }
+
     /** Called after the system delete confirmation (or legacy resolver delete) succeeds. */
     fun completeTrackDeletion(trackId: Long) {
         viewModelScope.launch {
@@ -618,6 +701,20 @@ class MainViewModel @Inject constructor(
 
     fun setExpandedPlaylist(id: Long?) {
         _expandedPlaylistId.value = id
+    }
+
+    /** One-shot signal: switch the Library to its Playlists tab. Used by the side-panel
+     *  "quick jump" so tapping a playlist OPENS it instead of immediately playing it.
+     *  Catches the case where Library is already on screen (a fresh navigation reads the
+     *  persisted tab instead). */
+    private val _openPlaylistTab = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val openPlaylistTab: SharedFlow<Unit> = _openPlaylistTab.asSharedFlow()
+
+    /** Side-panel quick-jump: expand the playlist and ask the Library to show its
+     *  Playlists tab. The caller navigates to the Library route. */
+    fun openPlaylistFromSidebar(playlistId: Long) {
+        setExpandedPlaylist(playlistId)
+        viewModelScope.launch { _openPlaylistTab.emit(Unit) }
     }
 
     // ── Home (and elsewhere): tag a specific track without opening the player ──

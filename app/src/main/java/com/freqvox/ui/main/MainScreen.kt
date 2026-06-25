@@ -87,6 +87,7 @@ fun MainScreen(
 
     // Online album-art consent + settings.
     val showArtworkConsent by viewModel.showArtworkConsent.collectAsStateWithLifecycle()
+    val artworkRetrying by viewModel.artworkRetrying.collectAsStateWithLifecycle()
     val artworkOnlineEnabled by viewModel.artworkOnlineEnabled.collectAsStateWithLifecycle()
     val artworkAllowCellular by viewModel.artworkAllowCellular.collectAsStateWithLifecycle()
     val artworkAllowMeteredWifi by viewModel.artworkAllowMeteredWifi.collectAsStateWithLifecycle()
@@ -104,6 +105,7 @@ fun MainScreen(
     var showFoldersSheet by remember { mutableStateOf(false) }
     var showTagManagerSheet by remember { mutableStateOf(false) }
     var showEqSheet by remember { mutableStateOf(false) }
+    var showCrossfadeSheet by remember { mutableStateOf(false) }
     var showSleepSheet by remember { mutableStateOf(false) }
     var showArtworkSheet by remember { mutableStateOf(false) }
     val openPanel: () -> Unit = { scope.launch { drawerState.open() } }
@@ -186,15 +188,28 @@ fun MainScreen(
                         tags = allTags,
                         onOpenStats = { scope.launch { drawerState.close() }; showStatsSheet = true },
                         onOpenEqualizer = { scope.launch { drawerState.close() }; showEqSheet = true },
+                        onOpenCrossfade = { scope.launch { drawerState.close() }; showCrossfadeSheet = true },
                         onOpenSleep = { scope.launch { drawerState.close() }; showSleepSheet = true },
                         onOpenFolders = { scope.launch { drawerState.close() }; showFoldersSheet = true },
                         onOpenTags = { scope.launch { drawerState.close() }; showTagManagerSheet = true },
                         onOpenArtwork = { scope.launch { drawerState.close() }; showArtworkSheet = true },
+                        onRescan = {
+                            scope.launch { drawerState.close() }
+                            viewModel.scanLibrary()
+                            viewModel.postSnackbar("Rescanning library…")
+                        },
                         onPlaylistClick = { pl ->
-                            scope.launch {
-                                drawerState.close()
-                                val tracks = viewModel.getTracksForPlaylist(pl)
-                                if (tracks.isNotEmpty()) playbackController.playQueue(tracks, 0)
+                            // Quick-jump: OPEN the playlist in the Library (Playlists tab,
+                            // expanded) instead of immediately blasting playback. Lets the
+                            // user see the tracks and decide, which a bare name-tap shouldn't
+                            // pre-empt.
+                            scope.launch { drawerState.close() }
+                            viewModel.openPlaylistFromSidebar(pl.id)
+                            viewModel.setLibraryLastTab(com.freqvox.ui.library.LibraryTab.Playlists.name)
+                            navController.navigate(Screen.Library.route) {
+                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
                             }
                         },
                         onTagClick = { tag ->
@@ -489,6 +504,14 @@ fun MainScreen(
                     onDismiss = { showEqSheet = false }
                 )
             }
+            if (showCrossfadeSheet) {
+                val crossfadeSeconds by viewModel.crossfadeSeconds.collectAsStateWithLifecycle()
+                com.freqvox.ui.settings.CrossfadeSheet(
+                    selectedSeconds = crossfadeSeconds,
+                    onSelect = { viewModel.setCrossfadeSeconds(it) },
+                    onDismiss = { showCrossfadeSheet = false }
+                )
+            }
             if (showSleepSheet) {
                 com.freqvox.ui.settings.SleepTimerSheet(
                     isActive = sleepTimerActive,
@@ -509,6 +532,7 @@ fun MainScreen(
                     onToggleCellular = { viewModel.setArtworkAllowCellular(it) },
                     onToggleMeteredWifi = { viewModel.setArtworkAllowMeteredWifi(it) },
                     onRetryFailed = { viewModel.retryFailedArtwork() },
+                    retrying = artworkRetrying,
                     onPhotoAccessGranted = { viewModel.scanLibrary() },
                     vidmateLinkedCount = vidmateLinkedCount,
                     onLinkVidmate = { viewModel.linkVidmateFolder(it) },

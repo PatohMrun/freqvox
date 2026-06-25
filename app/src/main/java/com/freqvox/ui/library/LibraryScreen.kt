@@ -5,6 +5,9 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -14,8 +17,10 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -25,7 +30,9 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -47,15 +54,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyListState
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.freqvox.data.repository.AddTrackResult
 import com.freqvox.media.MediaTrackDeleter
@@ -104,9 +117,36 @@ fun LibraryScreen(
     val allTags by viewModel.allTags.collectAsStateWithLifecycle()
     val dislikedTrackIds by viewModel.dislikedTrackIds.collectAsStateWithLifecycle()
 
-    val tabOrder = remember { mutableStateListOf(*LibraryTab.values()) }
-    var selectedTab by remember { mutableStateOf(LibraryTab.Songs) }
+    // Pill order + selected pill are persisted (see LibraryUiPreferences) so they
+    // survive leaving and re-entering the tab and an app restart. Unknown/missing
+    // names fall back to the default order, and any tab absent from the saved order
+    // (e.g. a newly added one) is appended so the row is always complete.
+    val tabOrder = remember {
+        val saved = viewModel.libraryTabOrder.mapNotNull { name ->
+            LibraryTab.values().firstOrNull { it.name == name }
+        }
+        val complete = (saved + LibraryTab.values().filterNot { it in saved }).distinct()
+        mutableStateListOf(*complete.toTypedArray())
+    }
+    var selectedTab by remember {
+        mutableStateOf(
+            viewModel.libraryLastTab
+                ?.let { name -> LibraryTab.values().firstOrNull { it.name == name } }
+                ?: LibraryTab.Songs
+        )
+    }
     var sortOrder by remember { mutableStateOf(SortOrder.Default) }
+
+    // Side-panel "quick jump": when a playlist is tapped there, jump this screen to the
+    // Playlists tab (the playlist itself is expanded via the ViewModel). Handles the case
+    // where Library is already on screen; a fresh navigation reads the persisted tab.
+    LaunchedEffect(Unit) {
+        viewModel.openPlaylistTab.collect {
+            selectedTab = LibraryTab.Playlists
+            viewModel.setLibraryLastTab(LibraryTab.Playlists.name)
+        }
+    }
+
     var trackToAdd by remember { mutableStateOf<TrackEntity?>(null) }
     var trackToDelete by remember { mutableStateOf<TrackEntity?>(null) }
     var deleteDialogStep by remember { mutableIntStateOf(0) }
@@ -202,7 +242,11 @@ fun LibraryScreen(
         DraggableTabRow(
             tabOrder = tabOrder,
             selectedTab = selectedTab,
-            onTabSelected = { selectedTab = it },
+            onTabSelected = {
+                selectedTab = it
+                viewModel.setLibraryLastTab(it.name)
+            },
+            onOrderChanged = { order -> viewModel.setLibraryTabOrder(order.map { it.name }) },
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -391,6 +435,11 @@ fun LibraryScreen(
                     trackToAdd = null
                 }
             },
+            onCreateNew = { name ->
+                viewModel.createPlaylistAndAddTrack(name, track.id)
+                scope.launch { snackbarHostState.showSnackbar("Added to \"$name\"") }
+                trackToAdd = null
+            },
             onDismiss = { trackToAdd = null }
         )
     }
@@ -450,85 +499,80 @@ fun LibraryScreen(
     }
 }
 
-// Long-press any pill and drag left/right to reorder tabs.
+// Long-press any pill and drag left/right to reorder tabs. Built on the same
+// reorderable library as the queue (sh.calvin.reorderable) so the non-dragged
+// pills glide out of the way with a spring instead of snapping — the old
+// hand-rolled threshold-swap version moved items in instant jumps.
+// [onOrderChanged] fires on drop so the new order can be persisted.
 @Composable
 fun DraggableTabRow(
     tabOrder: MutableList<LibraryTab>,
     selectedTab: LibraryTab,
     onTabSelected: (LibraryTab) -> Unit,
+    onOrderChanged: (List<LibraryTab>) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var draggingTab by remember { mutableStateOf<LibraryTab?>(null) }
-    var totalDragX by remember { mutableFloatStateOf(0f) }
-    val itemWidths = remember { mutableStateMapOf<LibraryTab, Float>() }
-    val density = LocalDensity.current
+    val accent = Color(0xFF7C4DFF)
+    val haptic = LocalHapticFeedback.current
+    val listState = rememberLazyListState()
+    val reorderState = rememberReorderableLazyListState(listState) { from, to ->
+        val f = from.index
+        val t = to.index
+        if (f in tabOrder.indices && t in tabOrder.indices) {
+            tabOrder.add(t, tabOrder.removeAt(f))
+            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+        }
+    }
 
-    Row(
+    // How pills that aren't being dragged slide aside. Mirrors the queue's feel.
+    val placementSpec = remember {
+        spring<IntOffset>(dampingRatio = 0.78f, stiffness = Spring.StiffnessMediumLow)
+    }
+
+    LazyRow(
+        state = listState,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
-        modifier = modifier.horizontalScroll(rememberScrollState())
+        contentPadding = PaddingValues(horizontal = 16.dp),
+        modifier = modifier
     ) {
-        Spacer(modifier = Modifier.width(16.dp))
-        tabOrder.forEach { tab ->
-            val isSelected = selectedTab == tab
-            val isDragging = draggingTab == tab
-
-            Box(
-                modifier = Modifier
-                    .onSizeChanged { size -> itemWidths[tab] = size.width.toFloat() }
-                    .graphicsLayer {
-                        scaleX = if (isDragging) 1.08f else 1f
-                        scaleY = if (isDragging) 1.08f else 1f
-                    }
-                    .pointerInput(tab) {
-                        detectDragGesturesAfterLongPress(
-                            onDragStart = {
-                                draggingTab = tab
-                                totalDragX = 0f
-                            },
-                            onDragEnd = { draggingTab = null; totalDragX = 0f },
-                            onDragCancel = { draggingTab = null; totalDragX = 0f },
-                            onDrag = { change, dragAmount ->
-                                change.consume()
-                                totalDragX += dragAmount.x
-                                val currentIdx = tabOrder.indexOf(tab)
-                                val threshold = (itemWidths[tab]
-                                    ?: with(density) { 80.dp.toPx() }) * 0.65f
-
-                                when {
-                                    totalDragX > threshold && currentIdx < tabOrder.size - 1 -> {
-                                        tabOrder[currentIdx] = tabOrder[currentIdx + 1]
-                                        tabOrder[currentIdx + 1] = tab
-                                        totalDragX -= threshold
-                                    }
-                                    totalDragX < -threshold && currentIdx > 0 -> {
-                                        tabOrder[currentIdx] = tabOrder[currentIdx - 1]
-                                        tabOrder[currentIdx - 1] = tab
-                                        totalDragX += threshold
-                                    }
-                                }
-                            }
-                        )
-                    }
-            ) {
+        items(tabOrder, key = { it.name }) { tab ->
+            ReorderableItem(
+                state = reorderState,
+                key = tab.name,
+                animateItemModifier = Modifier.animateItem(placementSpec = placementSpec)
+            ) { isDragging ->
+                val isSelected = selectedTab == tab
+                val scale by animateFloatAsState(
+                    targetValue = if (isDragging) 1.08f else 1f,
+                    label = "pillScale"
+                )
                 Box(
                     modifier = Modifier
+                        .graphicsLayer { scaleX = scale; scaleY = scale }
+                        .zIndex(if (isDragging) 1f else 0f)
                         .clip(CircleShape)
                         .background(
                             when {
-                                isDragging  -> Color(0xFF7C4DFF).copy(alpha = 0.5f)
-                                isSelected  -> Color(0xFF7C4DFF)
-                                else        -> Color.White.copy(alpha = 0.07f)
+                                isDragging -> accent.copy(alpha = 0.5f)
+                                isSelected -> accent
+                                else       -> Color.White.copy(alpha = 0.07f)
                             }
                         )
                         .border(
                             width = 1.dp,
                             color = when {
-                                isDragging -> Color(0xFF7C4DFF).copy(alpha = 0.8f)
+                                isDragging -> accent.copy(alpha = 0.8f)
                                 isSelected -> Color.Transparent
                                 else       -> Color.White.copy(alpha = 0.12f)
                             },
                             shape = CircleShape
+                        )
+                        .longPressDraggableHandle(
+                            onDragStarted = {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            },
+                            onDragStopped = { onOrderChanged(tabOrder.toList()) }
                         )
                         .clickable { onTabSelected(tab) }
                         .padding(horizontal = 18.dp, vertical = 9.dp)
@@ -543,7 +587,6 @@ fun DraggableTabRow(
                 }
             }
         }
-        Spacer(modifier = Modifier.width(16.dp))
     }
 }
 
@@ -949,6 +992,8 @@ fun PlaylistsTab(
 ) {
     var showCreateDialog by remember { mutableStateOf(false) }
     var playlistToDelete by remember { mutableStateOf<PlaylistEntity?>(null) }
+    var playlistToRename by remember { mutableStateOf<PlaylistEntity?>(null) }
+    var playlistToAddSongs by remember { mutableStateOf<PlaylistEntity?>(null) }
     val expandedPlaylistId by viewModel.expandedPlaylistId.collectAsStateWithLifecycle()
     val expandedTracksFromVm by viewModel.expandedPlaylistTracks.collectAsStateWithLifecycle()
     val playlistCounts by viewModel.playlistTrackCounts.collectAsStateWithLifecycle()
@@ -976,8 +1021,21 @@ fun PlaylistsTab(
         emptyList()
     }
 
+    val listState = rememberLazyListState()
+    // Bring a just-opened custom playlist into view — e.g. tapped from the side panel, which
+    // sets it expanded. It sits below the standard collections, so without this it expands
+    // off-screen and looks like nothing happened. Virtual playlists (id < 0) are already up top.
+    // Offset 6 = "Standard Collections" header + 4 virtual rows + "Your Playlists" header.
+    LaunchedEffect(expandedPlaylistId, playlists) {
+        val id = expandedPlaylistId ?: return@LaunchedEffect
+        if (id <= 0L) return@LaunchedEffect
+        val idx = playlists.indexOfFirst { it.id == id }
+        if (idx >= 0) listState.animateScrollToItem(6 + idx)
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
+            state = listState,
             verticalArrangement = Arrangement.spacedBy(8.dp),
             contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 120.dp)
         ) {
@@ -1066,7 +1124,17 @@ fun PlaylistsTab(
                             )
                         },
                         onPlay = { tracks, startIndex -> if (tracks.isNotEmpty()) playbackController.playQueue(tracks, startIndex) },
-                        onDelete = { playlistToDelete = playlist }
+                        onDelete = { playlistToDelete = playlist },
+                        onRename = { playlistToRename = playlist },
+                        // Track-membership editing only applies to MANUAL playlists. Smart
+                        // (tag-query) playlists derive their contents from tags, so adding/
+                        // removing individual tracks would silently do nothing — don't offer it.
+                        onRemoveTrack = if (playlist.type == "manual") {
+                            { track -> viewModel.removeTrackFromPlaylist(playlist.id, track.id) }
+                        } else null,
+                        onAddSongs = if (playlist.type == "manual") {
+                            { playlistToAddSongs = playlist }
+                        } else null
                     )
                 }
             }
@@ -1117,6 +1185,137 @@ fun PlaylistsTab(
             }
         )
     }
+
+    playlistToRename?.let { playlist ->
+        var newName by remember(playlist.id) { mutableStateOf(playlist.name) }
+        val accent = Color(0xFF7C4DFF)
+        AlertDialog(
+            onDismissRequest = { playlistToRename = null },
+            containerColor = Color(0xFF1E1E2E),
+            title = { Text("Rename playlist", color = Color.White, fontWeight = FontWeight.SemiBold) },
+            text = {
+                OutlinedTextField(
+                    value = newName,
+                    onValueChange = { newName = it },
+                    singleLine = true,
+                    label = { Text("Name") },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = accent,
+                        unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
+                        focusedLabelColor = accent,
+                        unfocusedLabelColor = Color.Gray,
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        cursorColor = accent
+                    )
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = { viewModel.renamePlaylist(playlist.id, newName.trim()); playlistToRename = null },
+                    enabled = newName.isNotBlank()
+                ) { Text("Save", color = if (newName.isNotBlank()) accent else Color.Gray, fontWeight = FontWeight.SemiBold) }
+            },
+            dismissButton = {
+                TextButton(onClick = { playlistToRename = null }) {
+                    Text("Cancel", color = Color.White.copy(alpha = 0.6f))
+                }
+            }
+        )
+    }
+
+    playlistToAddSongs?.let { playlist ->
+        AddTracksToPlaylistDialog(
+            playlistName = playlist.name,
+            allTracks = allTracks,
+            existingTrackIds = expandedTracks.map { it.id }.toSet(),
+            onAdd = { track -> viewModel.addTrackToPlaylistAsync(playlist.id, track.id) },
+            onDismiss = { playlistToAddSongs = null }
+        )
+    }
+}
+
+/**
+ * In-playlist song picker. Lists library tracks with a search box; tapping a track adds
+ * it to the playlist immediately (the caller persists it) and the row flips to a check.
+ * Tracks already in the playlist are shown checked and non-tappable.
+ */
+@Composable
+fun AddTracksToPlaylistDialog(
+    playlistName: String,
+    allTracks: List<TrackEntity>,
+    existingTrackIds: Set<Long>,
+    onAdd: (TrackEntity) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val accent = Color(0xFF7C4DFF)
+    var query by remember { mutableStateOf("") }
+    val added = remember { mutableStateListOf<Long>() }
+    val filtered = remember(query, allTracks) {
+        if (query.isBlank()) allTracks
+        else allTracks.filter { it.title.contains(query, true) || it.artist.contains(query, true) }
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = Color(0xFF1E1E2E),
+        title = { Text("Add to $playlistName", color = Color.White, fontWeight = FontWeight.SemiBold) },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    singleLine = true,
+                    label = { Text("Search songs") },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = accent,
+                        unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
+                        focusedLabelColor = accent,
+                        unfocusedLabelColor = Color.Gray,
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        cursorColor = accent
+                    )
+                )
+                Spacer(Modifier.height(8.dp))
+                LazyColumn(modifier = Modifier.heightIn(max = 360.dp)) {
+                    items(filtered, key = { it.id }) { track ->
+                        val isIn = track.id in existingTrackIds || track.id in added
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable(enabled = !isIn) { onAdd(track); added.add(track.id) }
+                                .padding(vertical = 10.dp, horizontal = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(Modifier.weight(1f)) {
+                                Text(
+                                    track.title,
+                                    color = Color.White.copy(alpha = if (isIn) 0.4f else 0.9f),
+                                    fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis
+                                )
+                                Text(
+                                    track.artist,
+                                    color = Color.White.copy(alpha = 0.4f),
+                                    fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                            Icon(
+                                if (isIn) Icons.Default.Check else Icons.Default.Add,
+                                contentDescription = if (isIn) "Added" else "Add",
+                                tint = if (isIn) Color.White.copy(alpha = 0.4f) else accent,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Done", color = accent, fontWeight = FontWeight.SemiBold) }
+        }
+    )
 }
 
 @Composable
@@ -1128,7 +1327,11 @@ fun PlaylistItem(
     currentTrackTitle: String = "",
     onExpand: () -> Unit,
     onPlay: (List<TrackEntity>, Int) -> Unit,
-    onDelete: (() -> Unit)? = null
+    onDelete: (() -> Unit)? = null,
+    // Editing affordances — only wired for custom (manual) playlists.
+    onRename: (() -> Unit)? = null,
+    onRemoveTrack: ((TrackEntity) -> Unit)? = null,
+    onAddSongs: (() -> Unit)? = null
 ) {
     val accent = Color(0xFF7C4DFF)
 
@@ -1180,6 +1383,11 @@ fun PlaylistItem(
                         fontSize = 12.sp
                     )
                 }
+                if (isExpanded && onRename != null) {
+                    IconButton(onClick = { onRename() }) {
+                        Icon(Icons.Default.Edit, contentDescription = "Rename playlist", tint = Color.White.copy(alpha = 0.5f), modifier = Modifier.size(18.dp))
+                    }
+                }
                 if (isExpanded) {
                     IconButton(
                         onClick = { onPlay(expandedTracks, 0) },
@@ -1198,7 +1406,13 @@ fun PlaylistItem(
             }
 
             if (isExpanded) {
-                ExpandedTrackList(tracks = expandedTracks, onPlay = { tracks, startIndex -> onPlay(tracks, startIndex) }, currentTrackTitle = currentTrackTitle)
+                ExpandedTrackList(
+                    tracks = expandedTracks,
+                    onPlay = { tracks, startIndex -> onPlay(tracks, startIndex) },
+                    currentTrackTitle = currentTrackTitle,
+                    onRemoveTrack = onRemoveTrack,
+                    onAddSongs = onAddSongs
+                )
             }
         }
     }
@@ -1388,35 +1602,90 @@ fun FolderItem(
 fun SelectPlaylistDialog(
     playlists: List<PlaylistEntity>,
     onSelect: (PlaylistEntity) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    // When provided, the dialog can create a new playlist inline (and the caller adds
+    // the track to it) — so "no playlists yet" isn't a dead end.
+    onCreateNew: ((String) -> Unit)? = null
 ) {
+    val accent = Color(0xFF7C4DFF)
+    var creating by remember { mutableStateOf(false) }
+    var newName by remember { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = Color(0xFF1E1E2E),
         title = { Text("Add to Playlist", color = Color.White, fontWeight = FontWeight.SemiBold) },
         text = {
-            if (playlists.isEmpty()) {
-                Text("You don't have any standard playlists yet.", color = Color.Gray, fontSize = 14.sp)
-            } else {
-                LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 300.dp)) {
-                    items(playlists, key = { it.id }) { playlist ->
+            Column {
+                if (onCreateNew != null) {
+                    if (creating) {
+                        OutlinedTextField(
+                            value = newName,
+                            onValueChange = { newName = it },
+                            singleLine = true,
+                            label = { Text("New playlist name") },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = accent,
+                                unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
+                                focusedLabelColor = accent,
+                                unfocusedLabelColor = Color.Gray,
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White,
+                                cursorColor = accent
+                            )
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                    } else {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { onSelect(playlist) }
+                                .clickable { creating = true }
                                 .padding(vertical = 12.dp, horizontal = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(Icons.Default.PlaylistPlay, contentDescription = null, tint = Color.White.copy(alpha = 0.5f))
+                            Icon(Icons.Default.Add, contentDescription = null, tint = accent)
                             Spacer(modifier = Modifier.width(12.dp))
-                            Text(playlist.name, color = Color.White, fontSize = 15.sp)
+                            Text("Create new playlist", color = accent, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                        }
+                        if (playlists.isNotEmpty()) {
+                            HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
+                        }
+                    }
+                }
+                if (!creating) {
+                    if (playlists.isEmpty()) {
+                        if (onCreateNew == null) {
+                            Text("You don't have any standard playlists yet.", color = Color.Gray, fontSize = 14.sp)
+                        }
+                    } else {
+                        LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 300.dp)) {
+                            items(playlists, key = { it.id }) { playlist ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable { onSelect(playlist) }
+                                        .padding(vertical = 12.dp, horizontal = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(Icons.Default.PlaylistPlay, contentDescription = null, tint = Color.White.copy(alpha = 0.5f))
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Text(playlist.name, color = Color.White, fontSize = 15.sp)
+                                }
+                            }
                         }
                     }
                 }
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Close", color = Color.White.copy(alpha = 0.6f)) }
+            if (creating) {
+                TextButton(
+                    onClick = { onCreateNew?.invoke(newName.trim()) },
+                    enabled = newName.isNotBlank()
+                ) { Text("Create", color = if (newName.isNotBlank()) accent else Color.Gray, fontWeight = FontWeight.SemiBold) }
+            } else {
+                TextButton(onClick = onDismiss) { Text("Close", color = Color.White.copy(alpha = 0.6f)) }
+            }
         }
     )
 }
@@ -1426,7 +1695,11 @@ fun ExpandedTrackList(
     tracks: List<TrackEntity>,
     onPlay: (List<TrackEntity>, Int) -> Unit,
     currentTrackTitle: String = "",
-    accent: Color = Color(0xFF7C4DFF)
+    accent: Color = Color(0xFF7C4DFF),
+    // When set (custom playlists), each row gets a remove button and an "Add songs"
+    // action appears at the bottom. Null for read-only groups (albums/artists/folders).
+    onRemoveTrack: ((TrackEntity) -> Unit)? = null,
+    onAddSongs: (() -> Unit)? = null
 ) {
     Spacer(modifier = Modifier.height(10.dp))
     HorizontalDivider(color = Color.White.copy(alpha = 0.07f), thickness = 1.dp)
@@ -1465,6 +1738,19 @@ fun ExpandedTrackList(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.widthIn(max = 120.dp)
                 )
+                if (onRemoveTrack != null) {
+                    IconButton(
+                        onClick = { onRemoveTrack(track) },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = "Remove from playlist",
+                            tint = Color.White.copy(alpha = 0.35f),
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
             }
         }
         if (tracks.size > 100) {
@@ -1475,6 +1761,25 @@ fun ExpandedTrackList(
                 fontSize = 12.sp,
                 modifier = Modifier.padding(horizontal = 8.dp)
             )
+        }
+    }
+    if (onAddSongs != null) {
+        Spacer(modifier = Modifier.height(10.dp))
+        // Filled accent chip with white text — readable on the dark card (the plain
+        // purple-on-dark text was too low-contrast).
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(10.dp))
+                .background(accent.copy(alpha = 0.22f))
+                .clickable { onAddSongs() }
+                .padding(vertical = 12.dp, horizontal = 12.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(Icons.Default.Add, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Add songs", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
         }
     }
 }

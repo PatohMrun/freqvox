@@ -33,6 +33,12 @@ interface PlaylistDao {
     @Delete
     suspend fun deletePlaylistTrack(crossRef: com.freqvox.data.local.entities.PlaylistTrackCrossRef)
 
+    @Query("UPDATE playlists SET name = :name WHERE id = :id")
+    suspend fun renamePlaylist(id: Long, name: String)
+
+    @Query("DELETE FROM playlist_tracks WHERE playlistId = :playlistId AND trackId = :trackId")
+    suspend fun removeTrackFromPlaylist(playlistId: Long, trackId: Long)
+
     @Query("""
         SELECT tracks.* FROM tracks 
         INNER JOIN playlist_tracks ON tracks.id = playlist_tracks.trackId 

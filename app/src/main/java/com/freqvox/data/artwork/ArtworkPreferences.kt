@@ -59,8 +59,34 @@ class ArtworkPreferences @Inject constructor(
         prefs.edit().putStringSet(KEY_FAILED, updated).apply()
     }
 
+    /**
+     * Batched failure mark — one read-modify-write for many ids. The single-id version
+     * copies and rewrites the whole set per call, which is O(n²) across a full-library
+     * miss sweep; the backfill collects its misses and records them here once instead.
+     */
+    fun markLookupFailed(ids: Collection<Long>) {
+        if (ids.isEmpty()) return
+        val updated = (prefs.getStringSet(KEY_FAILED, emptySet()) ?: emptySet()).toMutableSet()
+        if (updated.addAll(ids.map { it.toString() })) {
+            prefs.edit().putStringSet(KEY_FAILED, updated).apply()
+        }
+    }
+
     fun clearFailedLookups() {
         prefs.edit().remove(KEY_FAILED).apply()
+    }
+
+    /**
+     * Clears the negative cache for ONLY the given track ids. Used when linking a
+     * VidMate folder: just the tracks that now have a known thumbnail get another
+     * online attempt, instead of wiping the whole cache and re-probing the entire
+     * library (which is what made linking grind).
+     */
+    fun clearFailedLookups(ids: Collection<Long>) {
+        if (ids.isEmpty()) return
+        val updated = (prefs.getStringSet(KEY_FAILED, emptySet()) ?: emptySet()).toMutableSet()
+        val removed = updated.removeAll(ids.mapTo(HashSet()) { it.toString() })
+        if (removed) prefs.edit().putStringSet(KEY_FAILED, updated).apply()
     }
 
     companion object {

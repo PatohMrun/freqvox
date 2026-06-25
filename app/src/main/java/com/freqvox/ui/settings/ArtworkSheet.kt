@@ -82,6 +82,7 @@ fun ArtworkSheet(
     onToggleCellular: (Boolean) -> Unit,
     onToggleMeteredWifi: (Boolean) -> Unit,
     onRetryFailed: () -> Unit,
+    retrying: Boolean,
     onPhotoAccessGranted: () -> Unit,
     vidmateLinkedCount: Int,
     onLinkVidmate: (Uri) -> Unit,
@@ -177,8 +178,11 @@ fun ArtworkSheet(
                 )
                 ActionRow(
                     icon = Icons.Default.Refresh,
-                    title = "Retry failed lookups",
-                    subtitle = "Try again for covers that weren't found before",
+                    title = if (retrying) "Searching for covers…" else "Retry failed lookups",
+                    subtitle = if (retrying) "Looking online for missing art"
+                        else "Try again for covers that weren't found before",
+                    enabled = !retrying,
+                    loading = retrying,
                     onClick = onRetryFailed
                 )
             }
@@ -271,6 +275,7 @@ private fun ActionRow(
     title: String,
     subtitle: String,
     enabled: Boolean = true,
+    loading: Boolean = false,
     onClick: () -> Unit
 ) {
     Row(
@@ -283,12 +288,20 @@ private fun ActionRow(
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(
-            icon,
-            contentDescription = null,
-            tint = if (enabled) accent else Color.White.copy(alpha = 0.35f),
-            modifier = Modifier.size(22.dp)
-        )
+        if (loading) {
+            CircularProgressIndicator(
+                color = accent,
+                strokeWidth = 2.dp,
+                modifier = Modifier.size(22.dp)
+            )
+        } else {
+            Icon(
+                icon,
+                contentDescription = null,
+                tint = if (enabled) accent else Color.White.copy(alpha = 0.35f),
+                modifier = Modifier.size(22.dp)
+            )
+        }
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
             Text(

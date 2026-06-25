@@ -14,11 +14,13 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.Bedtime
+import androidx.compose.material.icons.filled.CompareArrows
 import androidx.compose.material.icons.filled.Equalizer
 import androidx.compose.material.icons.filled.FolderOff
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.QueryStats
 import androidx.compose.material.icons.filled.QueueMusic
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.Sell
 import androidx.compose.material3.*
@@ -82,10 +84,12 @@ fun AppSidePanel(
     tags: List<TagEntity>,
     onOpenStats: () -> Unit,
     onOpenEqualizer: () -> Unit,
+    onOpenCrossfade: () -> Unit,
     onOpenSleep: () -> Unit,
     onOpenFolders: () -> Unit,
     onOpenTags: () -> Unit,
     onOpenArtwork: () -> Unit,
+    onRescan: () -> Unit,
     onPlaylistClick: (PlaylistEntity) -> Unit,
     onTagClick: (TagEntity) -> Unit
 ) {
@@ -138,9 +142,11 @@ fun AppSidePanel(
 
             PanelSection("AUDIO")
             PanelRow(Icons.Default.Equalizer, "Equalizer", onOpenEqualizer)
+            PanelRow(Icons.Default.CompareArrows, "Crossfade", onOpenCrossfade)
             PanelRow(Icons.Default.Bedtime, "Sleep timer", onOpenSleep)
 
             PanelSection("LIBRARY")
+            PanelRow(Icons.Default.Refresh, "Rescan library", onRescan)
             PanelRow(Icons.Default.FolderOff, "Hidden folders", onOpenFolders)
             PanelRow(Icons.Default.Sell, "Manage tags", onOpenTags)
             PanelRow(Icons.Default.Image, "Album art", onOpenArtwork)
