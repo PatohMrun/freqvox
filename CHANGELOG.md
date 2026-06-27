@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.29] - 2026-06-27
+### Changed
+- Side panel: Playlists and Tags groups now start collapsed (they grow with the library), while the settings groups stay expanded.
+
 ## [2.28] - 2026-06-27
 ### Added
 - Side panel groups (Insights, Audio, Library, Backup, Playlists, Tags) are now collapsible accordions — tap a header to fold/unfold with an animated chevron. Expanded by default; collapse state persists.

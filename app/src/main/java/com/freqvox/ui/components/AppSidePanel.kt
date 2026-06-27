@@ -180,7 +180,7 @@ fun AppSidePanel(
 
             // ── Quick jump: playlists ───────────────────────────────────────────
             if (playlists.isNotEmpty()) {
-                AccordionSection("PLAYLISTS") {
+                AccordionSection("PLAYLISTS", initiallyExpanded = false) {
                     playlists.forEach { playlist ->
                         Row(
                             modifier = Modifier
@@ -211,7 +211,7 @@ fun AppSidePanel(
 
             // ── Quick jump: tags ────────────────────────────────────────────────
             if (tags.isNotEmpty()) {
-                AccordionSection("TAGS") {
+                AccordionSection("TAGS", initiallyExpanded = false) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -268,9 +268,10 @@ fun AppSidePanel(
 @Composable
 private fun AccordionSection(
     title: String,
+    initiallyExpanded: Boolean = true,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    var expanded by rememberSaveable(title) { mutableStateOf(true) }
+    var expanded by rememberSaveable(title) { mutableStateOf(initiallyExpanded) }
     val chevronRotation by animateFloatAsState(
         targetValue = if (expanded) 180f else 0f,
         label = "accordionChevron"
