@@ -138,20 +138,24 @@ class ArtworkResolver @Inject constructor(
         linkable.size
     }
 
-    /** trackId → on-disk file name for the given ids, via ONE MediaStore query. */
+    /** trackId → on-disk file name for the given ids, via ONE MediaStore query scoped with an
+     *  `_ID IN (…)` selection so the provider returns only the rows we asked for, instead of
+     *  scanning the whole audio table and filtering in memory (which grew with library size).
+     *  ids are MediaStore Longs, so inlining them is injection-safe. */
     private fun fileNamesByTrackId(ids: Set<Long>): Map<Long, String> {
+        if (ids.isEmpty()) return emptyMap()
         val out = HashMap<Long, String>(ids.size)
+        val selection = "${MediaStore.Audio.Media._ID} IN (${ids.joinToString(",")})"
         runCatching {
             context.contentResolver.query(
                 MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
                 arrayOf(MediaStore.Audio.Media._ID, MediaStore.Audio.Media.DISPLAY_NAME),
-                null, null, null
+                selection, null, null
             )?.use { c ->
                 val idCol = c.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
                 val nameCol = c.getColumnIndexOrThrow(MediaStore.Audio.Media.DISPLAY_NAME)
                 while (c.moveToNext()) {
                     val id = c.getLong(idCol)
-                    if (id !in ids) continue
                     c.getString(nameCol)?.let { out[id] = it }
                 }
             }

@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.18] - 2026-06-27
+### Performance
+- **VidMate re-link query**: Matching tracks to VidMate thumbnails now scopes the MediaStore query with `_ID IN (…)` instead of scanning the entire audio table and filtering in memory — faster, and no longer scales with total library size.
+
 ## [2.17] - 2026-06-27
 ### Performance
 - **Artwork memory**: Decoded cover bitmaps are now recycled immediately after being cached as JPEG, reducing memory/GC pressure during a full-library art backfill.
