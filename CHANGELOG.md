@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.25] - 2026-06-27
+### Fixed
+- Search: the colorful tag browse cards now use white labels in both themes (were dark text that washed out on the saturated gradient in light mode).
+
 ## [2.24] - 2026-06-27
 ### Fixed (light theme polish)
 - Navbar: darkened unselected tab icons/labels (less washed-out gray).

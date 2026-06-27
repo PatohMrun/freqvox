@@ -325,7 +325,9 @@ fun TagCard(name: String, baseColor: Color, modifier: Modifier = Modifier, onTag
         
         Text(
             text = formatTagDisplayName(name),
-            color = Fvox.onSurface,
+            // White in both themes — the card is a saturated tag-color gradient, not a theme
+            // surface, so onSurface (black in light) would wash out on it.
+            color = Color.White,
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold,
             modifier = Modifier
