@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.17] - 2026-06-27
+### Performance
+- **Artwork memory**: Decoded cover bitmaps are now recycled immediately after being cached as JPEG, reducing memory/GC pressure during a full-library art backfill.
+
 ## [2.16] - 2026-06-27
 ### Performance
 - **Idle crossfade polling**: When crossfade is off (the default), the controller's poll loop now coasts at 5s instead of waking every second for the entire playback session — fewer needless wakeups, lighter on battery.

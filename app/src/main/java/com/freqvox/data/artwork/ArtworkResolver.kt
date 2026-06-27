@@ -58,6 +58,10 @@ class ArtworkResolver @Inject constructor(
             ?: return@withContext null
 
         saveJpeg(bitmap, cacheFile)
+        // Free the decoded bitmap eagerly. It's already persisted as JPEG and we never hand
+        // it back, so during a full-library backfill this avoids hundreds of ~1MB bitmaps
+        // piling up between GC cycles.
+        bitmap.recycle()
         cacheFile.absolutePath
     }
 
