@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.20] - 2026-06-27
+### Added
+- **Cover Art Archive (MusicBrainz) lookup**: A third online cover source, tried after iTunes and Deezer. Keyless and open-data, it fills real albums the other two miss (older / non-US / catalogue-gap releases). Rate-limited to respect MusicBrainz (≤1 req/s) and bounded so a single match never fans out into many requests.
+
 ## [2.19] - 2026-06-27
 ### Fixed
 - **Equalizer during crossfade**: The main and tail players now share one audio session, so the equalizer is applied to the outgoing track during a crossfade instead of it briefly playing flat. Also makes equalizer initialization deterministic.
