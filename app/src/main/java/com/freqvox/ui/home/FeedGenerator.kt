@@ -274,10 +274,13 @@ object FeedGenerator {
             return options.randomOrNull(random) ?: FeedItem.HorizontalCarousel(title, tracksList, icon)
         }
 
-        // Spotlight
-        tracks.filter { it.playCount > 0 }.maxByOrNull { it.playCount }?.let {
-            feedOptions.add(FeedItem.Spotlight(it))
-        }
+        // Spotlight — rotate among the top-played instead of locking to the single #1, so it
+        // varies across feed pages / pull-to-refresh (uses the per-page seed).
+        tracks.filter { it.playCount > 0 }
+            .sortedByDescending { it.playCount }
+            .take(15)
+            .randomOrNull(random)
+            ?.let { feedOptions.add(FeedItem.Spotlight(it)) }
 
         // Featured discovery banner
         (discovery.firstOrNull() ?: neverHeard.firstOrNull())?.let {

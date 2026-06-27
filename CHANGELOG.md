@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.30] - 2026-06-28
+### Changed
+- Home "Spotlight" no longer always shows your single most-played track — it now rotates among your top 15 most-played (using the per-page seed), so it varies across feed pages and pull-to-refresh.
+
 ## [2.29] - 2026-06-27
 ### Changed
 - Side panel: Playlists and Tags groups now start collapsed (they grow with the library), while the settings groups stay expanded.
