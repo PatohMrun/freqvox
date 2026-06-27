@@ -268,8 +268,10 @@ fun TagFilterRow(
                     )
                 },
                 colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = Color(tag.color).copy(alpha = 0.35f),
-                    selectedLabelColor = Fvox.onSurface,
+                    // Solid tag color + white label when selected (reads better than dark
+                    // text on a faint tint).
+                    selectedContainerColor = Color(tag.color),
+                    selectedLabelColor = Color.White,
                     containerColor = Fvox.surfaceVariant,
                     labelColor = Fvox.onSurface.copy(alpha = 0.75f)
                 )

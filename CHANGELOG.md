@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.24] - 2026-06-27
+### Fixed (light theme polish)
+- Navbar: darkened unselected tab icons/labels (less washed-out gray).
+- Now-playing screen: added a subtle album-tinted gradient wash so it isn't a flat white slab.
+- Search: selected tag chips now use the solid tag color with a white label.
+- Header greeting auto-shrinks to fit instead of truncating — keeps the full "Good evening" wording, no scrolling/motion.
+
 ## [2.23] - 2026-06-27
 ### Fixed (light theme contrast)
 - Darkened light-mode grays (pure-black base) and switched to a deeper, legible accent purple; dynamic accents are clamped darker so white text reads on them and they read on white.

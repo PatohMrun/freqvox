@@ -42,6 +42,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -626,13 +627,27 @@ fun Header(greeting: String, totalSongs: Int, totalDurationMs: Long, onSearchCli
         // Weighted so the greeting yields width to the fixed-size controls/logo instead of
         // overflowing and squashing them (the icon row grew when the theme toggle was added).
         Column(modifier = Modifier.weight(1f)) {
+            // Auto-shrink so the full greeting ("Good evening") never truncates on a tight
+            // header — no motion; it stays at 28sp unless space is genuinely short, then steps
+            // down just enough to fit. Hidden until measured so the resize isn't visible.
+            var greetingSize by remember(greeting) { mutableStateOf(28.sp) }
+            var greetingReady by remember(greeting) { mutableStateOf(false) }
             Text(
                 text = greeting,
-                fontSize = 28.sp,
+                fontSize = greetingSize,
                 fontWeight = FontWeight.Bold,
                 color = Fvox.onSurface,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                softWrap = false,
+                overflow = TextOverflow.Clip,
+                modifier = Modifier.drawWithContent { if (greetingReady) drawContent() },
+                onTextLayout = { result ->
+                    if (result.didOverflowWidth && greetingSize > 18.sp) {
+                        greetingSize *= 0.92f
+                    } else {
+                        greetingReady = true
+                    }
+                }
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(

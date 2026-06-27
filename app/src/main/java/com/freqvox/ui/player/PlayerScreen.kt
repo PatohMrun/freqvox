@@ -269,7 +269,18 @@ fun PlayerScreen(
                 scaleX = scale
                 scaleY = scale
             }
-            .background(Fvox.surface)
+            // Subtle dynamic wash so the player isn't a flat slab (matches the gentle
+            // album-tinted gradient the other pages carry). Opaque via compositeOver so it
+            // still fully covers what's behind it.
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        accentPrimary.copy(alpha = 0.18f).compositeOver(Fvox.surface),
+                        accentSecondary.copy(alpha = 0.07f).compositeOver(Fvox.surface),
+                        Fvox.surface
+                    )
+                )
+            )
             .nestedScroll(dismissConnection)
             .statusBarsPadding()
             .navigationBarsPadding()

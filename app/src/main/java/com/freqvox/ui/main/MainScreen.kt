@@ -277,8 +277,8 @@ fun MainScreen(
                                             colors = NavigationBarItemDefaults.colors(
                                                 selectedIconColor = Fvox.accent,
                                                 selectedTextColor = Fvox.accent,
-                                                unselectedIconColor = Fvox.onSurface.copy(alpha = 0.5f),
-                                                unselectedTextColor = Fvox.onSurface.copy(alpha = 0.5f),
+                                                unselectedIconColor = Fvox.onSurface.copy(alpha = 0.7f),
+                                                unselectedTextColor = Fvox.onSurface.copy(alpha = 0.7f),
                                                 indicatorColor = Color.Transparent
                                             )
                                         )
