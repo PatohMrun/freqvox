@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.16] - 2026-06-27
+### Performance
+- **Idle crossfade polling**: When crossfade is off (the default), the controller's poll loop now coasts at 5s instead of waking every second for the entire playback session — fewer needless wakeups, lighter on battery.
+
 ## [2.15] - 2026-06-27
 ### Fixed
 - **Audio-focus duck vs. crossfade**: A duckable interruption (notification / nav prompt) landing during a crossfade could leave playback permanently quiet. Duck gain and the crossfade ramp now compose (`volume = ramp × duck`) so both tracks duck cleanly and volume always returns to full afterwards.

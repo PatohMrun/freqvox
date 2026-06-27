@@ -53,6 +53,11 @@ class CrossfadeController(
     private val POLL_MS = 20L
     private val RAMP_STEP_MS = 50L
     private val DUCK_LEVEL = 0.25f
+    // Idle cadence while crossfade is OFF (the default). We can't fully stop the poller —
+    // it's also what notices the user turning the feature ON — but at the off setting there
+    // is nothing to do every second, so we coast at 5s. Worst case it takes 5s after enabling
+    // for the poller to start tracking a transition, which is well before any track ends.
+    private val OFF_POLL_MS = 5000L
     // How early to warm the tail before the crossfade window opens.
     private val PREARM_LEAD_MS = 2000L
 
@@ -110,7 +115,7 @@ class CrossfadeController(
 
     private fun maybeCrossfade(): Long {
         val windowMs = prefs.durationSeconds * 1000L
-        if (windowMs <= 0L) { resetArming(); return 1000L }      // OFF — inert
+        if (windowMs <= 0L) { resetArming(); return OFF_POLL_MS } // OFF — coast, near-zero wakeups
         if (crossfading) return 1000L
         if (!mainPlayer.isPlaying) return 1000L
         if (mainPlayer.repeatMode == Player.REPEAT_MODE_ONE) return 1000L
