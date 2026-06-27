@@ -24,6 +24,9 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.BrightnessAuto
+import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.PlayArrow
@@ -58,6 +61,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.freqvox.data.local.entities.TrackEntity
 import com.freqvox.playback.PlaybackController
+import com.freqvox.data.prefs.ThemeMode
 import com.freqvox.ui.main.MainViewModel
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.derivedStateOf
@@ -87,6 +91,7 @@ fun HomeScreen(
     onOpenPanel: () -> Unit = {},
     viewModel: MainViewModel = hiltViewModel()
 ) {
+    val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
     val activeTracks by viewModel.activeTracks.collectAsStateWithLifecycle()
     val currentTrack by viewModel.currentTrack.collectAsStateWithLifecycle()
     val totalSongs by viewModel.totalSongs.collectAsStateWithLifecycle()
@@ -233,6 +238,8 @@ fun HomeScreen(
             totalSongs = totalSongs,
             totalDurationMs = totalDuration,
             onSearchClick = { showSearchSheet = true },
+            themeMode = themeMode,
+            onCycleTheme = { viewModel.cycleTheme() },
             onOpenPanel = onOpenPanel,
             modifier = Modifier.padding(horizontal = 24.dp, vertical = 24.dp)
         )
@@ -605,7 +612,7 @@ fun SpotlightFeedBlock(
 }
 
 @Composable
-fun Header(greeting: String, totalSongs: Int, totalDurationMs: Long, onSearchClick: () -> Unit, onOpenPanel: () -> Unit = {}, modifier: Modifier = Modifier) {
+fun Header(greeting: String, totalSongs: Int, totalDurationMs: Long, onSearchClick: () -> Unit, themeMode: ThemeMode = ThemeMode.SYSTEM, onCycleTheme: () -> Unit = {}, onOpenPanel: () -> Unit = {}, modifier: Modifier = Modifier) {
     val hours = totalDurationMs / (1000 * 60 * 60)
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -632,6 +639,18 @@ fun Header(greeting: String, totalSongs: Int, totalDurationMs: Long, onSearchCli
                 Icon(
                     imageVector = Icons.Default.Search,
                     contentDescription = "Search",
+                    tint = Color.White
+                )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            IconButton(onClick = onCycleTheme) {
+                Icon(
+                    imageVector = when (themeMode) {
+                        ThemeMode.LIGHT -> Icons.Default.LightMode
+                        ThemeMode.DARK -> Icons.Default.DarkMode
+                        ThemeMode.SYSTEM -> Icons.Default.BrightnessAuto
+                    },
+                    contentDescription = "Theme: ${themeMode.name.lowercase()}",
                     tint = Color.White
                 )
             }

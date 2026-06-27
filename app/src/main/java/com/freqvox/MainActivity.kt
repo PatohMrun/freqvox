@@ -12,11 +12,16 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.freqvox.data.prefs.ThemeMode
+import com.freqvox.data.prefs.ThemePreferences
 import com.freqvox.playback.PlaybackController
 import com.freqvox.ui.main.MainScreen
 import com.freqvox.ui.main.MainViewModel
@@ -33,6 +38,9 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var playbackController: PlaybackController
+
+    @Inject
+    lateinit var themePreferences: ThemePreferences
 
     private val viewModel: MainViewModel by viewModels()
 
@@ -61,12 +69,18 @@ class MainActivity : ComponentActivity() {
         )
         
         setContent {
-            FreqvoxTheme {
+            val themeMode by themePreferences.mode.collectAsStateWithLifecycle()
+            val isLight = when (themeMode) {
+                ThemeMode.LIGHT -> true
+                ThemeMode.DARK -> false
+                ThemeMode.SYSTEM -> !isSystemInDarkTheme()
+            }
+            FreqvoxTheme(isLight = isLight) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    MainScreen(playbackController = playbackController)
+                    MainScreen(playbackController = playbackController, isLight = isLight)
                 }
             }
         }

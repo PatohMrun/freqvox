@@ -34,8 +34,14 @@ class MainViewModel @Inject constructor(
     private val artworkPrefs: ArtworkPreferences,
     private val vidmateSource: VidmateThumbnailSource,
     private val libraryUiPrefs: LibraryUiPreferences,
-    private val crossfadePrefs: CrossfadePreferences
+    private val crossfadePrefs: CrossfadePreferences,
+    private val themePrefs: com.freqvox.data.prefs.ThemePreferences
 ) : ViewModel() {
+
+    // Theme mode for the in-header toggle. The actual palette selection happens at the
+    // composition root (MainActivity), which observes the same singleton StateFlow.
+    val themeMode: StateFlow<com.freqvox.data.prefs.ThemeMode> = themePrefs.mode
+    fun cycleTheme() = themePrefs.cycle()
 
     // ── Crossfade (0s = off / gapless) ─────────────────────────────────────────
     private val _crossfadeSeconds = MutableStateFlow(crossfadePrefs.durationSeconds)

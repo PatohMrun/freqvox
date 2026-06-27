@@ -51,6 +51,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun MainScreen(
     playbackController: PlaybackController,
+    isLight: Boolean = false,
     viewModel: MainViewModel = hiltViewModel()
 ) {
     val navController = rememberNavController()
@@ -168,7 +169,7 @@ fun MainScreen(
         label = "snackbarBottomPadding"
     )
 
-    DynamicTheme(artworkPath = currentArtworkUri?.path, trackTitle = currentTrackTitle) {
+    DynamicTheme(artworkPath = currentArtworkUri?.path, trackTitle = currentTrackTitle, isLight = isLight) {
         Box(modifier = Modifier.fillMaxSize()) {
             // Gradient background is its own composable so MainScreen scope doesn't
             // recompose when DynamicTheme animates colors mid-track-change.

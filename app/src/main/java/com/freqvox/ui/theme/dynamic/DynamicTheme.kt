@@ -6,6 +6,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
@@ -13,6 +14,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import androidx.palette.graphics.Palette
+import com.freqvox.ui.theme.FreqvoxDarkColors
+import com.freqvox.ui.theme.FreqvoxLightColors
+import com.freqvox.ui.theme.LocalFreqvoxColors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -24,6 +28,7 @@ val LocalGradientSecondary = compositionLocalOf { Color(0xFF0A0A0F) }
 val LocalGradientTertiary  = compositionLocalOf { Color(0xFF0A0A0F) }
 
 private val DEEP_DARK = Color(0xFF06060C)
+private val PALE_LIGHT = Color(0xFFF4F4F7)
 
 // ── Color Generation ──────────────────────────────────────────────────────────
 
@@ -119,13 +124,37 @@ private fun generateTertiaryColor(primary: Color, title: String): Color {
     return Color(android.graphics.Color.HSVToColor(hsv))
 }
 
-/** Crushes a vibrant color down to a near-black while preserving its hue. */
-private fun processBackgroundColor(color: Color): Color {
-    if (color == DEEP_DARK) return DEEP_DARK
+/**
+ * Crushes a vibrant color toward the page background while preserving its hue — the mirror of
+ * the contrast principle the accents use. Dark mode pushes value to near-black (so white text
+ * has room); light mode pushes it to near-white and drops saturation to a faint tint (so dark
+ * text has room). Same hue, opposite end.
+ */
+private fun processBackgroundColor(color: Color, isLight: Boolean): Color {
+    if (color == DEEP_DARK || color == PALE_LIGHT) return if (isLight) PALE_LIGHT else DEEP_DARK
     val hsv = FloatArray(3)
     android.graphics.Color.colorToHSV(color.toArgb(), hsv)
-    hsv[1] = hsv[1].coerceIn(0.25f, 0.50f)
-    hsv[2] = 0.07f
+    if (isLight) {
+        hsv[1] = hsv[1].coerceIn(0.06f, 0.16f)   // faint tint of the cover's hue
+        hsv[2] = 0.96f                            // near-white
+    } else {
+        hsv[1] = hsv[1].coerceIn(0.25f, 0.50f)
+        hsv[2] = 0.07f                            // near-black
+    }
+    return Color(android.graphics.Color.HSVToColor(hsv))
+}
+
+/**
+ * Keeps an accent legible against the active background. In light mode a vivid accent can wash
+ * out on white, so cap its value and floor its saturation; dark mode keeps the accent as-is
+ * (its generators already clamp for a dark background).
+ */
+private fun adjustAccentForMode(color: Color, isLight: Boolean): Color {
+    if (!isLight) return color
+    val hsv = FloatArray(3)
+    android.graphics.Color.colorToHSV(color.toArgb(), hsv)
+    hsv[1] = hsv[1].coerceAtLeast(0.55f)   // stay saturated enough to read on white
+    hsv[2] = hsv[2].coerceIn(0.40f, 0.72f) // dark enough not to vanish into the background
     return Color(android.graphics.Color.HSVToColor(hsv))
 }
 
@@ -135,19 +164,20 @@ private fun processBackgroundColor(color: Color): Color {
 fun DynamicTheme(
     artworkPath: String?,
     trackTitle: String,
+    isLight: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val context = LocalContext.current
     val view    = LocalView.current
 
-    // Safe default when nothing is playing
-    val idle = DEEP_DARK
+    // Safe default when nothing is playing — the mode's resting background.
+    val idle = if (isLight) PALE_LIGHT else DEEP_DARK
 
     var seedColor      by remember { mutableStateOf(idle) }
     var secondaryColor by remember { mutableStateOf(idle) }
     var tertiaryColor  by remember { mutableStateOf(idle) }
 
-    LaunchedEffect(artworkPath, trackTitle) {
+    LaunchedEffect(artworkPath, trackTitle, isLight) {
         if (trackTitle.isBlank() || trackTitle == "No track selected") {
             seedColor      = idle
             secondaryColor = idle
@@ -180,35 +210,41 @@ fun DynamicTheme(
         tertiaryColor  = generateTertiaryColor(primary, trackTitle)
     }
 
-    // Animate all three independently with slightly staggered speeds
-    val animBackground by animateColorAsState(processBackgroundColor(seedColor),      tween(900),  label = "bg")
-    val animPrimary    by animateColorAsState(seedColor,                              tween(800),  label = "p1")
-    val animSecondary  by animateColorAsState(secondaryColor,                         tween(1000), label = "p2")
-    val animTertiary   by animateColorAsState(tertiaryColor,                          tween(1100), label = "p3")
+    // Animate all three independently with slightly staggered speeds. Accents are mode-adjusted
+    // so they stay legible on whichever background the mode produces.
+    val animBackground by animateColorAsState(processBackgroundColor(seedColor, isLight), tween(900),  label = "bg")
+    val animPrimary    by animateColorAsState(adjustAccentForMode(seedColor, isLight),    tween(800),  label = "p1")
+    val animSecondary  by animateColorAsState(adjustAccentForMode(secondaryColor, isLight), tween(1000), label = "p2")
+    val animTertiary   by animateColorAsState(adjustAccentForMode(tertiaryColor, isLight),  tween(1100), label = "p3")
 
-    // Paint status & nav bar
-    LaunchedEffect(animBackground) {
+    // Paint status & nav bar; their icon tint follows the mode (dark icons on a light bar).
+    LaunchedEffect(animBackground, isLight) {
         if (!view.isInEditMode) {
             val window = (context as Activity).window
             window.statusBarColor    = animBackground.toArgb()
             window.navigationBarColor = animBackground.toArgb()
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars    = false
-            WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = false
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars    = isLight
+            WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = isLight
         }
     }
 
-    val colorScheme = darkColorScheme(
-        primary    = animPrimary,
-        secondary  = animSecondary,
-        tertiary   = animTertiary,
-        background = animBackground,
-        surface    = animBackground.copy(alpha = 0.85f)
-    )
+    val colorScheme = if (isLight) {
+        lightColorScheme(
+            primary = animPrimary, secondary = animSecondary, tertiary = animTertiary,
+            background = animBackground, surface = animBackground.copy(alpha = 0.85f)
+        )
+    } else {
+        darkColorScheme(
+            primary = animPrimary, secondary = animSecondary, tertiary = animTertiary,
+            background = animBackground, surface = animBackground.copy(alpha = 0.85f)
+        )
+    }
 
     CompositionLocalProvider(
         LocalGradientPrimary   provides animPrimary,
         LocalGradientSecondary provides animSecondary,
-        LocalGradientTertiary  provides animTertiary
+        LocalGradientTertiary  provides animTertiary,
+        LocalFreqvoxColors     provides if (isLight) FreqvoxLightColors else FreqvoxDarkColors
     ) {
         MaterialTheme(colorScheme = colorScheme, content = content)
     }
