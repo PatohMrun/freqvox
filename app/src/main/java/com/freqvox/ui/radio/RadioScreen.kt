@@ -55,30 +55,31 @@ fun RadioScreen(
         if (playingStation != null && currentTitle == playingStation!!.name) playingStation else null
     }
 
+    Column(modifier = Modifier.fillMaxSize()) {
+    // ── Fixed header (stays put while the list scrolls under it) ────────────────
+    Spacer(modifier = Modifier.height(24.dp))
+    Column(modifier = Modifier.padding(horizontal = 24.dp)) {
+        Text("Radio", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color.White)
+        Text(
+            when {
+                isLoading -> "Loading…"
+                stations.isEmpty() && !isLoading -> "No stations found"
+                selectedGenre == "Top" && selectedCountryCode == "KE" && searchQuery.isBlank() ->
+                    "${stations.size} Kenyan stations · curated"
+                else -> "${stations.size} live streams"
+            },
+            fontSize = 14.sp,
+            color = Color.White.copy(alpha = 0.4f)
+        )
+    }
+    Spacer(modifier = Modifier.height(16.dp))
+
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .weight(1f)
+            .fillMaxWidth(),
         contentPadding = PaddingValues(bottom = 120.dp)
     ) {
-        // ── Header ────────────────────────────────────────────────────────────
-        item {
-            Spacer(modifier = Modifier.height(24.dp))
-            Column(modifier = Modifier.padding(horizontal = 24.dp)) {
-                Text("Radio", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                Text(
-                    when {
-                        isLoading -> "Loading…"
-                        stations.isEmpty() && !isLoading -> "No stations found"
-                        selectedGenre == "Top" && selectedCountryCode == "KE" && searchQuery.isBlank() ->
-                            "${stations.size} Kenyan stations · curated"
-                        else -> "${stations.size} live streams"
-                    },
-                    fontSize = 14.sp,
-                    color = Color.White.copy(alpha = 0.4f)
-                )
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-        }
-
         // ── Search bar ────────────────────────────────────────────────────────
         item {
             RadioSearchBar(
@@ -291,6 +292,7 @@ fun RadioScreen(
                 Spacer(modifier = Modifier.height(8.dp))
             }
         }
+    }
     }
 }
 

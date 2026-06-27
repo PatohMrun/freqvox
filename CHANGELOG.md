@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.21] - 2026-06-27
+### Fixed
+- **Radio header**: The "Radio" title now stays fixed at the top instead of scrolling away with the station list, matching the locked-header behavior on other pages.
+
 ## [2.20] - 2026-06-27
 ### Added
 - **Cover Art Archive (MusicBrainz) lookup**: A third online cover source, tried after iTunes and Deezer. Keyless and open-data, it fills real albums the other two miss (older / non-US / catalogue-gap releases). Rate-limited to respect MusicBrainz (≤1 req/s) and bounded so a single match never fans out into many requests.
