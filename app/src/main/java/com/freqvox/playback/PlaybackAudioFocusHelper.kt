@@ -22,14 +22,17 @@ import androidx.media3.exoplayer.ExoPlayer
  */
 class PlaybackAudioFocusHelper(
     private val context: Context,
-    private val player: ExoPlayer
+    private val player: ExoPlayer,
+    // Ducking is applied by the crossfade controller, which owns player volume — so a duck
+    // composes with an in-flight crossfade instead of fighting it (and the tail gets ducked
+    // too). Defaults to writing the main player directly when no controller is wired.
+    private val onDuckChanged: (Boolean) -> Unit = {}
 ) {
     private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
 
     private var hasFocus = false
     private var pausedForFocusLoss = false
     private var ducked = false
-    private var volumeBeforeDuck = 1f
 
     private val focusListener = AudioManager.OnAudioFocusChangeListener { change ->
         when (change) {
@@ -146,16 +149,15 @@ class PlaybackAudioFocusHelper(
 
     private fun onFocusDuck() {
         if (!ducked) {
-            volumeBeforeDuck = player.volume
             ducked = true
-            player.volume = volumeBeforeDuck * 0.25f
+            onDuckChanged(true)
         }
     }
 
     private fun restoreVolumeAfterDuck() {
         if (ducked) {
-            player.volume = volumeBeforeDuck
             ducked = false
+            onDuckChanged(false)
         }
     }
 }

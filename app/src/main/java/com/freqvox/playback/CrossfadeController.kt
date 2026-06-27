@@ -41,8 +41,18 @@ class CrossfadeController(
     // apart from a user pressing "next" mid-crossfade.
     private var selfTriggeredJump = false
 
+    // The equal-power ramp gain (what the crossfade wants each player at) is kept separate
+    // from the duck gain (audio-focus ducking). The actual player volume is always
+    // rampX * duckFactor — see applyVolumes() — so a duck landing mid-crossfade lowers both
+    // tracks instead of fighting the ramp, and un-ducking returns to the ramp's live gain
+    // (1f at rest) rather than a stale captured value that used to strand playback quiet.
+    private var rampMain = 1f
+    private var rampTail = 0f
+    @Volatile private var duckFactor = 1f
+
     private val POLL_MS = 20L
     private val RAMP_STEP_MS = 50L
+    private val DUCK_LEVEL = 0.25f
     // How early to warm the tail before the crossfade window opens.
     private val PREARM_LEAD_MS = 2000L
 
@@ -147,16 +157,22 @@ class CrossfadeController(
         crossfading = true
         preArmed = false   // consumed
 
+        // Incoming track starts silent, outgoing tail at full — through the duck gain so an
+        // interruption already in progress keeps both quiet.
+        rampMain = 0f
+        rampTail = 1f
+
         // Start tailPlayer exactly at the handoff point to maintain perfect beat-sync.
-        // While there is a microscopic hardware gap as AudioTrack wakes up, attempting 
-        // to stagger this causes overlapping echoes because ExoPlayer decoder warmup 
+        // While there is a microscopic hardware gap as AudioTrack wakes up, attempting
+        // to stagger this causes overlapping echoes because ExoPlayer decoder warmup
         // times are unpredictable across devices.
+        tailPlayer.volume = rampTail * duckFactor
         tailPlayer.play()
 
         // Incoming track: jump the session player forward NOW
         selfTriggeredJump = true
         mainPlayer.seekToNextMediaItem()
-        mainPlayer.volume = 0f
+        mainPlayer.volume = rampMain * duckFactor
         mainPlayer.play()
 
         ramp(windowMs)
@@ -175,9 +191,10 @@ class CrossfadeController(
                 // A linear crossfade (t and 1-t) causes acoustic power to drop by 50% in the middle 
                 // of the fade, creating an audible "volume dip".
                 // Using sine/cosine curves maintains a constant 100% power output throughout the entire transition.
-                mainPlayer.volume = kotlin.math.sin(t * (Math.PI / 2)).toFloat()
-                tailPlayer.volume = kotlin.math.cos(t * (Math.PI / 2)).toFloat()
-                
+                rampMain = kotlin.math.sin(t * (Math.PI / 2)).toFloat()
+                rampTail = kotlin.math.cos(t * (Math.PI / 2)).toFloat()
+                applyVolumes()
+
                 if (t >= 1f) finishCrossfade() else handler.postDelayed(this, RAMP_STEP_MS)
             }
         }
@@ -185,18 +202,43 @@ class CrossfadeController(
     }
 
     private fun finishCrossfade() {
-        mainPlayer.volume = 1f
+        rampMain = 1f
+        rampTail = 0f
+        mainPlayer.volume = rampMain * duckFactor
         stopTail()
         crossfading = false
     }
 
-    /** Abort an in-flight crossfade (e.g. user skipped): snap the live player back to full
-     *  volume and silence the tail immediately. */
+    /** Abort an in-flight crossfade (e.g. user skipped): snap the live player back to its
+     *  resting gain (full, or ducked if an interruption is active) and silence the tail. */
     private fun cancelCrossfade() {
-        mainPlayer.volume = 1f
+        rampMain = 1f
+        rampTail = 0f
+        mainPlayer.volume = rampMain * duckFactor
         stopTail()
         crossfading = false
         preArmed = false
+    }
+
+    /** Player volume = equal-power ramp gain × audio-focus duck gain. Single writer for both
+     *  players' volume during a crossfade so the two concerns compose instead of clobbering. */
+    private fun applyVolumes() {
+        mainPlayer.volume = rampMain * duckFactor
+        tailPlayer.volume = rampTail * duckFactor
+    }
+
+    /**
+     * Audio-focus ducking hook (wired from [PlaybackAudioFocusHelper]). Lowers/raises a gain
+     * that multiplies into whatever the crossfade ramp is currently doing, so:
+     *  - a duck mid-crossfade quiets BOTH the incoming and outgoing tracks (not just one);
+     *  - un-ducking restores to the ramp's live gain (1f at rest), never a stale captured
+     *    fraction — the old bug that could leave playback permanently quiet.
+     */
+    fun setDucked(ducked: Boolean) {
+        val f = if (ducked) DUCK_LEVEL else 1f
+        if (f == duckFactor) return
+        duckFactor = f
+        applyVolumes()
     }
 
     /** Drop any pre-armed (but not yet started) tail. */

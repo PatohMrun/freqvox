@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.15] - 2026-06-27
+### Fixed
+- **Audio-focus duck vs. crossfade**: A duckable interruption (notification / nav prompt) landing during a crossfade could leave playback permanently quiet. Duck gain and the crossfade ramp now compose (`volume = ramp × duck`) so both tracks duck cleanly and volume always returns to full afterwards.
+
 ## [2.14] - 2026-06-26
 First public release since 1.48. Internal versions 2.2–2.13 were never shipped on their own; all of their work is consolidated here.
 

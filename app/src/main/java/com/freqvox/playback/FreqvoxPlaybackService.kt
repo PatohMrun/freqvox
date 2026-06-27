@@ -88,9 +88,6 @@ class FreqvoxPlaybackService : MediaLibraryService() {
             .setWakeMode(C.WAKE_MODE_NETWORK)
             .build()
 
-        audioFocusHelper = PlaybackAudioFocusHelper(this, player).also { it.start() }
-        volumeHelper = VolumePlaybackHelper(this, player).also { it.start() }
-
         // Secondary player used only to bleed the outgoing track's tail during a crossfade.
         // Built with the same media-source factory so it decodes the same URIs. Idle (and
         // costless) whenever crossfade is off, which is the default.
@@ -99,7 +96,17 @@ class FreqvoxPlaybackService : MediaLibraryService() {
             .setAudioAttributes(audioAttributes, /* handleAudioFocus= */ false)
             .build()
         tailPlayer = tail
-        crossfadeController = CrossfadeController(player, tail, crossfadePrefs).also { it.start() }
+        val controller = CrossfadeController(player, tail, crossfadePrefs)
+        crossfadeController = controller
+
+        // Route audio-focus ducking through the crossfade controller so the duck gain and the
+        // crossfade ramp compose (and the tail player gets ducked too) instead of fighting
+        // over player.volume.
+        audioFocusHelper = PlaybackAudioFocusHelper(this, player) { ducked ->
+            controller.setDucked(ducked)
+        }.also { it.start() }
+        volumeHelper = VolumePlaybackHelper(this, player).also { it.start() }
+        controller.start()
 
         player.addListener(object : Player.Listener {
             override fun onIsPlayingChanged(isPlaying: Boolean) {
