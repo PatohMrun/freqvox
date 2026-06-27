@@ -101,7 +101,7 @@ fun SleepTimerSheet(
 
             if (isActive || stopAfterTrack) {
                 TextButton(onClick = { onCancel(); onDismiss() }, modifier = Modifier.fillMaxWidth()) {
-                    Text("Cancel Timer", color = Color(0xFFFF4D7C), fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                    Text("Cancel Timer", color = Fvox.accentAlt, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
                 }
             }
         }

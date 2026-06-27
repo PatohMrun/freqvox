@@ -31,6 +31,9 @@ data class FreqvoxColors(
     /** Brand accent for active states / progress. Dark enough in BOTH modes that [onAccent]
      *  (white) text stays legible on top of it. */
     val accent: Color,
+    /** Secondary "rose" accent (NOW PLAYING, favorites, destructive). Bright pink reads on
+     *  dark but vibrates on white, so light mode uses a deeper rose. */
+    val accentAlt: Color,
     /** Text/icons that sit ON an accent fill — white in both modes, since accent is dark in
      *  both. Use this (not onSurface) for a label on a colored pill/button. */
     val onAccent: Color
@@ -45,6 +48,7 @@ val FreqvoxDarkColors = FreqvoxColors(
     onSurface = Color(0xFFFFFFFF),
     scrim = Color(0xFF000000),
     accent = Color(0xFF7C4DFF),
+    accentAlt = Color(0xFFFF4D7C),
     onAccent = Color(0xFFFFFFFF)
 )
 
@@ -60,6 +64,7 @@ val FreqvoxLightColors = FreqvoxColors(
     // Scrims sit on colorful artwork, which is the same in both themes, so they stay dark.
     scrim = Color(0xFF000000),
     accent = Color(0xFF5B21B6),
+    accentAlt = Color(0xFFC2185B),
     onAccent = Color(0xFFFFFFFF)
 )
 
@@ -78,5 +83,6 @@ object Fvox {
     val onSurface: Color @Composable @ReadOnlyComposable get() = LocalFreqvoxColors.current.onSurface
     val scrim: Color @Composable @ReadOnlyComposable get() = LocalFreqvoxColors.current.scrim
     val accent: Color @Composable @ReadOnlyComposable get() = LocalFreqvoxColors.current.accent
+    val accentAlt: Color @Composable @ReadOnlyComposable get() = LocalFreqvoxColors.current.accentAlt
     val onAccent: Color @Composable @ReadOnlyComposable get() = LocalFreqvoxColors.current.onAccent
 }

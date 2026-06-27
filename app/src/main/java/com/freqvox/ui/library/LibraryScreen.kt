@@ -848,13 +848,13 @@ fun LibraryTrackItem(
                     }
                     if (onRequestDelete != null) {
                         DropdownMenuItem(
-                            text = { Text("Delete from device…", color = Color(0xFFFF4D7C)) },
+                            text = { Text("Delete from device…", color = Fvox.accentAlt) },
                             onClick = {
                                 showMenu = false
                                 onRequestDelete.invoke()
                             },
                             leadingIcon = {
-                                Icon(Icons.Default.Delete, contentDescription = null, tint = Color(0xFFFF4D7C))
+                                Icon(Icons.Default.Delete, contentDescription = null, tint = Fvox.accentAlt)
                             }
                         )
                     }

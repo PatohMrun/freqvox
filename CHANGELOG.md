@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.27] - 2026-06-27
+### Fixed
+- The bright pink/red accent (Radio "NOW PLAYING" + live pulse, favorites, error text, cancel-timer, delete actions) vibrated harshly on white in light mode. Added a theme-aware "rose" accent token — bright pink in dark, a deeper rose in light — and applied it to those on-surface spots.
+
 ## [2.26] - 2026-06-27
 ### Fixed
 - Buttons on the accent fill (the main player play/pause control, Home back-to-top, Library "+" FAB, the sleep-timer "Set" button) now use white icons/labels instead of dark ones that were invisible on the dark accent in light mode.

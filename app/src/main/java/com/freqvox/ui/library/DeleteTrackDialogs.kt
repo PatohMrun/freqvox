@@ -24,7 +24,7 @@ fun DeleteTrackStepOneDialog(
         onDismissRequest = onDismiss,
         containerColor = Fvox.surfaceVariant,
         icon = {
-            Icon(Icons.Default.Delete, contentDescription = null, tint = Color(0xFFFF4D7C))
+            Icon(Icons.Default.Delete, contentDescription = null, tint = Fvox.accentAlt)
         },
         title = {
             Text("Remove song?", color = Fvox.onSurface, fontWeight = FontWeight.SemiBold)
@@ -38,7 +38,7 @@ fun DeleteTrackStepOneDialog(
         },
         confirmButton = {
             TextButton(onClick = onContinue) {
-                Text("Continue", color = Color(0xFFFF4D7C), fontWeight = FontWeight.SemiBold)
+                Text("Continue", color = Fvox.accentAlt, fontWeight = FontWeight.SemiBold)
             }
         },
         dismissButton = {

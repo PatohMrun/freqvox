@@ -157,7 +157,7 @@ fun RadioScreen(
                             .clip(CircleShape)
                             .background(
                                 if (isSelected) {
-                                    if (isFavoritesTab) Color(0xFFFF4D7C) else Fvox.accent
+                                    if (isFavoritesTab) Fvox.accentAlt else Fvox.accent
                                 } else Fvox.onSurface.copy(alpha = 0.07f)
                             )
                             .border(
@@ -176,7 +176,7 @@ fun RadioScreen(
                                 Icon(
                                     Icons.Default.Favorite,
                                     contentDescription = null,
-                                    tint = if (isSelected) Fvox.onAccent else Color(0xFFFF4D7C),
+                                    tint = if (isSelected) Fvox.onAccent else Fvox.accentAlt,
                                     modifier = Modifier.size(11.dp)
                                 )
                             }
@@ -198,7 +198,7 @@ fun RadioScreen(
             item {
                 Text(
                     error ?: "",
-                    color = Color(0xFFFF4D7C),
+                    color = Fvox.accentAlt,
                     fontSize = 13.sp,
                     modifier = Modifier.padding(horizontal = 24.dp)
                 )
@@ -379,13 +379,13 @@ fun NowPlayingRadioCard(
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            LivePulse(color = Color(0xFFFF4D7C))
+            LivePulse(color = Fvox.accentAlt)
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     "NOW PLAYING",
                     fontSize = 10.sp,
-                    color = Color(0xFFFF4D7C),
+                    color = Fvox.accentAlt,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.5.sp
                 )
@@ -508,7 +508,7 @@ fun StationCard(
             Icon(
                 imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                 contentDescription = if (isFavorite) "Unfavorite" else "Favorite",
-                tint = if (isFavorite) Color(0xFFFF4D7C) else Fvox.onSurface.copy(alpha = 0.3f),
+                tint = if (isFavorite) Fvox.accentAlt else Fvox.onSurface.copy(alpha = 0.3f),
                 modifier = Modifier.size(18.dp)
             )
         }
