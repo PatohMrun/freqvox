@@ -28,7 +28,7 @@ import androidx.compose.ui.unit.dp
 fun SleekVolumeControl(
     volume: Float,
     onVolumeChange: (Float) -> Unit,
-    accentPrimary: Color = Color(0xFF7C4DFF),
+    accentPrimary: Color = Fvox.accent,
     accentSecondary: Color = Color(0xFF4DFFB4), // Neon green as per spec
     modifier: Modifier = Modifier
 ) {

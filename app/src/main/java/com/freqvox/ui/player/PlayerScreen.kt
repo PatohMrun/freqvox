@@ -313,11 +313,11 @@ fun PlayerScreen(
                 DropdownMenu(
                     expanded = showMoreMenu,
                     onDismissRequest = { showMoreMenu = false },
-                    modifier = Modifier.background(Color(0xFF1E1E2E))
+                    modifier = Modifier.background(Fvox.surfaceVariant)
                 ) {
                     DropdownMenuItem(
                         text = { Text("Sleep timer", color = Fvox.onSurface.copy(alpha = 0.85f), fontSize = 14.sp) },
-                        leadingIcon = { Icon(Icons.Default.Bedtime, contentDescription = null, tint = if (sleepTimerActive) Color(0xFF7C4DFF) else Fvox.onSurface.copy(alpha = 0.6f), modifier = Modifier.size(18.dp)) },
+                        leadingIcon = { Icon(Icons.Default.Bedtime, contentDescription = null, tint = if (sleepTimerActive) Fvox.accent else Fvox.onSurface.copy(alpha = 0.6f), modifier = Modifier.size(18.dp)) },
                         onClick = { showMoreMenu = false; showSleepSheet = true }
                     )
                     DropdownMenuItem(
@@ -327,8 +327,8 @@ fun PlayerScreen(
                     )
                     DropdownMenuItem(
                         text = { Text("Playback speed", color = Fvox.onSurface.copy(alpha = 0.85f), fontSize = 14.sp) },
-                        leadingIcon = { Icon(Icons.Default.Speed, contentDescription = null, tint = if (playbackSpeed != 1f) Color(0xFF7C4DFF) else Fvox.onSurface.copy(alpha = 0.6f), modifier = Modifier.size(18.dp)) },
-                        trailingIcon = { if (playbackSpeed != 1f) Text("${formatSpeed(playbackSpeed)}×", color = Color(0xFF7C4DFF), fontSize = 12.sp, fontWeight = FontWeight.SemiBold) },
+                        leadingIcon = { Icon(Icons.Default.Speed, contentDescription = null, tint = if (playbackSpeed != 1f) Fvox.accent else Fvox.onSurface.copy(alpha = 0.6f), modifier = Modifier.size(18.dp)) },
+                        trailingIcon = { if (playbackSpeed != 1f) Text("${formatSpeed(playbackSpeed)}×", color = Fvox.accent, fontSize = 12.sp, fontWeight = FontWeight.SemiBold) },
                         onClick = { showMoreMenu = false; showSpeedSheet = true }
                     )
                 }
@@ -393,7 +393,7 @@ fun PlayerScreen(
                         }
                     )
                     .clip(RoundedCornerShape(24.dp))
-                    .background(Color(0xFF1A1A26).copy(alpha = 0.85f))
+                    .background(Fvox.surface.copy(alpha = 0.85f))
                     .border(
                         width = 1.dp,
                         color = Fvox.onSurface.copy(alpha = 0.08f),
@@ -708,7 +708,7 @@ fun PlayerScreen(
         // this makes the custom-minutes TextField pop above the keyboard on focus.
         ModalBottomSheet(
             onDismissRequest = { showSleepSheet = false },
-            containerColor   = Color(0xFF1A1A26),
+            containerColor   = Fvox.surface,
             sheetState       = rememberModalBottomSheetState(skipPartiallyExpanded = true),
             contentWindowInsets = { WindowInsets(0, 0, 0, 0) }
         ) {
@@ -734,14 +734,14 @@ fun PlayerScreen(
                 if (sleepTimerActive) {
                     Text(
                         text = "Stops in ${formatTime(sleepTimerTimeLeft)}",
-                        color = Color(0xFF7C4DFF),
+                        color = Fvox.accent,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium
                     )
                 } else if (stopAfterTrack) {
                     Text(
                         text = "Stops at the end of this track",
-                        color = Color(0xFF7C4DFF),
+                        color = Fvox.accent,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium
                     )
@@ -754,12 +754,12 @@ fun PlayerScreen(
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(12.dp))
                         .background(
-                            if (stopAfterTrack) Color(0xFF7C4DFF).copy(alpha = 0.22f)
+                            if (stopAfterTrack) Fvox.accent.copy(alpha = 0.22f)
                             else Fvox.onSurface.copy(alpha = 0.07f)
                         )
                         .border(
                             1.dp,
-                            if (stopAfterTrack) Color(0xFF7C4DFF).copy(alpha = 0.6f) else Fvox.onSurface.copy(alpha = 0.1f),
+                            if (stopAfterTrack) Fvox.accent.copy(alpha = 0.6f) else Fvox.onSurface.copy(alpha = 0.1f),
                             RoundedCornerShape(12.dp)
                         )
                         .clickable { onStopAfterTrack(); showSleepSheet = false }
@@ -770,7 +770,7 @@ fun PlayerScreen(
                         Icon(
                             Icons.Default.MusicNote,
                             contentDescription = null,
-                            tint = if (stopAfterTrack) Color(0xFF7C4DFF) else Fvox.onSurface.copy(alpha = 0.7f),
+                            tint = if (stopAfterTrack) Fvox.accent else Fvox.onSurface.copy(alpha = 0.7f),
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
@@ -861,9 +861,9 @@ fun PlayerScreen(
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedTextColor = Fvox.onSurface,
                             unfocusedTextColor = Fvox.onSurface,
-                            focusedBorderColor = Color(0xFF7C4DFF),
+                            focusedBorderColor = Fvox.accent,
                             unfocusedBorderColor = Fvox.onSurface.copy(alpha = 0.15f),
-                            cursorColor = Color(0xFF7C4DFF),
+                            cursorColor = Fvox.accent,
                             focusedContainerColor = Fvox.onSurface.copy(alpha = 0.04f),
                             unfocusedContainerColor = Fvox.onSurface.copy(alpha = 0.04f)
                         ),
@@ -879,8 +879,8 @@ fun PlayerScreen(
                         },
                         enabled = customMins != null && customMins > 0,
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF7C4DFF),
-                            disabledContainerColor = Color(0xFF7C4DFF).copy(alpha = 0.25f)
+                            containerColor = Fvox.accent,
+                            disabledContainerColor = Fvox.accent.copy(alpha = 0.25f)
                         ),
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.height(54.dp)
@@ -937,7 +937,7 @@ fun PlayerScreen(
     if (showSpeedSheet) {
         ModalBottomSheet(
             onDismissRequest = { showSpeedSheet = false },
-            containerColor = Color(0xFF1A1A26),
+            containerColor = Fvox.surface,
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
             contentWindowInsets = { WindowInsets(0, 0, 0, 0) }
         ) {
@@ -963,12 +963,12 @@ fun PlayerScreen(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(12.dp))
                                 .background(
-                                    if (selected) Color(0xFF7C4DFF).copy(alpha = 0.25f)
+                                    if (selected) Fvox.accent.copy(alpha = 0.25f)
                                     else Fvox.onSurface.copy(alpha = 0.06f)
                                 )
                                 .border(
                                     1.dp,
-                                    if (selected) Color(0xFF7C4DFF).copy(alpha = 0.6f) else Fvox.onSurface.copy(alpha = 0.1f),
+                                    if (selected) Fvox.accent.copy(alpha = 0.6f) else Fvox.onSurface.copy(alpha = 0.1f),
                                     RoundedCornerShape(12.dp)
                                 )
                                 .clickable { onSetSpeed(speed); showSpeedSheet = false }
@@ -1009,11 +1009,11 @@ private fun ExtraControlButton(
                 .size(44.dp)
                 .clip(RoundedCornerShape(12.dp))
                 .background(
-                    if (isActive) Color(0xFF7C4DFF).copy(alpha = 0.2f)
+                    if (isActive) Fvox.accent.copy(alpha = 0.2f)
                     else Fvox.onSurface.copy(alpha = 0.07f)
                 )
                 .then(
-                    if (isActive) Modifier.border(1.dp, Color(0xFF7C4DFF).copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+                    if (isActive) Modifier.border(1.dp, Fvox.accent.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
                     else Modifier
                 )
                 .clickable(onClick = onClick)
@@ -1021,7 +1021,7 @@ private fun ExtraControlButton(
             Icon(
                 imageVector        = icon,
                 contentDescription = label,
-                tint               = if (isActive) Color(0xFF7C4DFF) else Fvox.onSurface.copy(alpha = 0.65f),
+                tint               = if (isActive) Fvox.accent else Fvox.onSurface.copy(alpha = 0.65f),
                 modifier           = Modifier.size(20.dp)
             )
         }

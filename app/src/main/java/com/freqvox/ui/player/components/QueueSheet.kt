@@ -43,7 +43,7 @@ import sh.calvin.reorderable.rememberScroller
 fun QueueSheet(
     queue: List<QueueItem>,
     currentQueueIndex: Int,
-    accentColor: Color = Color(0xFF7C4DFF),
+    accentColor: Color = Fvox.accent,
     onQueueItemClick: (Int) -> Unit,
     onQueueItemRemove: (Int) -> Unit,
     onQueueItemMove: (Int, Int) -> Unit,
@@ -123,7 +123,7 @@ fun QueueSheet(
             if (showSaveDialog) {
                 AlertDialog(
                     onDismissRequest = { showSaveDialog = false },
-                    containerColor = Color(0xFF1E1E2E),
+                    containerColor = Fvox.surfaceVariant,
                     title = { Text("Save queue as playlist", color = Fvox.onSurface, fontWeight = FontWeight.SemiBold) },
                     text = {
                         OutlinedTextField(
@@ -135,7 +135,7 @@ fun QueueSheet(
                                 focusedBorderColor = accentColor,
                                 unfocusedBorderColor = Fvox.onSurface.copy(alpha = 0.2f),
                                 focusedLabelColor = accentColor,
-                                unfocusedLabelColor = Color.Gray,
+                                unfocusedLabelColor = Fvox.onSurface.copy(alpha = 0.5f),
                                 focusedTextColor = Fvox.onSurface,
                                 unfocusedTextColor = Fvox.onSurface,
                                 cursorColor = accentColor
@@ -150,7 +150,7 @@ fun QueueSheet(
                             },
                             enabled = newPlaylistName.isNotBlank()
                         ) {
-                            Text("Save", color = if (newPlaylistName.isNotBlank()) accentColor else Color.Gray, fontWeight = FontWeight.SemiBold)
+                            Text("Save", color = if (newPlaylistName.isNotBlank()) accentColor else Fvox.onSurface.copy(alpha = 0.5f), fontWeight = FontWeight.SemiBold)
                         }
                     },
                     dismissButton = {

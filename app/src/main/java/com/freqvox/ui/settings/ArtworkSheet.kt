@@ -34,8 +34,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 
-private val accent = Color(0xFF7C4DFF)
-
 /**
  * One-time disclosure shown on first launch after the feature ships. Online lookup is
  * blocked until this is acknowledged (Gate A), so a fresh install never reaches the
@@ -48,8 +46,8 @@ fun ArtworkConsentDialog(
 ) {
     AlertDialog(
         onDismissRequest = onAcknowledge,
-        containerColor = Color(0xFF1A1A26),
-        icon = { Icon(Icons.Default.Image, contentDescription = null, tint = accent) },
+        containerColor = Fvox.surface,
+        icon = { Icon(Icons.Default.Image, contentDescription = null, tint = Fvox.accent) },
         title = { Text("Album art", color = Fvox.onSurface, fontWeight = FontWeight.Bold) },
         text = {
             Text(
@@ -62,7 +60,7 @@ fun ArtworkConsentDialog(
         },
         confirmButton = {
             TextButton(onClick = onAcknowledge) {
-                Text("Got it", color = accent, fontWeight = FontWeight.SemiBold)
+                Text("Got it", color = Fvox.accent, fontWeight = FontWeight.SemiBold)
             }
         },
         dismissButton = {
@@ -222,7 +220,7 @@ fun ArtworkSheet(
 private fun SectionLabel(text: String) {
     Text(
         text = text,
-        color = accent.copy(alpha = 0.8f),
+        color = Fvox.accent.copy(alpha = 0.8f),
         fontSize = 11.sp,
         fontWeight = FontWeight.Bold,
         modifier = Modifier.padding(start = 4.dp, top = 8.dp, bottom = 8.dp)
@@ -249,7 +247,7 @@ private fun ToggleRow(
             .padding(start = if (indent) 12.dp else 0.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(22.dp))
+        Icon(icon, contentDescription = null, tint = Fvox.accent, modifier = Modifier.size(22.dp))
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
             Text(title, color = Fvox.onSurface, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
@@ -261,7 +259,7 @@ private fun ToggleRow(
             onCheckedChange = onCheckedChange,
             colors = SwitchDefaults.colors(
                 checkedThumbColor = Fvox.onSurface,
-                checkedTrackColor = accent,
+                checkedTrackColor = Fvox.accent,
                 uncheckedThumbColor = Fvox.onSurface.copy(alpha = 0.6f),
                 uncheckedTrackColor = Fvox.onSurface.copy(alpha = 0.08f),
                 uncheckedBorderColor = Fvox.onSurface.copy(alpha = 0.15f)
@@ -291,7 +289,7 @@ private fun ActionRow(
     ) {
         if (loading) {
             CircularProgressIndicator(
-                color = accent,
+                color = Fvox.accent,
                 strokeWidth = 2.dp,
                 modifier = Modifier.size(22.dp)
             )
@@ -299,7 +297,7 @@ private fun ActionRow(
             Icon(
                 icon,
                 contentDescription = null,
-                tint = if (enabled) accent else Fvox.onSurface.copy(alpha = 0.35f),
+                tint = if (enabled) Fvox.accent else Fvox.onSurface.copy(alpha = 0.35f),
                 modifier = Modifier.size(22.dp)
             )
         }

@@ -24,7 +24,7 @@ fun WaveformScrubber(
     durationStr: String,
     currentPosStr: String,
     onSeek: (Float) -> Unit,
-    accentPrimary: Color = Color(0xFF7C4DFF),
+    accentPrimary: Color = Fvox.accent,
     accentSecondary: Color = Color(0xFFFF4D7C),
     modifier: Modifier = Modifier
 ) {

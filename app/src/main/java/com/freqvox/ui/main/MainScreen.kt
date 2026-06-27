@@ -25,6 +25,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import com.freqvox.ui.theme.Fvox
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -274,10 +275,10 @@ fun MainScreen(
                                                 }
                                             },
                                             colors = NavigationBarItemDefaults.colors(
-                                                selectedIconColor = Color(0xFF7C4DFF),
-                                                selectedTextColor = Color(0xFF7C4DFF),
-                                                unselectedIconColor = Color.Gray,
-                                                unselectedTextColor = Color.Gray,
+                                                selectedIconColor = Fvox.accent,
+                                                selectedTextColor = Fvox.accent,
+                                                unselectedIconColor = Fvox.onSurface.copy(alpha = 0.5f),
+                                                unselectedTextColor = Fvox.onSurface.copy(alpha = 0.5f),
                                                 indicatorColor = Color.Transparent
                                             )
                                         )

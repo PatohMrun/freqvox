@@ -23,8 +23,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.freqvox.data.local.entities.TrackEntity
 
-private val accent = Color(0xFF7C4DFF)
-
 /**
  * Bottom-sheet "more options" for a single track — the richer long-press menu used on the
  * Home feed (where a feed of cards makes an anchored dropdown awkward). Tagging is one option
@@ -69,7 +67,7 @@ fun TrackOptionsSheet(
 
 @Composable
 private fun OptionRow(icon: ImageVector, label: String, danger: Boolean = false, onClick: () -> Unit) {
-    val tint = if (danger) Color(0xFFFF5252) else accent
+    val tint = if (danger) Color(0xFFFF5252) else Fvox.accent
     Row(
         modifier = Modifier
             .fillMaxWidth()

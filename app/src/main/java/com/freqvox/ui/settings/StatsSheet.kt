@@ -24,7 +24,7 @@ fun StatsSheet(
     stats: MainViewModel.ListeningStats,
     onDismiss: () -> Unit
 ) {
-    val accent = Color(0xFF7C4DFF)
+    val accent = Fvox.accent
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         containerColor = Fvox.surface,

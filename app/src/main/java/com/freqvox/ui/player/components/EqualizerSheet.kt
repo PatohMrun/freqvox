@@ -47,7 +47,7 @@ fun EqualizerSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = Color(0xFF161621),
+        containerColor = Fvox.surface,
         dragHandle = { BottomSheetDefaults.DragHandle(color = Fvox.onSurface.copy(alpha = 0.2f)) },
         contentWindowInsets = { WindowInsets(0, 0, 0, 0) }
     ) {
@@ -83,7 +83,7 @@ fun EqualizerSheet(
                     onCheckedChange = { equalizerManager.setEnabled(it) },
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = Fvox.onSurface,
-                        checkedTrackColor = Color(0xFF7C4DFF),
+                        checkedTrackColor = Fvox.accent,
                         uncheckedBorderColor = Fvox.onSurface.copy(alpha = 0.1f)
                     )
                 )
@@ -113,8 +113,8 @@ fun EqualizerSheet(
                         colors = FilterChipDefaults.filterChipColors(
                             containerColor = Fvox.onSurface.copy(alpha = 0.04f),
                             labelColor = Fvox.onSurface.copy(alpha = 0.6f),
-                            selectedContainerColor = Color(0xFF7C4DFF).copy(alpha = 0.25f),
-                            selectedLabelColor = Color(0xFF7C4DFF),
+                            selectedContainerColor = Fvox.accent.copy(alpha = 0.25f),
+                            selectedLabelColor = Fvox.accent,
                             disabledContainerColor = Fvox.onSurface.copy(alpha = 0.02f),
                             disabledLabelColor = Fvox.onSurface.copy(alpha = 0.2f)
                         ),
@@ -122,7 +122,7 @@ fun EqualizerSheet(
                             enabled = isEnabled,
                             selected = isSelected,
                             borderColor = Fvox.onSurface.copy(alpha = 0.1f),
-                            selectedBorderColor = Color(0xFF7C4DFF).copy(alpha = 0.5f),
+                            selectedBorderColor = Fvox.accent.copy(alpha = 0.5f),
                             disabledBorderColor = Fvox.onSurface.copy(alpha = 0.05f)
                         ),
                         shape = RoundedCornerShape(12.dp)
@@ -180,7 +180,7 @@ fun EqualizerSheet(
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
                             text = formatFreq(freq),
-                            color = if (isEnabled) Color(0xFF7C4DFF).copy(alpha = 0.9f) else Fvox.onSurface.copy(alpha = 0.2f),
+                            color = if (isEnabled) Fvox.accent.copy(alpha = 0.9f) else Fvox.onSurface.copy(alpha = 0.2f),
                             fontSize = 9.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -200,7 +200,7 @@ private fun VerticalEqSlider(
     modifier: Modifier = Modifier
 ) {
     var trackHeight by remember { mutableIntStateOf(0) }
-    val activeColor = if (enabled) Color(0xFF7C4DFF) else Color(0xFF7C4DFF).copy(alpha = 0.2f)
+    val activeColor = if (enabled) Fvox.accent else Fvox.accent.copy(alpha = 0.2f)
     val inactiveColor = Fvox.onSurface.copy(alpha = 0.08f)
     val thumbColor = if (enabled) Fvox.onSurface else Fvox.onSurface.copy(alpha = 0.2f)
 

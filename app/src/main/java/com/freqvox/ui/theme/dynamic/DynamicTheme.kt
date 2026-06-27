@@ -153,8 +153,8 @@ private fun adjustAccentForMode(color: Color, isLight: Boolean): Color {
     if (!isLight) return color
     val hsv = FloatArray(3)
     android.graphics.Color.colorToHSV(color.toArgb(), hsv)
-    hsv[1] = hsv[1].coerceAtLeast(0.55f)   // stay saturated enough to read on white
-    hsv[2] = hsv[2].coerceIn(0.40f, 0.72f) // dark enough not to vanish into the background
+    hsv[1] = hsv[1].coerceAtLeast(0.60f)   // stay saturated enough to read on white
+    hsv[2] = hsv[2].coerceIn(0.32f, 0.58f) // darker so white text on it (and it on white) reads
     return Color(android.graphics.Color.HSVToColor(hsv))
 }
 

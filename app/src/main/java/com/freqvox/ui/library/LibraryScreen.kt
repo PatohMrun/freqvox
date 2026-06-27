@@ -29,7 +29,10 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.BrightnessAuto
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -117,6 +120,7 @@ fun LibraryScreen(
     val allPlaylists by viewModel.allPlaylists.collectAsStateWithLifecycle()
     val allTags by viewModel.allTags.collectAsStateWithLifecycle()
     val dislikedTrackIds by viewModel.dislikedTrackIds.collectAsStateWithLifecycle()
+    val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
 
     // Pill order + selected pill are persisted (see LibraryUiPreferences) so they
     // survive leaving and re-entering the tab and an app restart. Unknown/missing
@@ -197,26 +201,43 @@ fun LibraryScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "Collection",
                     fontSize = 28.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Fvox.onSurface
+                    color = Fvox.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = "${tracks.size} Tracks",
                     fontSize = 14.sp,
                     color = Fvox.onSurface.copy(alpha = 0.5f),
-                    fontWeight = FontWeight.Medium
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
+            Spacer(modifier = Modifier.width(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = { showSearchSheet = true }) {
                     Icon(
                         imageVector = Icons.Default.Search,
                         contentDescription = "Search",
+                        tint = Fvox.onSurface
+                    )
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                IconButton(onClick = { viewModel.cycleTheme() }) {
+                    Icon(
+                        imageVector = when (themeMode) {
+                            com.freqvox.data.prefs.ThemeMode.LIGHT -> Icons.Default.LightMode
+                            com.freqvox.data.prefs.ThemeMode.DARK -> Icons.Default.DarkMode
+                            com.freqvox.data.prefs.ThemeMode.SYSTEM -> Icons.Default.BrightnessAuto
+                        },
+                        contentDescription = "Theme: ${themeMode.name.lowercase()}",
                         tint = Fvox.onSurface
                     )
                 }
@@ -271,7 +292,7 @@ fun LibraryScreen(
                 if (isScanning) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         CircularProgressIndicator(
-                            color = Color(0xFF7C4DFF),
+                            color = Fvox.accent,
                             strokeWidth = 3.dp,
                             modifier = Modifier.size(40.dp)
                         )
@@ -279,7 +300,7 @@ fun LibraryScreen(
                         Text("Scanning your library…", color = Fvox.onSurface.copy(alpha = 0.7f))
                     }
                 } else {
-                    Text("No music found in your library", color = Color.Gray)
+                    Text("No music found in your library", color = Fvox.onSurface.copy(alpha = 0.5f))
                 }
             }
         } else {
@@ -513,7 +534,7 @@ fun DraggableTabRow(
     onOrderChanged: (List<LibraryTab>) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val accent = Color(0xFF7C4DFF)
+    val accent = Fvox.accent
     val haptic = LocalHapticFeedback.current
     val listState = rememberLazyListState()
     val reorderState = rememberReorderableLazyListState(listState) { from, to ->
@@ -580,7 +601,7 @@ fun DraggableTabRow(
                 ) {
                     Text(
                         text = tab.name,
-                        color = if (isSelected || isDragging) Fvox.onSurface
+                        color = if (isSelected || isDragging) Fvox.onAccent
                                 else Fvox.onSurface.copy(alpha = 0.55f),
                         fontSize = 14.sp,
                         fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
@@ -594,7 +615,7 @@ fun DraggableTabRow(
 @Composable
 fun SortButton(sortOrder: SortOrder, onSortSelected: (SortOrder) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
-    val accent = Color(0xFF7C4DFF)
+    val accent = Fvox.accent
 
     Box {
         Row(
@@ -624,7 +645,7 @@ fun SortButton(sortOrder: SortOrder, onSortSelected: (SortOrder) -> Unit) {
         DropdownMenu(
             expanded = expanded,
             onDismissRequest = { expanded = false },
-            modifier = Modifier.background(Color(0xFF1E1E2E))
+            modifier = Modifier.background(Fvox.surfaceVariant)
         ) {
             SortOrder.values().forEach { sort ->
                 val isActive = sort == sortOrder
@@ -674,7 +695,7 @@ fun LibraryTrackItem(
     onPlayNext: (() -> Unit)? = null,
     onAddToQueue: (() -> Unit)? = null
 ) {
-    val accent = Color(0xFF7C4DFF)
+    val accent = Fvox.accent
     var showMenu by remember { mutableStateOf(false) }
 
     Row(
@@ -765,7 +786,7 @@ fun LibraryTrackItem(
                 DropdownMenu(
                     expanded = showMenu,
                     onDismissRequest = { showMenu = false },
-                    modifier = Modifier.background(Color(0xFF1E1E2E))
+                    modifier = Modifier.background(Fvox.surfaceVariant)
                 ) {
                     if (onPlayNext != null) {
                         DropdownMenuItem(
@@ -899,7 +920,7 @@ fun AlbumItem(
                         onClick = { onPlay(expandedTracks, 0) },
                         enabled = expandedTracks.isNotEmpty()
                     ) {
-                        Icon(Icons.Default.PlayArrow, contentDescription = "Play", tint = if (expandedTracks.isNotEmpty()) Color(0xFF7C4DFF) else Color.Gray)
+                        Icon(Icons.Default.PlayArrow, contentDescription = "Play", tint = if (expandedTracks.isNotEmpty()) Fvox.accent else Fvox.onSurface.copy(alpha = 0.5f))
                     }
                 }
                 Icon(
@@ -968,7 +989,7 @@ fun ArtistItem(
                         onClick = { onPlay(expandedTracks, 0) },
                         enabled = expandedTracks.isNotEmpty()
                     ) {
-                        Icon(Icons.Default.PlayArrow, contentDescription = "Play", tint = if (expandedTracks.isNotEmpty()) Color(0xFF7C4DFF) else Color.Gray)
+                        Icon(Icons.Default.PlayArrow, contentDescription = "Play", tint = if (expandedTracks.isNotEmpty()) Fvox.accent else Fvox.onSurface.copy(alpha = 0.5f))
                     }
                 }
                 Icon(
@@ -1097,7 +1118,7 @@ fun PlaylistsTab(
             if (playlists.isEmpty()) {
                 item {
                     Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                        Text("No custom playlists yet", color = Color.Gray, fontSize = 14.sp)
+                        Text("No custom playlists yet", color = Fvox.onSurface.copy(alpha = 0.5f), fontSize = 14.sp)
                     }
                 }
             } else {
@@ -1146,7 +1167,7 @@ fun PlaylistsTab(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(end = 20.dp, bottom = 90.dp),
-            containerColor = Color(0xFF7C4DFF),
+            containerColor = Fvox.accent,
             contentColor = Fvox.onSurface
         ) {
             Icon(Icons.Default.Add, contentDescription = "New playlist")
@@ -1171,7 +1192,7 @@ fun PlaylistsTab(
     playlistToDelete?.let { playlist ->
         AlertDialog(
             onDismissRequest = { playlistToDelete = null },
-            containerColor = Color(0xFF1E1E2E),
+            containerColor = Fvox.surfaceVariant,
             title = { Text("Delete playlist?", color = Fvox.onSurface, fontWeight = FontWeight.SemiBold) },
             text = { Text("\"${playlist.name}\" will be permanently removed.", color = Fvox.onSurface.copy(alpha = 0.7f), fontSize = 14.sp) },
             confirmButton = {
@@ -1189,10 +1210,10 @@ fun PlaylistsTab(
 
     playlistToRename?.let { playlist ->
         var newName by remember(playlist.id) { mutableStateOf(playlist.name) }
-        val accent = Color(0xFF7C4DFF)
+        val accent = Fvox.accent
         AlertDialog(
             onDismissRequest = { playlistToRename = null },
-            containerColor = Color(0xFF1E1E2E),
+            containerColor = Fvox.surfaceVariant,
             title = { Text("Rename playlist", color = Fvox.onSurface, fontWeight = FontWeight.SemiBold) },
             text = {
                 OutlinedTextField(
@@ -1204,7 +1225,7 @@ fun PlaylistsTab(
                         focusedBorderColor = accent,
                         unfocusedBorderColor = Fvox.onSurface.copy(alpha = 0.2f),
                         focusedLabelColor = accent,
-                        unfocusedLabelColor = Color.Gray,
+                        unfocusedLabelColor = Fvox.onSurface.copy(alpha = 0.5f),
                         focusedTextColor = Fvox.onSurface,
                         unfocusedTextColor = Fvox.onSurface,
                         cursorColor = accent
@@ -1215,7 +1236,7 @@ fun PlaylistsTab(
                 TextButton(
                     onClick = { viewModel.renamePlaylist(playlist.id, newName.trim()); playlistToRename = null },
                     enabled = newName.isNotBlank()
-                ) { Text("Save", color = if (newName.isNotBlank()) accent else Color.Gray, fontWeight = FontWeight.SemiBold) }
+                ) { Text("Save", color = if (newName.isNotBlank()) accent else Fvox.onSurface.copy(alpha = 0.5f), fontWeight = FontWeight.SemiBold) }
             },
             dismissButton = {
                 TextButton(onClick = { playlistToRename = null }) {
@@ -1249,7 +1270,7 @@ fun AddTracksToPlaylistDialog(
     onAdd: (TrackEntity) -> Unit,
     onDismiss: () -> Unit
 ) {
-    val accent = Color(0xFF7C4DFF)
+    val accent = Fvox.accent
     var query by remember { mutableStateOf("") }
     val added = remember { mutableStateListOf<Long>() }
     val filtered = remember(query, allTracks) {
@@ -1258,7 +1279,7 @@ fun AddTracksToPlaylistDialog(
     }
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = Color(0xFF1E1E2E),
+        containerColor = Fvox.surfaceVariant,
         title = { Text("Add to $playlistName", color = Fvox.onSurface, fontWeight = FontWeight.SemiBold) },
         text = {
             Column {
@@ -1272,7 +1293,7 @@ fun AddTracksToPlaylistDialog(
                         focusedBorderColor = accent,
                         unfocusedBorderColor = Fvox.onSurface.copy(alpha = 0.2f),
                         focusedLabelColor = accent,
-                        unfocusedLabelColor = Color.Gray,
+                        unfocusedLabelColor = Fvox.onSurface.copy(alpha = 0.5f),
                         focusedTextColor = Fvox.onSurface,
                         unfocusedTextColor = Fvox.onSurface,
                         cursorColor = accent
@@ -1334,7 +1355,7 @@ fun PlaylistItem(
     onRemoveTrack: ((TrackEntity) -> Unit)? = null,
     onAddSongs: (() -> Unit)? = null
 ) {
-    val accent = Color(0xFF7C4DFF)
+    val accent = Fvox.accent
 
     // Resolved count: prefer live expanded count, fall back to provided trackCount
     val resolvedCount = if (isExpanded && expandedTracks.isNotEmpty()) expandedTracks.size else trackCount
@@ -1394,7 +1415,7 @@ fun PlaylistItem(
                         onClick = { onPlay(expandedTracks, 0) },
                         enabled = expandedTracks.isNotEmpty()
                     ) {
-                        Icon(Icons.Default.PlayArrow, contentDescription = "Play", tint = if (expandedTracks.isNotEmpty()) accent else Color.Gray)
+                        Icon(Icons.Default.PlayArrow, contentDescription = "Play", tint = if (expandedTracks.isNotEmpty()) accent else Fvox.onSurface.copy(alpha = 0.5f))
                     }
                 }
                 IconButton(onClick = { onExpand() }) {
@@ -1430,11 +1451,11 @@ fun CreatePlaylistDialog(
     var name by remember { mutableStateOf("") }
     var isSmartPlaylist by remember { mutableStateOf(false) }
     val selectedTagIds = remember { mutableStateListOf<Long>() }
-    val accent = Color(0xFF7C4DFF)
+    val accent = Fvox.accent
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = Color(0xFF1E1E2E),
+        containerColor = Fvox.surfaceVariant,
         title = { Text("New Playlist", color = Fvox.onSurface, fontWeight = FontWeight.SemiBold) },
         text = {
             Column {
@@ -1447,7 +1468,7 @@ fun CreatePlaylistDialog(
                         focusedBorderColor = accent,
                         unfocusedBorderColor = Fvox.onSurface.copy(alpha = 0.2f),
                         focusedLabelColor = accent,
-                        unfocusedLabelColor = Color.Gray,
+                        unfocusedLabelColor = Fvox.onSurface.copy(alpha = 0.5f),
                         focusedTextColor = Fvox.onSurface,
                         unfocusedTextColor = Fvox.onSurface,
                         cursorColor = accent
@@ -1512,7 +1533,7 @@ fun CreatePlaylistDialog(
                 },
                 enabled = name.isNotBlank()
             ) {
-                Text("Create", color = if (name.isNotBlank()) accent else Color.Gray, fontWeight = FontWeight.SemiBold)
+                Text("Create", color = if (name.isNotBlank()) accent else Fvox.onSurface.copy(alpha = 0.5f), fontWeight = FontWeight.SemiBold)
             }
         },
         dismissButton = {
@@ -1583,7 +1604,7 @@ fun FolderItem(
                         onClick = { onPlay(expandedTracks, 0) },
                         enabled = expandedTracks.isNotEmpty()
                     ) {
-                        Icon(Icons.Default.PlayArrow, contentDescription = "Play", tint = if (expandedTracks.isNotEmpty()) Color(0xFF7C4DFF) else Color.Gray)
+                        Icon(Icons.Default.PlayArrow, contentDescription = "Play", tint = if (expandedTracks.isNotEmpty()) Fvox.accent else Fvox.onSurface.copy(alpha = 0.5f))
                     }
                 }
                 Icon(
@@ -1608,12 +1629,12 @@ fun SelectPlaylistDialog(
     // the track to it) — so "no playlists yet" isn't a dead end.
     onCreateNew: ((String) -> Unit)? = null
 ) {
-    val accent = Color(0xFF7C4DFF)
+    val accent = Fvox.accent
     var creating by remember { mutableStateOf(false) }
     var newName by remember { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = Color(0xFF1E1E2E),
+        containerColor = Fvox.surfaceVariant,
         title = { Text("Add to Playlist", color = Fvox.onSurface, fontWeight = FontWeight.SemiBold) },
         text = {
             Column {
@@ -1629,7 +1650,7 @@ fun SelectPlaylistDialog(
                                 focusedBorderColor = accent,
                                 unfocusedBorderColor = Fvox.onSurface.copy(alpha = 0.2f),
                                 focusedLabelColor = accent,
-                                unfocusedLabelColor = Color.Gray,
+                                unfocusedLabelColor = Fvox.onSurface.copy(alpha = 0.5f),
                                 focusedTextColor = Fvox.onSurface,
                                 unfocusedTextColor = Fvox.onSurface,
                                 cursorColor = accent
@@ -1656,7 +1677,7 @@ fun SelectPlaylistDialog(
                 if (!creating) {
                     if (playlists.isEmpty()) {
                         if (onCreateNew == null) {
-                            Text("You don't have any standard playlists yet.", color = Color.Gray, fontSize = 14.sp)
+                            Text("You don't have any standard playlists yet.", color = Fvox.onSurface.copy(alpha = 0.5f), fontSize = 14.sp)
                         }
                     } else {
                         LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 300.dp)) {
@@ -1683,7 +1704,7 @@ fun SelectPlaylistDialog(
                 TextButton(
                     onClick = { onCreateNew?.invoke(newName.trim()) },
                     enabled = newName.isNotBlank()
-                ) { Text("Create", color = if (newName.isNotBlank()) accent else Color.Gray, fontWeight = FontWeight.SemiBold) }
+                ) { Text("Create", color = if (newName.isNotBlank()) accent else Fvox.onSurface.copy(alpha = 0.5f), fontWeight = FontWeight.SemiBold) }
             } else {
                 TextButton(onClick = onDismiss) { Text("Close", color = Fvox.onSurface.copy(alpha = 0.6f)) }
             }
@@ -1696,7 +1717,7 @@ fun ExpandedTrackList(
     tracks: List<TrackEntity>,
     onPlay: (List<TrackEntity>, Int) -> Unit,
     currentTrackTitle: String = "",
-    accent: Color = Color(0xFF7C4DFF),
+    accent: Color = Fvox.accent,
     // When set (custom playlists), each row gets a remove button and an "Add songs"
     // action appears at the bottom. Null for read-only groups (albums/artists/folders).
     onRemoveTrack: ((TrackEntity) -> Unit)? = null,

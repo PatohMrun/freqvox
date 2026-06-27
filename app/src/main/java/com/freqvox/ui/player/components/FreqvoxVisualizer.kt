@@ -60,6 +60,8 @@ fun FreqvoxVisualizer(
     }
 
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
+    // Captured for the (non-composable) draw lambda.
+    val innerFill = com.freqvox.ui.theme.LocalFreqvoxColors.current.surface
     Canvas(modifier = Modifier.fillMaxSize()) {
         val center = Offset(size.width / 2, size.height / 2)
         val baseRadius = size.minDimension * 0.28f * (if (isPlaying) pulseScale else 1f)
@@ -104,7 +106,7 @@ fun FreqvoxVisualizer(
         
         // Inner solid circle
         drawCircle(
-            color = Color(0xFF1A1A26),
+            color = innerFill,
             radius = baseRadius - 8f,
             center = center
         )

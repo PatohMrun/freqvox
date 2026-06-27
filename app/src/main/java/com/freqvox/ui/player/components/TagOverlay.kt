@@ -49,16 +49,16 @@ fun TagOverlay(
     if (showNewTagDialog) {
         AlertDialog(
             onDismissRequest = { showNewTagDialog = false },
-            containerColor = Color(0xFF1E1E2E),
+            containerColor = Fvox.surfaceVariant,
             title = { Text("New Custom Tag", color = Fvox.onSurface) },
             text = {
                 OutlinedTextField(
                     value = newTagName,
                     onValueChange = { newTagName = it.take(20) },
-                    placeholder = { Text("Tag name (e.g. studying)", color = Color.Gray) },
+                    placeholder = { Text("Tag name (e.g. studying)", color = Fvox.onSurface.copy(alpha = 0.5f)) },
                     singleLine = true,
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color(0xFF7C4DFF),
+                        focusedBorderColor = Fvox.accent,
                         unfocusedBorderColor = Fvox.onSurface.copy(alpha = 0.2f),
                         focusedTextColor = Fvox.onSurface,
                         unfocusedTextColor = Fvox.onSurface
@@ -73,12 +73,12 @@ fun TagOverlay(
                     showNewTagDialog = false
                     newTagName = ""
                 }) {
-                    Text("Create", color = Color(0xFF7C4DFF))
+                    Text("Create", color = Fvox.accent)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showNewTagDialog = false }) {
-                    Text("Cancel", color = Color.Gray)
+                    Text("Cancel", color = Fvox.onSurface.copy(alpha = 0.5f))
                 }
             }
         )

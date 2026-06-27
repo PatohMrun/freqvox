@@ -121,23 +121,23 @@ fun SearchScreen(
                 .fillMaxWidth()
                 .padding(bottom = 24.dp)
                 .focusRequester(focusRequester),
-            placeholder = { Text("What do you want to listen to?", color = Color.Gray) },
-            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color.Gray) },
+            placeholder = { Text("What do you want to listen to?", color = Fvox.onSurface.copy(alpha = 0.5f)) },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Fvox.onSurface.copy(alpha = 0.5f)) },
             trailingIcon = {
                 if (searchQuery.isNotEmpty()) {
                     IconButton(onClick = {
                         viewModel.clearSearch()
                         focusManager.clearFocus()
                     }) {
-                        Icon(Icons.Default.Clear, contentDescription = "Clear search", tint = Color.Gray)
+                        Icon(Icons.Default.Clear, contentDescription = "Clear search", tint = Fvox.onSurface.copy(alpha = 0.5f))
                     }
                 }
             },
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = Color(0xFF7C4DFF),
-                unfocusedBorderColor = Color(0xFF1E1E2E),
-                focusedContainerColor = Color(0xFF1E1E2E),
-                unfocusedContainerColor = Color(0xFF1E1E2E),
+                focusedBorderColor = Fvox.accent,
+                unfocusedBorderColor = Fvox.surfaceVariant,
+                focusedContainerColor = Fvox.surfaceVariant,
+                unfocusedContainerColor = Fvox.surfaceVariant,
                 focusedTextColor = Fvox.onSurface,
                 unfocusedTextColor = Fvox.onSurface
             ),
@@ -201,7 +201,7 @@ fun SearchScreen(
             }
             if (searchResults.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("No results found for \"$searchQuery\"", color = Color.Gray)
+                    Text("No results found for \"$searchQuery\"", color = Fvox.onSurface.copy(alpha = 0.5f))
                 }
             } else {
                 LazyColumn(contentPadding = PaddingValues(bottom = 120.dp)) {
@@ -270,7 +270,7 @@ fun TagFilterRow(
                 colors = FilterChipDefaults.filterChipColors(
                     selectedContainerColor = Color(tag.color).copy(alpha = 0.35f),
                     selectedLabelColor = Fvox.onSurface,
-                    containerColor = Color(0xFF1E1E2E),
+                    containerColor = Fvox.surfaceVariant,
                     labelColor = Fvox.onSurface.copy(alpha = 0.75f)
                 )
             )

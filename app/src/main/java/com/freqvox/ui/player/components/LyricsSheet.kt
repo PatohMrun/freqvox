@@ -78,7 +78,7 @@ fun LyricsSheet(
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = Color(0xFF161621),
+        containerColor = Fvox.surface,
         dragHandle = { BottomSheetDefaults.DragHandle(color = Fvox.onSurface.copy(alpha = 0.2f)) },
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         contentWindowInsets = { WindowInsets(0, 0, 0, 0) }
@@ -106,7 +106,7 @@ fun LyricsSheet(
                         Icon(
                             Icons.Default.FileUpload,
                             contentDescription = "Change File",
-                            tint = Color(0xFF7C4DFF)
+                            tint = Fvox.accent
                         )
                     }
                 }
@@ -116,7 +116,7 @@ fun LyricsSheet(
 
             if (isLoading) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = Color(0xFF7C4DFF))
+                    CircularProgressIndicator(color = Fvox.accent)
                 }
             } else if (lyrics.isEmpty()) {
                 LyricsInstructions(onPickFile = { launcher.launch(arrayOf("*/*")) })
@@ -186,7 +186,7 @@ private fun LyricsInstructions(onPickFile: () -> Unit) {
 
         OutlinedButton(
             onClick = onPickFile,
-            border = BorderStroke(1.5.dp, Color(0xFF7C4DFF)),
+            border = BorderStroke(1.5.dp, Fvox.accent),
             shape = RoundedCornerShape(12.dp),
             modifier = Modifier
                 .fillMaxWidth()
@@ -211,12 +211,12 @@ private fun InstructionStep(number: Int, text: String) {
         Box(
             modifier = Modifier
                 .size(26.dp)
-                .border(1.dp, Color(0xFF7C4DFF).copy(alpha = 0.5f), RoundedCornerShape(6.dp)),
+                .border(1.dp, Fvox.accent.copy(alpha = 0.5f), RoundedCornerShape(6.dp)),
             contentAlignment = Alignment.Center
         ) {
             Text(
                 "$number",
-                color = Color(0xFF7C4DFF).copy(alpha = 0.8f),
+                color = Fvox.accent.copy(alpha = 0.8f),
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Bold
             )

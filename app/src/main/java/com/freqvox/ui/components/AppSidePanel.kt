@@ -177,7 +177,7 @@ fun AppSidePanel(
                         Icon(
                             Icons.Default.QueueMusic,
                             contentDescription = null,
-                            tint = Color(0xFF7C4DFF),
+                            tint = Fvox.accent,
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(12.dp))

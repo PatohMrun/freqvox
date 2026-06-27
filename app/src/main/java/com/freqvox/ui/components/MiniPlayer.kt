@@ -186,7 +186,7 @@ fun MiniPlayer(
                             Box(contentAlignment = Alignment.Center) {
                                 Text(
                                     trackTitle.take(1).uppercase(),
-                                    color = Color.Gray,
+                                    color = Fvox.onSurface.copy(alpha = 0.5f),
                                     fontWeight = FontWeight.Bold
                                 )
                             }
@@ -311,6 +311,7 @@ fun MiniPlayer(
                 // Captured in composable scope so the (non-composable) draw lambda can use
                 // the active theme color.
                 val scrubColor = com.freqvox.ui.theme.LocalFreqvoxColors.current.onSurface
+                val progressColor = com.freqvox.ui.theme.LocalFreqvoxColors.current.accent
                 Canvas(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -337,7 +338,7 @@ fun MiniPlayer(
                     val progressWidth = size.width * displayProgress
                     if (progressWidth > 0) {
                         drawLine(
-                            color = Color(0xFF7C4DFF),
+                            color = progressColor,
                             start = androidx.compose.ui.geometry.Offset(0f, y),
                             end = androidx.compose.ui.geometry.Offset(progressWidth, y),
                             strokeWidth = trackHeight,

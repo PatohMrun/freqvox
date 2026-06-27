@@ -29,7 +29,7 @@ fun FoldersSheet(
     onToggle: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
-    val accent = Color(0xFF7C4DFF)
+    val accent = Fvox.accent
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         containerColor = Fvox.surface,
@@ -61,7 +61,7 @@ fun FoldersSheet(
 
             if (folders.isEmpty()) {
                 Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                    Text("No folders found", color = Color.Gray, fontSize = 14.sp)
+                    Text("No folders found", color = Fvox.onSurface.copy(alpha = 0.5f), fontSize = 14.sp)
                 }
             } else {
                 LazyColumn(

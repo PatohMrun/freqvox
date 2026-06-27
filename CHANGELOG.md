@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.23] - 2026-06-27
+### Fixed (light theme contrast)
+- Darkened light-mode grays (pure-black base) and switched to a deeper, legible accent purple; dynamic accents are clamped darker so white text reads on them and they read on white.
+- Added an `onAccent` token: text/icons on a colored fill (active Library/Radio pills, etc.) now stay white instead of turning black.
+- Themed the surfaces the first pass missed: bottom sheets (equalizer, lyrics, queue, tag), dropdown / sort / context menus, the search bar, and the no-art card.
+- Featured / Spotlight / Hero cards (text over album art) now use a fixed dark poster scrim + white text in both themes, fixing washed-out art and the invisible play icon.
+- Header: fixed the squashed logo (greeting now yields width to the controls) and added the theme toggle to the Library header too.
+
 ## [2.22] - 2026-06-27
 ### Added
 - **Light theme**: A full light mode with a System / Light / Dark toggle in the Home header (System follows the device setting). The album-art gradient signature is preserved in both modes — the same contrast principle that caps accent brightness in dark mode is mirrored for light (background goes near-white with a faint tint of the cover's hue; accents stay dark enough to read on white). System bars follow the mode.

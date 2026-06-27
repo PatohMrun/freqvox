@@ -18,8 +18,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.freqvox.playback.CrossfadePreferences
 
-private val accent = Color(0xFF7C4DFF)
-
 /**
  * Picks the crossfade length. 0s is "Off (gapless)" — tracks butt-join with no silence,
  * the default. Higher values overlap the end of one track with the start of the next.
@@ -68,7 +66,7 @@ fun CrossfadeSheet(
                         .padding(bottom = 8.dp)
                         .clip(RoundedCornerShape(14.dp))
                         .background(
-                            if (selected) accent.copy(alpha = 0.18f)
+                            if (selected) Fvox.accent.copy(alpha = 0.18f)
                             else Fvox.onSurface.copy(alpha = 0.04f)
                         )
                         .clickable { onSelect(seconds) }
@@ -86,7 +84,7 @@ fun CrossfadeSheet(
                         Icon(
                             Icons.Default.Check,
                             contentDescription = "Selected",
-                            tint = accent,
+                            tint = Fvox.accent,
                             modifier = Modifier.size(20.dp)
                         )
                     }

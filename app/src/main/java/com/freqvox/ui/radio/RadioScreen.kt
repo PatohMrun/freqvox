@@ -130,7 +130,7 @@ fun RadioScreen(
                     ) {
                         Text(
                             label,
-                            color = if (isSelected) Fvox.onSurface else Fvox.onSurface.copy(alpha = 0.55f),
+                            color = if (isSelected) Fvox.onAccent else Fvox.onSurface.copy(alpha = 0.55f),
                             fontSize = 12.sp,
                             fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
                         )
@@ -157,7 +157,7 @@ fun RadioScreen(
                             .clip(CircleShape)
                             .background(
                                 if (isSelected) {
-                                    if (isFavoritesTab) Color(0xFFFF4D7C) else Color(0xFF7C4DFF)
+                                    if (isFavoritesTab) Color(0xFFFF4D7C) else Fvox.accent
                                 } else Fvox.onSurface.copy(alpha = 0.07f)
                             )
                             .border(
@@ -176,13 +176,13 @@ fun RadioScreen(
                                 Icon(
                                     Icons.Default.Favorite,
                                     contentDescription = null,
-                                    tint = if (isSelected) Fvox.onSurface else Color(0xFFFF4D7C),
+                                    tint = if (isSelected) Fvox.onAccent else Color(0xFFFF4D7C),
                                     modifier = Modifier.size(11.dp)
                                 )
                             }
                             Text(
                                 genre,
-                                color = if (isSelected) Fvox.onSurface else Fvox.onSurface.copy(alpha = 0.6f),
+                                color = if (isSelected) Fvox.onAccent else Fvox.onSurface.copy(alpha = 0.6f),
                                 fontSize = 13.sp,
                                 fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
                             )
@@ -210,7 +210,7 @@ fun RadioScreen(
         if (isLoading) {
             item {
                 Box(modifier = Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = Color(0xFF7C4DFF), modifier = Modifier.size(28.dp))
+                    CircularProgressIndicator(color = Fvox.accent, modifier = Modifier.size(28.dp))
                 }
             }
         }
@@ -310,7 +310,7 @@ private fun RadioSearchBar(
             .background(Fvox.onSurface.copy(alpha = if (focused) 0.10f else 0.07f))
             .border(
                 1.dp,
-                if (focused) Color(0xFF7C4DFF).copy(alpha = 0.5f) else Color.Transparent,
+                if (focused) Fvox.accent.copy(alpha = 0.5f) else Color.Transparent,
                 RoundedCornerShape(12.dp)
             )
             .padding(horizontal = 12.dp, vertical = 10.dp),
@@ -331,7 +331,7 @@ private fun RadioSearchBar(
                 .onFocusChanged { focused = it.isFocused },
             textStyle = TextStyle(color = Fvox.onSurface, fontSize = 14.sp),
             singleLine = true,
-            cursorBrush = SolidColor(Color(0xFF7C4DFF)),
+            cursorBrush = SolidColor(Fvox.accent),
             decorationBox = { inner ->
                 Box {
                     if (query.isEmpty()) {

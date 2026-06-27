@@ -82,7 +82,7 @@ fun TagManagerSheet(
 
             if (tags.isEmpty()) {
                 Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                    Text("No tags yet", color = Color.Gray, fontSize = 14.sp)
+                    Text("No tags yet", color = Fvox.onSurface.copy(alpha = 0.5f), fontSize = 14.sp)
                 }
             } else {
                 LazyColumn(
@@ -138,11 +138,11 @@ private fun EditTagDialog(
 ) {
     var name by remember { mutableStateOf(formatTagDisplayName(tag.name)) }
     var color by remember { mutableIntStateOf(tag.color) }
-    val accent = Color(0xFF7C4DFF)
+    val accent = Fvox.accent
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = Color(0xFF1E1E2E),
+        containerColor = Fvox.surfaceVariant,
         title = { Text("Edit Tag", color = Fvox.onSurface, fontWeight = FontWeight.SemiBold) },
         text = {
             Column {
@@ -155,7 +155,7 @@ private fun EditTagDialog(
                         focusedBorderColor = accent,
                         unfocusedBorderColor = Fvox.onSurface.copy(alpha = 0.2f),
                         focusedLabelColor = accent,
-                        unfocusedLabelColor = Color.Gray,
+                        unfocusedLabelColor = Fvox.onSurface.copy(alpha = 0.5f),
                         focusedTextColor = Fvox.onSurface,
                         unfocusedTextColor = Fvox.onSurface,
                         cursorColor = accent
@@ -207,7 +207,7 @@ private fun EditTagDialog(
                 onClick = { onSave(name, color) },
                 enabled = name.isNotBlank()
             ) {
-                Text("Save", color = if (name.isNotBlank()) accent else Color.Gray, fontWeight = FontWeight.SemiBold)
+                Text("Save", color = if (name.isNotBlank()) accent else Fvox.onSurface.copy(alpha = 0.5f), fontWeight = FontWeight.SemiBold)
             }
         },
         dismissButton = {

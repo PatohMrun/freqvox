@@ -22,7 +22,7 @@ fun DeleteTrackStepOneDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = Color(0xFF1E1E2E),
+        containerColor = Fvox.surfaceVariant,
         icon = {
             Icon(Icons.Default.Delete, contentDescription = null, tint = Color(0xFFFF4D7C))
         },
@@ -57,7 +57,7 @@ fun DeleteTrackStepTwoDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = Color(0xFF1E1E2E),
+        containerColor = Fvox.surfaceVariant,
         icon = {
             Icon(Icons.Default.Warning, contentDescription = null, tint = Color(0xFFFF5252))
         },

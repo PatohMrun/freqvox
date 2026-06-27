@@ -22,7 +22,7 @@ fun TrackMenu(
     DropdownMenu(
         expanded = expanded,
         onDismissRequest = onDismiss,
-        containerColor = Color(0xFF1A1A26)
+        containerColor = Fvox.surface
     ) {
         DropdownMenuItem(
             text = { Text("Play Next", color = Fvox.onSurface) },
@@ -30,7 +30,7 @@ fun TrackMenu(
                 onPlayNext()
                 onDismiss()
             },
-            leadingIcon = { Icon(Icons.Default.PlaylistAdd, contentDescription = null, tint = Color.Gray) }
+            leadingIcon = { Icon(Icons.Default.PlaylistAdd, contentDescription = null, tint = Fvox.onSurface.copy(alpha = 0.5f)) }
         )
         DropdownMenuItem(
             text = { Text("Add to Playlist", color = Fvox.onSurface) },
@@ -38,7 +38,7 @@ fun TrackMenu(
                 onAddToPlaylist()
                 onDismiss()
             },
-            leadingIcon = { Icon(Icons.Default.PlaylistAdd, contentDescription = null, tint = Color.Gray) }
+            leadingIcon = { Icon(Icons.Default.PlaylistAdd, contentDescription = null, tint = Fvox.onSurface.copy(alpha = 0.5f)) }
         )
         DropdownMenuItem(
             text = { Text("Tag Track", color = Fvox.onSurface) },
@@ -46,7 +46,7 @@ fun TrackMenu(
                 onTag()
                 onDismiss()
             },
-            leadingIcon = { Icon(Icons.Default.Tag, contentDescription = null, tint = Color.Gray) }
+            leadingIcon = { Icon(Icons.Default.Tag, contentDescription = null, tint = Fvox.onSurface.copy(alpha = 0.5f)) }
         )
         DropdownMenuItem(
             text = { Text("Play More Like This", color = Fvox.onSurface) },
@@ -54,7 +54,7 @@ fun TrackMenu(
                 onPlayMoreLikeThis()
                 onDismiss()
             },
-            leadingIcon = { Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = Color(0xFF7C4DFF)) }
+            leadingIcon = { Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = Fvox.accent) }
         )
     }
 }

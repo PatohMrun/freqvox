@@ -127,23 +127,23 @@ fun SearchSheet(
                 modifier = Modifier
                     .fillMaxWidth()
                     .focusRequester(focusRequester),
-                placeholder = { Text("Search your library", color = Color.Gray) },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color.Gray) },
+                placeholder = { Text("Search your library", color = Fvox.onSurface.copy(alpha = 0.5f)) },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Fvox.onSurface.copy(alpha = 0.5f)) },
                 trailingIcon = {
                     if (localQuery.text.isNotEmpty()) {
                         IconButton(onClick = { localQuery = TextFieldValue("") }) {
-                            Icon(Icons.Default.Clear, contentDescription = "Clear", tint = Color.Gray)
+                            Icon(Icons.Default.Clear, contentDescription = "Clear", tint = Fvox.onSurface.copy(alpha = 0.5f))
                         }
                     }
                 },
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor    = Color(0xFF7C4DFF),
-                    unfocusedBorderColor  = Color(0xFF1E1E2E),
-                    focusedContainerColor   = Color(0xFF1E1E2E),
-                    unfocusedContainerColor = Color(0xFF1E1E2E),
+                    focusedBorderColor    = Fvox.accent,
+                    unfocusedBorderColor  = Fvox.surfaceVariant,
+                    focusedContainerColor   = Fvox.surfaceVariant,
+                    unfocusedContainerColor = Fvox.surfaceVariant,
                     focusedTextColor      = Fvox.onSurface,
                     unfocusedTextColor    = Fvox.onSurface,
-                    cursorColor           = Color(0xFF7C4DFF)
+                    cursorColor           = Fvox.accent
                 ),
                 shape = RoundedCornerShape(50),
                 singleLine = true
@@ -177,7 +177,7 @@ fun SearchSheet(
                             .heightIn(min = 220.dp, max = 320.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("No results for \"${localQuery.text}\"", color = Color.Gray, fontSize = 14.sp)
+                        Text("No results for \"${localQuery.text}\"", color = Fvox.onSurface.copy(alpha = 0.5f), fontSize = 14.sp)
                     }
                 }
                 else -> {

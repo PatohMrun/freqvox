@@ -394,7 +394,7 @@ fun HomeScreen(
             Surface(
                 onClick = { scope.launch { listState.animateScrollToItem(0) } },
                 shape = CircleShape,
-                color = Color(0xFF7C4DFF).copy(alpha = 0.88f),
+                color = Fvox.accent.copy(alpha = 0.88f),
                 shadowElevation = 4.dp,
                 modifier = Modifier.size(36.dp)
             ) {
@@ -527,24 +527,26 @@ fun SpotlightFeedBlock(
                 modifier = Modifier
                     .matchParentSize()
                     .background(
+                        // Poster scrim over album art — fixed dark in both themes (see HeroFeedCard).
                         Brush.verticalGradient(
                             colors = listOf(
                                 Color(0xFF7C4DFF).copy(alpha = 0.25f),
-                                Fvox.surface.copy(alpha = 0.80f)
+                                Color.Black.copy(alpha = 0.80f)
                             )
                         )
                     )
             )
         } else {
-            // No art → original solid background + static "pulse" spotlight design.
+            // No art → fixed dark spotlight card so the white poster text still reads.
             Box(modifier = Modifier.matchParentSize().background(Color(0xFF1A1A26)))
+            val spotAccent = Color(0xFF7C4DFF)
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val center = Offset(size.width / 2, size.height / 2)
                 val radius = size.minDimension * 0.35f
 
                 drawCircle(
                     brush = Brush.radialGradient(
-                        colors = listOf(Color(0xFF7C4DFF).copy(alpha = 0.4f), Color.Transparent),
+                        colors = listOf(spotAccent.copy(alpha = 0.4f), Color.Transparent),
                         center = center,
                         radius = radius * 1.5f
                     ),
@@ -570,22 +572,22 @@ fun SpotlightFeedBlock(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Surface(
-                color = Fvox.onSurface.copy(alpha = 0.15f),
+                color = Color.White.copy(alpha = 0.15f),
                 shape = RoundedCornerShape(8.dp)
             ) {
                 Text(
                     text = "Spotlight",
-                    color = Fvox.onSurface,
+                    color = Color.White,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                 )
             }
-            
+
             if (artPath == null) {
                 Text(
                     text = track.title.take(1).uppercase(),
-                    color = Fvox.onSurface.copy(alpha = 0.8f),
+                    color = Color.White.copy(alpha = 0.8f),
                     fontSize = 80.sp,
                     fontWeight = FontWeight.Black
                 )
@@ -594,7 +596,7 @@ fun SpotlightFeedBlock(
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
                 Text(
                     text = track.title,
-                    color = Fvox.onSurface,
+                    color = Color.White,
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
@@ -603,7 +605,7 @@ fun SpotlightFeedBlock(
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = track.artist,
-                    color = Fvox.onSurface.copy(alpha = 0.5f),
+                    color = Color.White.copy(alpha = 0.5f),
                     fontSize = 16.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -621,21 +623,28 @@ fun Header(greeting: String, totalSongs: Int, totalDurationMs: Long, onSearchCli
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Column {
+        // Weighted so the greeting yields width to the fixed-size controls/logo instead of
+        // overflowing and squashing them (the icon row grew when the theme toggle was added).
+        Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = greeting,
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Bold,
-                color = Fvox.onSurface
+                color = Fvox.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = "$totalSongs Tracks • $hours Hours",
                 fontSize = 14.sp,
                 color = Fvox.onSurface.copy(alpha = 0.5f),
-                fontWeight = FontWeight.Medium
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
+        Spacer(modifier = Modifier.width(8.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onSearchClick) {
                 Icon(
@@ -713,22 +722,24 @@ fun HeroFeedCard(
                 modifier = Modifier
                     .matchParentSize()
                     .background(
+                        // Poster scrim over album art — fixed (dark) in both themes so the
+                        // white overlay text always reads; art is theme-independent.
                         Brush.verticalGradient(
                             colors = listOf(
                                 Color(0xFF7C4DFF).copy(alpha = 0.25f),
-                                Fvox.surface.copy(alpha = 0.80f)
+                                Color.Black.copy(alpha = 0.82f)
                             )
                         )
                     )
             )
         } else {
-            // No art → keep the original solid gradient + faint monogram look.
+            // No art → keep the original solid gradient + faint monogram look (dark poster).
             Box(
                 modifier = Modifier
                     .matchParentSize()
                     .background(
                         Brush.linearGradient(
-                            colors = listOf(Color(0xFF7C4DFF).copy(alpha = 0.3f), Fvox.surface)
+                            colors = listOf(Color(0xFF7C4DFF).copy(alpha = 0.30f), Color(0xFF0A0A0F))
                         )
                     )
             )
@@ -736,7 +747,7 @@ fun HeroFeedCard(
                 text = track.title.take(1).uppercase(),
                 fontSize = 180.sp,
                 fontWeight = FontWeight.Black,
-                color = Fvox.onSurface.copy(alpha = 0.03f),
+                color = Color.White.copy(alpha = 0.05f),
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .offset(x = 20.dp, y = 40.dp)
@@ -755,27 +766,27 @@ fun HeroFeedCard(
                 verticalAlignment = Alignment.Top
             ) {
                 Surface(
-                    color = Fvox.onSurface.copy(alpha = 0.15f),
+                    color = Color.White.copy(alpha = 0.15f),
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Text(
                         text = "Jump Back In",
-                        color = Fvox.onSurface,
+                        color = Color.White,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                     )
                 }
-                
+
                 Surface(
                     shape = CircleShape,
-                    color = Fvox.onSurface,
+                    color = Color.White,
                     modifier = Modifier.size(40.dp)
                 ) {
                     Icon(
                         Icons.Default.PlayArrow,
                         contentDescription = "Play",
-                        tint = Fvox.scrim,
+                        tint = Color.Black,
                         modifier = Modifier.padding(8.dp)
                     )
                 }
@@ -784,7 +795,7 @@ fun HeroFeedCard(
             Column {
                 Text(
                     text = track.title,
-                    color = Fvox.onSurface,
+                    color = Color.White,
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
@@ -793,7 +804,7 @@ fun HeroFeedCard(
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = track.artist,
-                    color = Fvox.onSurface.copy(alpha = 0.7f),
+                    color = Color.White.copy(alpha = 0.7f),
                     fontSize = 16.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -812,7 +823,7 @@ fun FeedTrackCard(
     onLongPress: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    val activeAccent = Color(0xFF7C4DFF)
+    val activeAccent = Fvox.accent
     val bgAlpha = if (isCurrentTrack) 0.10f else 0.04f
     val borderModifier = if (isCurrentTrack) {
         Modifier.border(1.dp, activeAccent.copy(alpha = 0.6f), RoundedCornerShape(16.dp))
@@ -873,7 +884,7 @@ fun SectionTitle(title: String, icon: androidx.compose.ui.graphics.vector.ImageV
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = Color(0xFF7C4DFF),
+                tint = Fvox.accent,
                 modifier = Modifier.size(20.dp)
             )
             Spacer(modifier = Modifier.width(12.dp))
@@ -970,7 +981,7 @@ private fun LibraryStatusState(
     ) {
         if (isScanning) {
             CircularProgressIndicator(
-                color = Color(0xFF7C4DFF),
+                color = Fvox.accent,
                 strokeWidth = 3.dp,
                 modifier = Modifier.size(44.dp)
             )
@@ -1014,7 +1025,7 @@ private fun LibraryStatusState(
             Spacer(Modifier.height(20.dp))
             OutlinedButton(
                 onClick = onRescan,
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF7C4DFF))
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Fvox.accent)
             ) {
                 Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
@@ -1168,7 +1179,8 @@ fun ProceduralArtwork(track: TrackEntity, modifier: Modifier = Modifier) {
             }
         }
 
-        // Light scrim so the gradient stays muted behind the monogram.
+        // Light scrim so the gradient stays muted behind the monogram. Literal on purpose —
+        // the procedural thumbnail is a colorful album-fallback, not a theme surface.
         drawRect(color = Color(0xFF1A1A26).copy(alpha = 0.28f))
 
         // Centered monogram, drawn natively — scales with the tile via size.minDimension.
@@ -1212,22 +1224,24 @@ fun FeaturedBannerBlock(
                 modifier = Modifier
                     .matchParentSize()
                     .background(
+                        // Poster scrim over album art — fixed dark on the (text) left in both
+                        // themes so the white text reads; art shows on the right.
                         Brush.horizontalGradient(
                             colors = listOf(
-                                Color(0xFF1A1A26).copy(alpha = 0.82f),
+                                Color.Black.copy(alpha = 0.82f),
                                 Color(0xFF6B3FA0).copy(alpha = 0.25f)
                             )
                         )
                     )
             )
         } else {
-            // No art → original solid gradient + faded typography bleeding off the edge.
+            // No art → solid gradient + faded typography bleeding off the edge (dark poster).
             Box(
                 modifier = Modifier
                     .matchParentSize()
                     .background(
                         Brush.horizontalGradient(
-                            colors = listOf(Color(0xFF6B3FA0), Color(0xFF1A1A26))
+                            colors = listOf(Color(0xFF6B3FA0), Color(0xFF0A0A0F))
                         )
                     )
             )
@@ -1235,7 +1249,7 @@ fun FeaturedBannerBlock(
                 text = track.title.uppercase(),
                 fontSize = 80.sp,
                 fontWeight = FontWeight.Black,
-                color = Fvox.onSurface.copy(alpha = 0.05f),
+                color = Color.White.copy(alpha = 0.05f),
                 maxLines = 1,
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
@@ -1250,12 +1264,12 @@ fun FeaturedBannerBlock(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Surface(
-                    color = Fvox.scrim.copy(alpha = 0.3f),
+                    color = Color.Black.copy(alpha = 0.3f),
                     shape = RoundedCornerShape(6.dp)
                 ) {
                     Text(
                         text = "Featured Track",
-                        color = Fvox.onSurface.copy(alpha = 0.8f),
+                        color = Color.White.copy(alpha = 0.85f),
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
@@ -1264,7 +1278,7 @@ fun FeaturedBannerBlock(
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = track.title,
-                    color = Fvox.onSurface,
+                    color = Color.White,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
@@ -1272,7 +1286,7 @@ fun FeaturedBannerBlock(
                 )
                 Text(
                     text = track.artist,
-                    color = Fvox.onSurface.copy(alpha = 0.6f),
+                    color = Color.White.copy(alpha = 0.6f),
                     fontSize = 14.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -1281,13 +1295,13 @@ fun FeaturedBannerBlock(
             
             Surface(
                 shape = CircleShape,
-                color = Fvox.onSurface.copy(alpha = 0.1f),
+                color = Color.White.copy(alpha = 0.18f),
                 modifier = Modifier.size(48.dp)
             ) {
                 Icon(
                     Icons.Default.PlayArrow,
                     contentDescription = "Play",
-                    tint = Fvox.onSurface,
+                    tint = Color.White,
                     modifier = Modifier.padding(12.dp)
                 )
             }

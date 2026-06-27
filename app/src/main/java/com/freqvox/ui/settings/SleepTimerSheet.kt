@@ -31,10 +31,10 @@ fun SleepTimerSheet(
     onCancel: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    val accent = Color(0xFF7C4DFF)
+    val accent = Fvox.accent
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = Color(0xFF1A1A26),
+        containerColor = Fvox.surface,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         contentWindowInsets = { WindowInsets(0, 0, 0, 0) }
     ) {

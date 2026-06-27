@@ -28,8 +28,12 @@ data class FreqvoxColors(
     val onSurface: Color,
     /** Dark overlays used for legibility on top of album art. Replaces most Color.Black. */
     val scrim: Color,
-    /** Brand accent fallback for the rare spot that isn't using the dynamic gradient. */
-    val accent: Color
+    /** Brand accent for active states / progress. Dark enough in BOTH modes that [onAccent]
+     *  (white) text stays legible on top of it. */
+    val accent: Color,
+    /** Text/icons that sit ON an accent fill — white in both modes, since accent is dark in
+     *  both. Use this (not onSurface) for a label on a colored pill/button. */
+    val onAccent: Color
 )
 
 /** Dark palette — values equal the literals the app shipped with, so dark mode is unchanged. */
@@ -40,19 +44,23 @@ val FreqvoxDarkColors = FreqvoxColors(
     surfaceVariant = Color(0xFF1A1A24),
     onSurface = Color(0xFFFFFFFF),
     scrim = Color(0xFF000000),
-    accent = Color(0xFF7C4DFF)
+    accent = Color(0xFF7C4DFF),
+    onAccent = Color(0xFFFFFFFF)
 )
 
-/** Light palette — the mirror. Tuned further once we eyeball it on device. */
+/** Light palette — the mirror. onSurface is pure black so the alpha-faded "gray" text the app
+ *  uses everywhere stays dark enough to read; accent is a deep purple so white text reads on it
+ *  and the purple itself reads on white. */
 val FreqvoxLightColors = FreqvoxColors(
     isLight = true,
-    background = Color(0xFFF4F4F7),
+    background = Color(0xFFEFEFF3),
     surface = Color(0xFFFFFFFF),
-    surfaceVariant = Color(0xFFECECF1),
-    onSurface = Color(0xFF0B0B12),
+    surfaceVariant = Color(0xFFE4E4EC),
+    onSurface = Color(0xFF000000),
     // Scrims sit on colorful artwork, which is the same in both themes, so they stay dark.
     scrim = Color(0xFF000000),
-    accent = Color(0xFF6B3FA0)
+    accent = Color(0xFF5B21B6),
+    onAccent = Color(0xFFFFFFFF)
 )
 
 val LocalFreqvoxColors = staticCompositionLocalOf { FreqvoxDarkColors }
@@ -70,4 +78,5 @@ object Fvox {
     val onSurface: Color @Composable @ReadOnlyComposable get() = LocalFreqvoxColors.current.onSurface
     val scrim: Color @Composable @ReadOnlyComposable get() = LocalFreqvoxColors.current.scrim
     val accent: Color @Composable @ReadOnlyComposable get() = LocalFreqvoxColors.current.accent
+    val onAccent: Color @Composable @ReadOnlyComposable get() = LocalFreqvoxColors.current.onAccent
 }
