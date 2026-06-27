@@ -23,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import com.freqvox.ui.theme.Fvox
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -36,8 +37,6 @@ import com.freqvox.playback.QueueItem
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 import sh.calvin.reorderable.rememberScroller
-
-private val SheetBackground = Color(0xFF12121A)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -114,7 +113,7 @@ fun QueueSheet(
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor   = Color(0xFF12121A),
+        containerColor   = Fvox.surface,
         dragHandle       = { BottomSheetDefaults.DragHandle() },
         sheetState       = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         contentWindowInsets = { WindowInsets(0, 0, 0, 0) }
@@ -125,7 +124,7 @@ fun QueueSheet(
                 AlertDialog(
                     onDismissRequest = { showSaveDialog = false },
                     containerColor = Color(0xFF1E1E2E),
-                    title = { Text("Save queue as playlist", color = Color.White, fontWeight = FontWeight.SemiBold) },
+                    title = { Text("Save queue as playlist", color = Fvox.onSurface, fontWeight = FontWeight.SemiBold) },
                     text = {
                         OutlinedTextField(
                             value = newPlaylistName,
@@ -134,11 +133,11 @@ fun QueueSheet(
                             singleLine = true,
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = accentColor,
-                                unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
+                                unfocusedBorderColor = Fvox.onSurface.copy(alpha = 0.2f),
                                 focusedLabelColor = accentColor,
                                 unfocusedLabelColor = Color.Gray,
-                                focusedTextColor = Color.White,
-                                unfocusedTextColor = Color.White,
+                                focusedTextColor = Fvox.onSurface,
+                                unfocusedTextColor = Fvox.onSurface,
                                 cursorColor = accentColor
                             )
                         )
@@ -156,7 +155,7 @@ fun QueueSheet(
                     },
                     dismissButton = {
                         TextButton(onClick = { showSaveDialog = false }) {
-                            Text("Cancel", color = Color.White.copy(alpha = 0.6f))
+                            Text("Cancel", color = Fvox.onSurface.copy(alpha = 0.6f))
                         }
                     }
                 )
@@ -166,10 +165,10 @@ fun QueueSheet(
                 Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp, top = 14.dp, bottom = 14.dp),
                 Arrangement.SpaceBetween, Alignment.CenterVertically
             ) {
-                Text("Queue", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Text("Queue", color = Fvox.onSurface, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                 if (queue.isNotEmpty()) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("${queue.size} tracks", color = Color.White.copy(.4f), fontSize = 13.sp)
+                        Text("${queue.size} tracks", color = Fvox.onSurface.copy(.4f), fontSize = 13.sp)
                         IconButton(onClick = { newPlaylistName = ""; showSaveDialog = true }) {
                             Icon(
                                 Icons.Default.PlaylistAdd,
@@ -186,10 +185,10 @@ fun QueueSheet(
                 Box(Modifier.fillMaxWidth().height(200.dp), Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(Icons.AutoMirrored.Filled.QueueMusic, null,
-                            tint = Color.White.copy(.2f), modifier = Modifier.size(48.dp))
+                            tint = Fvox.onSurface.copy(.2f), modifier = Modifier.size(48.dp))
                         Spacer(Modifier.height(12.dp))
-                        Text("Queue is empty", color = Color.White.copy(.4f), fontSize = 14.sp)
-                        Text("Play a track from your library", color = Color.White.copy(.25f), fontSize = 12.sp)
+                        Text("Queue is empty", color = Fvox.onSurface.copy(.4f), fontSize = 14.sp)
+                        Text("Play a track from your library", color = Fvox.onSurface.copy(.25f), fontSize = 12.sp)
                     }
                 }
                 return@Column
@@ -223,9 +222,9 @@ fun QueueSheet(
                         val isPast    = playingIdxLocal != -1 && index < playingIdxLocal
 
                         val rowBackground = when {
-                            isDragging -> accentColor.copy(alpha = 0.28f).compositeOver(SheetBackground)
+                            isDragging -> accentColor.copy(alpha = 0.28f).compositeOver(Fvox.surface)
                             isCurrent  -> accentColor.copy(alpha = 0.10f)
-                            else       -> Color.White.copy(alpha = 0.03f)
+                            else       -> Fvox.onSurface.copy(alpha = 0.03f)
                         }
 
                         Row(
@@ -271,7 +270,7 @@ fun QueueSheet(
                         ) {
                             Icon(
                                 Icons.Default.DragHandle, null,
-                                tint = if (isDragging) accentColor.copy(.9f) else Color.White.copy(.20f),
+                                tint = if (isDragging) accentColor.copy(.9f) else Fvox.onSurface.copy(.20f),
                                 modifier = Modifier.size(40.dp).padding(11.dp)
                             )
 
@@ -280,8 +279,8 @@ fun QueueSheet(
                                     isCurrent -> Icon(Icons.AutoMirrored.Filled.VolumeUp, null,
                                         tint = accentColor, modifier = Modifier.size(14.dp))
                                     isPast -> Icon(Icons.Default.Check, null,
-                                        tint = Color.White.copy(.2f), modifier = Modifier.size(13.dp))
-                                    else -> Text("${index + 1}", color = Color.White.copy(.3f),
+                                        tint = Fvox.onSurface.copy(.2f), modifier = Modifier.size(13.dp))
+                                    else -> Text("${index + 1}", color = Fvox.onSurface.copy(.3f),
                                         fontSize = 11.sp, fontWeight = FontWeight.Medium)
                                 }
                             }
@@ -292,14 +291,14 @@ fun QueueSheet(
                                 Text(item.title,
                                     color = when {
                                         isCurrent -> accentColor
-                                        isPast    -> Color.White.copy(.35f)
-                                        else      -> Color.White.copy(.9f)
+                                        isPast    -> Fvox.onSurface.copy(.35f)
+                                        else      -> Fvox.onSurface.copy(.9f)
                                     },
                                     fontSize = 14.sp,
                                     fontWeight = if (isCurrent) FontWeight.SemiBold else FontWeight.Normal,
                                     maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 Text(item.artist,
-                                    color = if (isPast) Color.White.copy(.2f) else Color.White.copy(.45f),
+                                    color = if (isPast) Fvox.onSurface.copy(.2f) else Fvox.onSurface.copy(.45f),
                                     fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             }
 
@@ -307,7 +306,7 @@ fun QueueSheet(
                                 IconButton(onClick = { onQueueItemRemove(index) },
                                     modifier = Modifier.size(32.dp)) {
                                     Icon(Icons.Default.Close, "Remove",
-                                        tint = Color.White.copy(.25f), modifier = Modifier.size(15.dp))
+                                        tint = Fvox.onSurface.copy(.25f), modifier = Modifier.size(15.dp))
                                 }
                             }
                         }

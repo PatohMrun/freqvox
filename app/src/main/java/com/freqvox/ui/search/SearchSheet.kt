@@ -16,6 +16,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import com.freqvox.ui.theme.Fvox
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
@@ -97,7 +98,7 @@ fun SearchSheet(
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor   = Color(0xFF12121A),
+        containerColor   = Fvox.surface,
         sheetState       = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         dragHandle       = { BottomSheetDefaults.DragHandle() },
         contentWindowInsets = { WindowInsets(0, 0, 0, 0) }
@@ -112,7 +113,7 @@ fun SearchSheet(
         ) {
             Text(
                 text = "Search",
-                color = Color.White,
+                color = Fvox.onSurface,
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(start = 4.dp, top = 4.dp, bottom = 12.dp)
@@ -140,8 +141,8 @@ fun SearchSheet(
                     unfocusedBorderColor  = Color(0xFF1E1E2E),
                     focusedContainerColor   = Color(0xFF1E1E2E),
                     unfocusedContainerColor = Color(0xFF1E1E2E),
-                    focusedTextColor      = Color.White,
-                    unfocusedTextColor    = Color.White,
+                    focusedTextColor      = Fvox.onSurface,
+                    unfocusedTextColor    = Fvox.onSurface,
                     cursorColor           = Color(0xFF7C4DFF)
                 ),
                 shape = RoundedCornerShape(50),
@@ -161,11 +162,11 @@ fun SearchSheet(
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Icon(
                                 Icons.Default.Search, null,
-                                tint = Color.White.copy(alpha = 0.18f),
+                                tint = Fvox.onSurface.copy(alpha = 0.18f),
                                 modifier = Modifier.size(56.dp)
                             )
                             Spacer(modifier = Modifier.height(12.dp))
-                            Text("Find a track, artist, or album", color = Color.White.copy(alpha = 0.5f), fontSize = 14.sp)
+                            Text("Find a track, artist, or album", color = Fvox.onSurface.copy(alpha = 0.5f), fontSize = 14.sp)
                         }
                     }
                 }

@@ -1,6 +1,8 @@
 package com.freqvox.ui.theme
 
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 
@@ -54,3 +56,18 @@ val FreqvoxLightColors = FreqvoxColors(
 )
 
 val LocalFreqvoxColors = staticCompositionLocalOf { FreqvoxDarkColors }
+
+/**
+ * Shorthand accessors for the active tokens, mirroring how `MaterialTheme.colorScheme` reads.
+ * Lets a call site write `Fvox.onSurface` instead of pulling `LocalFreqvoxColors.current` into
+ * a local. Only valid in @Composable scope — inside a Canvas DrawScope or a `remember{}` lambda
+ * (non-composable), read `LocalFreqvoxColors.current` into a val first and use that.
+ */
+object Fvox {
+    val background: Color @Composable @ReadOnlyComposable get() = LocalFreqvoxColors.current.background
+    val surface: Color @Composable @ReadOnlyComposable get() = LocalFreqvoxColors.current.surface
+    val surfaceVariant: Color @Composable @ReadOnlyComposable get() = LocalFreqvoxColors.current.surfaceVariant
+    val onSurface: Color @Composable @ReadOnlyComposable get() = LocalFreqvoxColors.current.onSurface
+    val scrim: Color @Composable @ReadOnlyComposable get() = LocalFreqvoxColors.current.scrim
+    val accent: Color @Composable @ReadOnlyComposable get() = LocalFreqvoxColors.current.accent
+}

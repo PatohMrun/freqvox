@@ -30,6 +30,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import com.freqvox.ui.theme.Fvox
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
@@ -103,7 +104,7 @@ fun AppSidePanel(
     val hours = totalDurationMs / (1000 * 60 * 60)
 
     ModalDrawerSheet(
-        drawerContainerColor = Color(0xFF0E0E15),
+        drawerContainerColor = Fvox.surface,
         modifier = Modifier.width(320.dp)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -119,7 +120,7 @@ fun AppSidePanel(
                 Surface(
                     modifier = Modifier.size(48.dp),
                     shape = CircleShape,
-                    color = Color.White.copy(alpha = 0.1f)
+                    color = Fvox.onSurface.copy(alpha = 0.1f)
                 ) {
                     androidx.compose.foundation.Image(
                         painter = androidx.compose.ui.res.painterResource(id = R.drawable.brand_icon),
@@ -129,10 +130,10 @@ fun AppSidePanel(
                 }
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
-                    Text("Freqvox", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    Text("Freqvox", color = Fvox.onSurface, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                     Text(
                         "$totalSongs tracks • ${hours}h",
-                        color = Color.White.copy(alpha = 0.5f),
+                        color = Fvox.onSurface.copy(alpha = 0.5f),
                         fontSize = 12.sp
                     )
                 }
@@ -182,7 +183,7 @@ fun AppSidePanel(
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(
                             playlist.name,
-                            color = Color.White.copy(alpha = 0.85f),
+                            color = Fvox.onSurface.copy(alpha = 0.85f),
                             fontSize = 14.sp,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
@@ -212,7 +213,7 @@ fun AppSidePanel(
                         ) {
                             Text(
                                 formatTagDisplayName(tag.name),
-                                color = Color.White.copy(alpha = 0.85f),
+                                color = Fvox.onSurface.copy(alpha = 0.85f),
                                 fontSize = 13.sp
                             )
                         }
@@ -230,7 +231,7 @@ fun AppSidePanel(
             }
             Text(
                 text = copyrightText,
-                color = Color.White.copy(alpha = 0.2f),
+                color = Fvox.onSurface.copy(alpha = 0.2f),
                 fontSize = 10.sp,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -246,7 +247,7 @@ private fun PanelSection(title: String) {
     Spacer(modifier = Modifier.height(20.dp))
     Text(
         title,
-        color = Color.White.copy(alpha = 0.4f),
+        color = Fvox.onSurface.copy(alpha = 0.4f),
         fontSize = 11.sp,
         fontWeight = FontWeight.Bold,
         letterSpacing = 1.5.sp,
@@ -264,8 +265,8 @@ private fun PanelRow(icon: ImageVector, title: String, onClick: () -> Unit) {
             .padding(vertical = 12.dp, horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(icon, contentDescription = null, tint = Color.White.copy(alpha = 0.75f), modifier = Modifier.size(20.dp))
+        Icon(icon, contentDescription = null, tint = Fvox.onSurface.copy(alpha = 0.75f), modifier = Modifier.size(20.dp))
         Spacer(modifier = Modifier.width(14.dp))
-        Text(title, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+        Text(title, color = Fvox.onSurface, fontSize = 15.sp, fontWeight = FontWeight.Medium)
     }
 }

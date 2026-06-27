@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import com.freqvox.ui.theme.Fvox
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
@@ -47,7 +48,7 @@ fun EqualizerSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         containerColor = Color(0xFF161621),
-        dragHandle = { BottomSheetDefaults.DragHandle(color = Color.White.copy(alpha = 0.2f)) },
+        dragHandle = { BottomSheetDefaults.DragHandle(color = Fvox.onSurface.copy(alpha = 0.2f)) },
         contentWindowInsets = { WindowInsets(0, 0, 0, 0) }
     ) {
         Column(
@@ -66,13 +67,13 @@ fun EqualizerSheet(
                 Column {
                     Text(
                         "Audio Equalizer",
-                        color = Color.White,
+                        color = Fvox.onSurface,
                         fontSize = 22.sp,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
                         if (isEnabled) "Active" else "Disabled",
-                        color = if (isEnabled) Color(0xFF4DFFB4) else Color.White.copy(alpha = 0.4f),
+                        color = if (isEnabled) Color(0xFF4DFFB4) else Fvox.onSurface.copy(alpha = 0.4f),
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium
                     )
@@ -81,9 +82,9 @@ fun EqualizerSheet(
                     checked = isEnabled,
                     onCheckedChange = { equalizerManager.setEnabled(it) },
                     colors = SwitchDefaults.colors(
-                        checkedThumbColor = Color.White,
+                        checkedThumbColor = Fvox.onSurface,
                         checkedTrackColor = Color(0xFF7C4DFF),
-                        uncheckedBorderColor = Color.White.copy(alpha = 0.1f)
+                        uncheckedBorderColor = Fvox.onSurface.copy(alpha = 0.1f)
                     )
                 )
             }
@@ -92,7 +93,7 @@ fun EqualizerSheet(
 
             Text(
                 "PRESETS",
-                color = Color.White.copy(alpha = 0.5f),
+                color = Fvox.onSurface.copy(alpha = 0.5f),
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.5.sp
@@ -110,19 +111,19 @@ fun EqualizerSheet(
                         label = { Text(name, fontSize = 13.sp) },
                         enabled = isEnabled,
                         colors = FilterChipDefaults.filterChipColors(
-                            containerColor = Color.White.copy(alpha = 0.04f),
-                            labelColor = Color.White.copy(alpha = 0.6f),
+                            containerColor = Fvox.onSurface.copy(alpha = 0.04f),
+                            labelColor = Fvox.onSurface.copy(alpha = 0.6f),
                             selectedContainerColor = Color(0xFF7C4DFF).copy(alpha = 0.25f),
                             selectedLabelColor = Color(0xFF7C4DFF),
-                            disabledContainerColor = Color.White.copy(alpha = 0.02f),
-                            disabledLabelColor = Color.White.copy(alpha = 0.2f)
+                            disabledContainerColor = Fvox.onSurface.copy(alpha = 0.02f),
+                            disabledLabelColor = Fvox.onSurface.copy(alpha = 0.2f)
                         ),
                         border = FilterChipDefaults.filterChipBorder(
                             enabled = isEnabled,
                             selected = isSelected,
-                            borderColor = Color.White.copy(alpha = 0.1f),
+                            borderColor = Fvox.onSurface.copy(alpha = 0.1f),
                             selectedBorderColor = Color(0xFF7C4DFF).copy(alpha = 0.5f),
-                            disabledBorderColor = Color.White.copy(alpha = 0.05f)
+                            disabledBorderColor = Fvox.onSurface.copy(alpha = 0.05f)
                         ),
                         shape = RoundedCornerShape(12.dp)
                     )
@@ -133,7 +134,7 @@ fun EqualizerSheet(
 
             Text(
                 "BANDS",
-                color = Color.White.copy(alpha = 0.5f),
+                color = Fvox.onSurface.copy(alpha = 0.5f),
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.5.sp
@@ -146,7 +147,7 @@ fun EqualizerSheet(
                     .horizontalScroll(rememberScrollState())
                     .height(360.dp)
                     .clip(RoundedCornerShape(20.dp))
-                    .background(Color.White.copy(alpha = 0.03f))
+                    .background(Fvox.onSurface.copy(alpha = 0.03f))
                     .padding(vertical = 20.dp, horizontal = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
             ) {
@@ -162,7 +163,7 @@ fun EqualizerSheet(
                     ) {
                         Text(
                             text = "${level / 100}",
-                            color = if (isEnabled) Color.White.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.2f),
+                            color = if (isEnabled) Fvox.onSurface.copy(alpha = 0.7f) else Fvox.onSurface.copy(alpha = 0.2f),
                             fontSize = 9.sp,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -179,7 +180,7 @@ fun EqualizerSheet(
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
                             text = formatFreq(freq),
-                            color = if (isEnabled) Color(0xFF7C4DFF).copy(alpha = 0.9f) else Color.White.copy(alpha = 0.2f),
+                            color = if (isEnabled) Color(0xFF7C4DFF).copy(alpha = 0.9f) else Fvox.onSurface.copy(alpha = 0.2f),
                             fontSize = 9.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -200,8 +201,8 @@ private fun VerticalEqSlider(
 ) {
     var trackHeight by remember { mutableIntStateOf(0) }
     val activeColor = if (enabled) Color(0xFF7C4DFF) else Color(0xFF7C4DFF).copy(alpha = 0.2f)
-    val inactiveColor = Color.White.copy(alpha = 0.08f)
-    val thumbColor = if (enabled) Color.White else Color.White.copy(alpha = 0.2f)
+    val inactiveColor = Fvox.onSurface.copy(alpha = 0.08f)
+    val thumbColor = if (enabled) Fvox.onSurface else Fvox.onSurface.copy(alpha = 0.2f)
 
     val animatedValue by animateFloatAsState(
         targetValue = value,

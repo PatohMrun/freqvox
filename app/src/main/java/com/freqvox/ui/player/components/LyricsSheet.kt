@@ -17,6 +17,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import com.freqvox.ui.theme.Fvox
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -78,7 +79,7 @@ fun LyricsSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         containerColor = Color(0xFF161621),
-        dragHandle = { BottomSheetDefaults.DragHandle(color = Color.White.copy(alpha = 0.2f)) },
+        dragHandle = { BottomSheetDefaults.DragHandle(color = Fvox.onSurface.copy(alpha = 0.2f)) },
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         contentWindowInsets = { WindowInsets(0, 0, 0, 0) }
     ) {
@@ -96,7 +97,7 @@ fun LyricsSheet(
             ) {
                 Text(
                     "Lyrics",
-                    color = Color.White,
+                    color = Fvox.onSurface,
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -133,7 +134,7 @@ fun LyricsSheet(
 
                         Text(
                             text = line.content,
-                            color = if (isCurrent) Color.White else Color.White.copy(alpha = 0.28f),
+                            color = if (isCurrent) Fvox.onSurface else Fvox.onSurface.copy(alpha = 0.28f),
                             fontSize = if (isCurrent) 24.sp else 18.sp,
                             fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
                             textAlign = TextAlign.Center,
@@ -157,20 +158,20 @@ private fun LyricsInstructions(onPickFile: () -> Unit) {
         Icon(
             Icons.Default.MusicNote,
             contentDescription = null,
-            tint = Color.White.copy(alpha = 0.15f),
+            tint = Fvox.onSurface.copy(alpha = 0.15f),
             modifier = Modifier.size(52.dp)
         )
         Spacer(modifier = Modifier.height(20.dp))
         Text(
             "No Lyrics Found",
-            color = Color.White,
+            color = Fvox.onSurface,
             fontSize = 18.sp,
             fontWeight = FontWeight.SemiBold
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
             "Freqvox reads .lrc files from your device to keep your library private.",
-            color = Color.White.copy(alpha = 0.4f),
+            color = Fvox.onSurface.copy(alpha = 0.4f),
             fontSize = 13.sp,
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(horizontal = 32.dp)
@@ -191,7 +192,7 @@ private fun LyricsInstructions(onPickFile: () -> Unit) {
                 .fillMaxWidth()
                 .height(54.dp),
             colors = ButtonDefaults.outlinedButtonColors(
-                contentColor = Color.White
+                contentColor = Fvox.onSurface
             )
         ) {
             Icon(Icons.Default.FileUpload, contentDescription = null)
@@ -221,7 +222,7 @@ private fun InstructionStep(number: Int, text: String) {
             )
         }
         Spacer(modifier = Modifier.width(16.dp))
-        Text(text, color = Color.White.copy(alpha = 0.6f), fontSize = 14.sp)
+        Text(text, color = Fvox.onSurface.copy(alpha = 0.6f), fontSize = 14.sp)
     }
 }
 

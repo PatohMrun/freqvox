@@ -11,6 +11,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import com.freqvox.ui.theme.Fvox
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -26,7 +27,7 @@ fun StatsSheet(
     val accent = Color(0xFF7C4DFF)
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = Color(0xFF12121A),
+        containerColor = Fvox.surface,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         dragHandle = { BottomSheetDefaults.DragHandle() },
         contentWindowInsets = { WindowInsets(0, 0, 0, 0) }
@@ -42,7 +43,7 @@ fun StatsSheet(
         ) {
             Text(
                 text = "Your Listening",
-                color = Color.White,
+                color = Fvox.onSurface,
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(start = 4.dp, top = 4.dp, bottom = 16.dp)
@@ -90,7 +91,7 @@ fun StatsSheet(
                 ) {
                     Text(
                         "Play some music to start building your stats.",
-                        color = Color.White.copy(alpha = 0.4f),
+                        color = Fvox.onSurface.copy(alpha = 0.4f),
                         fontSize = 14.sp
                     )
                 }
@@ -152,9 +153,9 @@ private fun MetricCard(big: String, label: String, accent: Color, modifier: Modi
             .background(accent.copy(alpha = 0.10f))
             .padding(16.dp)
     ) {
-        Text(big, color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(big, color = Fvox.onSurface, fontSize = 26.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Spacer(modifier = Modifier.height(2.dp))
-        Text(label, color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp)
+        Text(label, color = Fvox.onSurface.copy(alpha = 0.5f), fontSize = 12.sp)
     }
 }
 
@@ -162,7 +163,7 @@ private fun MetricCard(big: String, label: String, accent: Color, modifier: Modi
 private fun SectionLabel(text: String) {
     Text(
         text = text,
-        color = Color.White.copy(alpha = 0.4f),
+        color = Fvox.onSurface.copy(alpha = 0.4f),
         fontSize = 11.sp,
         fontWeight = FontWeight.Bold,
         letterSpacing = 1.5.sp,
@@ -194,13 +195,13 @@ private fun HourHistogram(buckets: List<Int>, accent: Color) {
                         .clip(RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp))
                         .background(
                             if (count > 0) accent.copy(alpha = 0.35f + 0.55f * fraction)
-                            else Color.White.copy(alpha = 0.05f)
+                            else Fvox.onSurface.copy(alpha = 0.05f)
                         )
                 )
                 // Label only every 6 hours to avoid clutter.
                 if (hour % 6 == 0) {
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text("$hour", color = Color.White.copy(alpha = 0.3f), fontSize = 8.sp)
+                    Text("$hour", color = Fvox.onSurface.copy(alpha = 0.3f), fontSize = 8.sp)
                 }
             }
         }
@@ -223,11 +224,11 @@ private fun RankRow(rank: Int, title: String, subtitle: String, trailing: String
             modifier = Modifier.width(24.dp)
         )
         Column(modifier = Modifier.weight(1f)) {
-            Text(title, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(subtitle, color = Color.White.copy(alpha = 0.45f), fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(title, color = Fvox.onSurface, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(subtitle, color = Fvox.onSurface.copy(alpha = 0.45f), fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         Spacer(modifier = Modifier.width(8.dp))
-        Text(trailing, color = Color.White.copy(alpha = 0.55f), fontSize = 12.sp)
+        Text(trailing, color = Fvox.onSurface.copy(alpha = 0.55f), fontSize = 12.sp)
     }
 }
 

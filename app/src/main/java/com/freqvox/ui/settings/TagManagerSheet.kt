@@ -18,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import com.freqvox.ui.theme.Fvox
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -52,7 +53,7 @@ fun TagManagerSheet(
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = Color(0xFF12121A),
+        containerColor = Fvox.surface,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         dragHandle = { BottomSheetDefaults.DragHandle() },
         contentWindowInsets = { WindowInsets(0, 0, 0, 0) }
@@ -67,14 +68,14 @@ fun TagManagerSheet(
         ) {
             Text(
                 text = "Manage Tags",
-                color = Color.White,
+                color = Fvox.onSurface,
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(start = 4.dp, top = 4.dp, bottom = 4.dp)
             )
             Text(
                 text = "Tap a tag to rename, recolor or delete it.",
-                color = Color.White.copy(alpha = 0.4f),
+                color = Fvox.onSurface.copy(alpha = 0.4f),
                 fontSize = 12.sp,
                 modifier = Modifier.padding(start = 4.dp, bottom = 12.dp)
             )
@@ -93,7 +94,7 @@ fun TagManagerSheet(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(14.dp))
-                                .background(Color.White.copy(alpha = 0.04f))
+                                .background(Fvox.onSurface.copy(alpha = 0.04f))
                                 .clickable { editing = tag }
                                 .padding(14.dp),
                             verticalAlignment = Alignment.CenterVertically
@@ -107,7 +108,7 @@ fun TagManagerSheet(
                             Spacer(modifier = Modifier.width(14.dp))
                             Text(
                                 formatTagDisplayName(tag.name),
-                                color = Color.White,
+                                color = Fvox.onSurface,
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 maxLines = 1,
@@ -117,7 +118,7 @@ fun TagManagerSheet(
                             Icon(
                                 Icons.Default.Edit,
                                 contentDescription = "Edit",
-                                tint = Color.White.copy(alpha = 0.4f),
+                                tint = Fvox.onSurface.copy(alpha = 0.4f),
                                 modifier = Modifier.size(18.dp)
                             )
                         }
@@ -142,7 +143,7 @@ private fun EditTagDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = Color(0xFF1E1E2E),
-        title = { Text("Edit Tag", color = Color.White, fontWeight = FontWeight.SemiBold) },
+        title = { Text("Edit Tag", color = Fvox.onSurface, fontWeight = FontWeight.SemiBold) },
         text = {
             Column {
                 OutlinedTextField(
@@ -152,17 +153,17 @@ private fun EditTagDialog(
                     singleLine = true,
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = accent,
-                        unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
+                        unfocusedBorderColor = Fvox.onSurface.copy(alpha = 0.2f),
                         focusedLabelColor = accent,
                         unfocusedLabelColor = Color.Gray,
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
+                        focusedTextColor = Fvox.onSurface,
+                        unfocusedTextColor = Fvox.onSurface,
                         cursorColor = accent
                     ),
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(16.dp))
-                Text("Color", color = Color.White.copy(alpha = 0.55f), fontSize = 12.sp)
+                Text("Color", color = Fvox.onSurface.copy(alpha = 0.55f), fontSize = 12.sp)
                 Spacer(modifier = Modifier.height(8.dp))
                 // Wrapping color grid (5 per row).
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -176,14 +177,14 @@ private fun EditTagDialog(
                                         .clip(CircleShape)
                                         .background(Color(c))
                                         .then(
-                                            if (selected) Modifier.border(2.dp, Color.White, CircleShape)
+                                            if (selected) Modifier.border(2.dp, Fvox.onSurface, CircleShape)
                                             else Modifier
                                         )
                                         .clickable { color = c },
                                     contentAlignment = Alignment.Center
                                 ) {
                                     if (selected) {
-                                        Icon(Icons.Default.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                                        Icon(Icons.Default.Check, contentDescription = null, tint = Fvox.onSurface, modifier = Modifier.size(18.dp))
                                     }
                                 }
                             }
@@ -210,7 +211,7 @@ private fun EditTagDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel", color = Color.White.copy(alpha = 0.6f)) }
+            TextButton(onClick = onDismiss) { Text("Cancel", color = Fvox.onSurface.copy(alpha = 0.6f)) }
         }
     )
 }

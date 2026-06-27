@@ -7,6 +7,7 @@ import androidx.compose.material.icons.filled.Tag
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import com.freqvox.ui.theme.Fvox
 import com.freqvox.data.local.entities.TrackEntity
 
 @Composable
@@ -24,7 +25,7 @@ fun TrackMenu(
         containerColor = Color(0xFF1A1A26)
     ) {
         DropdownMenuItem(
-            text = { Text("Play Next", color = Color.White) },
+            text = { Text("Play Next", color = Fvox.onSurface) },
             onClick = {
                 onPlayNext()
                 onDismiss()
@@ -32,7 +33,7 @@ fun TrackMenu(
             leadingIcon = { Icon(Icons.Default.PlaylistAdd, contentDescription = null, tint = Color.Gray) }
         )
         DropdownMenuItem(
-            text = { Text("Add to Playlist", color = Color.White) },
+            text = { Text("Add to Playlist", color = Fvox.onSurface) },
             onClick = {
                 onAddToPlaylist()
                 onDismiss()
@@ -40,7 +41,7 @@ fun TrackMenu(
             leadingIcon = { Icon(Icons.Default.PlaylistAdd, contentDescription = null, tint = Color.Gray) }
         )
         DropdownMenuItem(
-            text = { Text("Tag Track", color = Color.White) },
+            text = { Text("Tag Track", color = Fvox.onSurface) },
             onClick = {
                 onTag()
                 onDismiss()
@@ -48,7 +49,7 @@ fun TrackMenu(
             leadingIcon = { Icon(Icons.Default.Tag, contentDescription = null, tint = Color.Gray) }
         )
         DropdownMenuItem(
-            text = { Text("Play More Like This", color = Color.White) },
+            text = { Text("Play More Like This", color = Fvox.onSurface) },
             onClick = {
                 onPlayMoreLikeThis()
                 onDismiss()

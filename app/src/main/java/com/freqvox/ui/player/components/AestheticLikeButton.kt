@@ -16,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import com.freqvox.ui.theme.Fvox
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
 
@@ -44,7 +45,7 @@ fun AestheticLikeButton(
 
     // Smooth color transition
     val activeColor = Color(0xFFFF4D7C) // Terracotta pink from spec
-    val inactiveColor = Color.White.copy(alpha = 0.3f)
+    val inactiveColor = Fvox.onSurface.copy(alpha = 0.3f)
     val heartColor by animateColorAsState(
         targetValue = if (isLiked) activeColor else inactiveColor,
         animationSpec = tween(300),

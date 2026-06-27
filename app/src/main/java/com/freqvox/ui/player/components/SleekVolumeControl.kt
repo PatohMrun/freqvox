@@ -16,6 +16,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import com.freqvox.ui.theme.Fvox
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 
@@ -38,7 +39,7 @@ fun SleekVolumeControl(
         Icon(
             imageVector = Icons.AutoMirrored.Filled.VolumeDown,
             contentDescription = null,
-            tint = Color.White.copy(alpha = 0.3f),
+            tint = Fvox.onSurface.copy(alpha = 0.3f),
             modifier = Modifier.size(14.dp)
         )
         
@@ -58,6 +59,8 @@ fun SleekVolumeControl(
                     }
                 }
         ) {
+            // Captured for the (non-composable) draw lambda below.
+            val inactiveSeg = com.freqvox.ui.theme.LocalFreqvoxColors.current.onSurface
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val w = size.width
                 val h = size.height
@@ -81,7 +84,7 @@ fun SleekVolumeControl(
                         // Lerp between primary and secondary accent based on position
                         androidx.compose.ui.graphics.lerp(accentPrimary, accentSecondary, fraction)
                     } else {
-                        Color.White.copy(alpha = 0.08f)
+                        inactiveSeg.copy(alpha = 0.08f)
                     }
                     
                     drawRoundRect(
@@ -97,7 +100,7 @@ fun SleekVolumeControl(
         Icon(
             imageVector = Icons.AutoMirrored.Filled.VolumeUp,
             contentDescription = null,
-            tint = Color.White.copy(alpha = 0.3f),
+            tint = Fvox.onSurface.copy(alpha = 0.3f),
             modifier = Modifier.size(14.dp)
         )
     }

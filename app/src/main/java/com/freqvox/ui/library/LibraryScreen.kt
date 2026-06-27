@@ -53,6 +53,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import com.freqvox.ui.theme.Fvox
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
@@ -201,13 +202,13 @@ fun LibraryScreen(
                     text = "Collection",
                     fontSize = 28.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White
+                    color = Fvox.onSurface
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = "${tracks.size} Tracks",
                     fontSize = 14.sp,
-                    color = Color.White.copy(alpha = 0.5f),
+                    color = Fvox.onSurface.copy(alpha = 0.5f),
                     fontWeight = FontWeight.Medium
                 )
             }
@@ -216,7 +217,7 @@ fun LibraryScreen(
                     Icon(
                         imageVector = Icons.Default.Search,
                         contentDescription = "Search",
-                        tint = Color.White
+                        tint = Fvox.onSurface
                     )
                 }
                 Spacer(modifier = Modifier.width(8.dp))
@@ -225,7 +226,7 @@ fun LibraryScreen(
                         .size(44.dp)
                         .clickable { onOpenPanel() },
                     shape = CircleShape,
-                    color = Color.White.copy(alpha = 0.1f)
+                    color = Fvox.onSurface.copy(alpha = 0.1f)
                 ) {
                     Image(
                         painter = painterResource(id = com.freqvox.R.drawable.brand_icon),
@@ -275,7 +276,7 @@ fun LibraryScreen(
                             modifier = Modifier.size(40.dp)
                         )
                         Spacer(modifier = Modifier.height(16.dp))
-                        Text("Scanning your library…", color = Color.White.copy(alpha = 0.7f))
+                        Text("Scanning your library…", color = Fvox.onSurface.copy(alpha = 0.7f))
                     }
                 } else {
                     Text("No music found in your library", color = Color.Gray)
@@ -556,7 +557,7 @@ fun DraggableTabRow(
                             when {
                                 isDragging -> accent.copy(alpha = 0.5f)
                                 isSelected -> accent
-                                else       -> Color.White.copy(alpha = 0.07f)
+                                else       -> Fvox.onSurface.copy(alpha = 0.07f)
                             }
                         )
                         .border(
@@ -564,7 +565,7 @@ fun DraggableTabRow(
                             color = when {
                                 isDragging -> accent.copy(alpha = 0.8f)
                                 isSelected -> Color.Transparent
-                                else       -> Color.White.copy(alpha = 0.12f)
+                                else       -> Fvox.onSurface.copy(alpha = 0.12f)
                             },
                             shape = CircleShape
                         )
@@ -579,8 +580,8 @@ fun DraggableTabRow(
                 ) {
                     Text(
                         text = tab.name,
-                        color = if (isSelected || isDragging) Color.White
-                                else Color.White.copy(alpha = 0.55f),
+                        color = if (isSelected || isDragging) Fvox.onSurface
+                                else Fvox.onSurface.copy(alpha = 0.55f),
                         fontSize = 14.sp,
                         fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
                     )
@@ -599,8 +600,8 @@ fun SortButton(sortOrder: SortOrder, onSortSelected: (SortOrder) -> Unit) {
         Row(
             modifier = Modifier
                 .clip(RoundedCornerShape(10.dp))
-                .background(Color.White.copy(alpha = 0.07f))
-                .border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(10.dp))
+                .background(Fvox.onSurface.copy(alpha = 0.07f))
+                .border(1.dp, Fvox.onSurface.copy(alpha = 0.12f), RoundedCornerShape(10.dp))
                 .clickable { expanded = true }
                 .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -609,13 +610,13 @@ fun SortButton(sortOrder: SortOrder, onSortSelected: (SortOrder) -> Unit) {
             Icon(
                 Icons.Default.SwapVert,
                 contentDescription = "Sort",
-                tint = Color.White.copy(alpha = 0.6f),
+                tint = Fvox.onSurface.copy(alpha = 0.6f),
                 modifier = Modifier.size(16.dp)
             )
             Icon(
                 Icons.Default.KeyboardArrowDown,
                 contentDescription = null,
-                tint = Color.White.copy(alpha = 0.5f),
+                tint = Fvox.onSurface.copy(alpha = 0.5f),
                 modifier = Modifier.size(14.dp)
             )
         }
@@ -631,7 +632,7 @@ fun SortButton(sortOrder: SortOrder, onSortSelected: (SortOrder) -> Unit) {
                     text = {
                         Text(
                             text = sort.label,
-                            color = if (isActive) accent else Color.White.copy(alpha = 0.85f),
+                            color = if (isActive) accent else Fvox.onSurface.copy(alpha = 0.85f),
                             fontSize = 14.sp,
                             fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Normal
                         )
@@ -650,7 +651,7 @@ fun SortButton(sortOrder: SortOrder, onSortSelected: (SortOrder) -> Unit) {
                         }
                     },
                     colors = MenuDefaults.itemColors(
-                        textColor = Color.White,
+                        textColor = Fvox.onSurface,
                         leadingIconColor = accent
                     )
                 )
@@ -682,7 +683,7 @@ fun LibraryTrackItem(
             .clip(RoundedCornerShape(16.dp))
             .background(
                 if (isCurrentTrack) accent.copy(alpha = 0.10f)
-                else Color.White.copy(alpha = 0.04f)
+                else Fvox.onSurface.copy(alpha = 0.04f)
             )
             .then(
                 if (isCurrentTrack)
@@ -725,8 +726,8 @@ fun LibraryTrackItem(
                     text = track.title,
                     color = when {
                         isCurrentTrack -> accent
-                        isDisliked     -> Color.White.copy(alpha = 0.45f)
-                        else           -> Color.White
+                        isDisliked     -> Fvox.onSurface.copy(alpha = 0.45f)
+                        else           -> Fvox.onSurface
                     },
                     fontSize = 15.sp,
                     fontWeight = FontWeight.SemiBold,
@@ -737,7 +738,7 @@ fun LibraryTrackItem(
             Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = track.artist,
-                color = Color.White.copy(alpha = if (isDisliked) 0.3f else 0.5f),
+                color = Fvox.onSurface.copy(alpha = if (isDisliked) 0.3f else 0.5f),
                 fontSize = 13.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -747,7 +748,7 @@ fun LibraryTrackItem(
             Icon(
                 imageVector = if (isCurrentTrack && isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                 contentDescription = null,
-                tint = if (isCurrentTrack) accent else Color.White.copy(alpha = 0.25f),
+                tint = if (isCurrentTrack) accent else Fvox.onSurface.copy(alpha = 0.25f),
                 modifier = Modifier.size(24.dp)
             )
             
@@ -756,7 +757,7 @@ fun LibraryTrackItem(
                     Icon(
                         imageVector = Icons.Default.MoreVert,
                         contentDescription = "More options",
-                        tint = Color.White.copy(alpha = 0.5f),
+                        tint = Fvox.onSurface.copy(alpha = 0.5f),
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -768,37 +769,37 @@ fun LibraryTrackItem(
                 ) {
                     if (onPlayNext != null) {
                         DropdownMenuItem(
-                            text = { Text("Play next", color = Color.White) },
+                            text = { Text("Play next", color = Fvox.onSurface) },
                             onClick = {
                                 showMenu = false
                                 onPlayNext.invoke()
                             },
                             leadingIcon = {
-                                Icon(Icons.Default.PlaylistPlay, contentDescription = null, tint = Color.White)
+                                Icon(Icons.Default.PlaylistPlay, contentDescription = null, tint = Fvox.onSurface)
                             }
                         )
                     }
                     if (onAddToQueue != null) {
                         DropdownMenuItem(
-                            text = { Text("Add to queue", color = Color.White) },
+                            text = { Text("Add to queue", color = Fvox.onSurface) },
                             onClick = {
                                 showMenu = false
                                 onAddToQueue.invoke()
                             },
                             leadingIcon = {
-                                Icon(Icons.Default.QueueMusic, contentDescription = null, tint = Color.White)
+                                Icon(Icons.Default.QueueMusic, contentDescription = null, tint = Fvox.onSurface)
                             }
                         )
                     }
                     if (onAddToPlaylist != null) {
                         DropdownMenuItem(
-                            text = { Text("Add to Playlist", color = Color.White) },
+                            text = { Text("Add to Playlist", color = Fvox.onSurface) },
                             onClick = { 
                                 showMenu = false
                                 onAddToPlaylist.invoke()
                             },
                             leadingIcon = {
-                                Icon(Icons.Default.PlaylistAdd, contentDescription = null, tint = Color.White)
+                                Icon(Icons.Default.PlaylistAdd, contentDescription = null, tint = Fvox.onSurface)
                             }
                         )
                     }
@@ -808,7 +809,7 @@ fun LibraryTrackItem(
                             text = {
                                 Text(
                                     text = if (isDisliked) "Remove dislike" else "Dislike track",
-                                    color = if (isDisliked) dislikeAccent else Color.White
+                                    color = if (isDisliked) dislikeAccent else Fvox.onSurface
                                 )
                             },
                             onClick = {
@@ -819,7 +820,7 @@ fun LibraryTrackItem(
                                 Icon(
                                     imageVector = if (isDisliked) Icons.Default.ThumbDown else Icons.Outlined.ThumbDownOffAlt,
                                     contentDescription = null,
-                                    tint = if (isDisliked) dislikeAccent else Color.White
+                                    tint = if (isDisliked) dislikeAccent else Fvox.onSurface
                                 )
                             }
                         )
@@ -859,7 +860,7 @@ fun AlbumItem(
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
             .clickable(onClick = onExpand),
-        color = Color.White.copy(alpha = 0.04f),
+        color = Fvox.onSurface.copy(alpha = 0.04f),
         shape = RoundedCornerShape(16.dp)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
@@ -878,7 +879,7 @@ fun AlbumItem(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = name,
-                        color = Color.White,
+                        color = Fvox.onSurface,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
@@ -887,7 +888,7 @@ fun AlbumItem(
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = "$artist • $trackCount tracks",
-                        color = Color.White.copy(alpha = 0.5f),
+                        color = Fvox.onSurface.copy(alpha = 0.5f),
                         fontSize = 13.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -904,7 +905,7 @@ fun AlbumItem(
                 Icon(
                     imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.KeyboardArrowDown,
                     contentDescription = if (isExpanded) "Collapse" else "Expand",
-                    tint = Color.White.copy(alpha = 0.4f)
+                    tint = Fvox.onSurface.copy(alpha = 0.4f)
                 )
             }
             if (isExpanded) {
@@ -930,7 +931,7 @@ fun ArtistItem(
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
             .clickable(onClick = onExpand),
-        color = Color.White.copy(alpha = 0.04f),
+        color = Fvox.onSurface.copy(alpha = 0.04f),
         shape = RoundedCornerShape(16.dp)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
@@ -949,7 +950,7 @@ fun ArtistItem(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = name,
-                        color = Color.White,
+                        color = Fvox.onSurface,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
@@ -958,7 +959,7 @@ fun ArtistItem(
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = "$trackCount tracks",
-                        color = Color.White.copy(alpha = 0.5f),
+                        color = Fvox.onSurface.copy(alpha = 0.5f),
                         fontSize = 13.sp
                     )
                 }
@@ -973,7 +974,7 @@ fun ArtistItem(
                 Icon(
                     imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.KeyboardArrowDown,
                     contentDescription = if (isExpanded) "Collapse" else "Expand",
-                    tint = Color.White.copy(alpha = 0.4f)
+                    tint = Fvox.onSurface.copy(alpha = 0.4f)
                 )
             }
             if (isExpanded) {
@@ -1041,7 +1042,7 @@ fun PlaylistsTab(
         ) {
             // Virtual Playlists Section
             item {
-                Text("Standard Collections", color = Color.White.copy(alpha = 0.5f), fontSize = 13.sp, modifier = Modifier.padding(start = 8.dp, top = 8.dp, bottom = 4.dp))
+                Text("Standard Collections", color = Fvox.onSurface.copy(alpha = 0.5f), fontSize = 13.sp, modifier = Modifier.padding(start = 8.dp, top = 8.dp, bottom = 4.dp))
             }
             item {
                 PlaylistItem(
@@ -1091,7 +1092,7 @@ fun PlaylistsTab(
             // Custom Playlists Section
             item {
                 Spacer(modifier = Modifier.height(16.dp))
-                Text("Your Playlists", color = Color.White.copy(alpha = 0.5f), fontSize = 13.sp, modifier = Modifier.padding(start = 8.dp, bottom = 4.dp))
+                Text("Your Playlists", color = Fvox.onSurface.copy(alpha = 0.5f), fontSize = 13.sp, modifier = Modifier.padding(start = 8.dp, bottom = 4.dp))
             }
             if (playlists.isEmpty()) {
                 item {
@@ -1146,7 +1147,7 @@ fun PlaylistsTab(
                 .align(Alignment.BottomEnd)
                 .padding(end = 20.dp, bottom = 90.dp),
             containerColor = Color(0xFF7C4DFF),
-            contentColor = Color.White
+            contentColor = Fvox.onSurface
         ) {
             Icon(Icons.Default.Add, contentDescription = "New playlist")
         }
@@ -1171,8 +1172,8 @@ fun PlaylistsTab(
         AlertDialog(
             onDismissRequest = { playlistToDelete = null },
             containerColor = Color(0xFF1E1E2E),
-            title = { Text("Delete playlist?", color = Color.White, fontWeight = FontWeight.SemiBold) },
-            text = { Text("\"${playlist.name}\" will be permanently removed.", color = Color.White.copy(alpha = 0.7f), fontSize = 14.sp) },
+            title = { Text("Delete playlist?", color = Fvox.onSurface, fontWeight = FontWeight.SemiBold) },
+            text = { Text("\"${playlist.name}\" will be permanently removed.", color = Fvox.onSurface.copy(alpha = 0.7f), fontSize = 14.sp) },
             confirmButton = {
                 TextButton(onClick = { viewModel.deletePlaylist(playlist); playlistToDelete = null }) {
                     Text("Delete", color = Color(0xFFFF5252), fontWeight = FontWeight.SemiBold)
@@ -1180,7 +1181,7 @@ fun PlaylistsTab(
             },
             dismissButton = {
                 TextButton(onClick = { playlistToDelete = null }) {
-                    Text("Cancel", color = Color.White.copy(alpha = 0.6f))
+                    Text("Cancel", color = Fvox.onSurface.copy(alpha = 0.6f))
                 }
             }
         )
@@ -1192,7 +1193,7 @@ fun PlaylistsTab(
         AlertDialog(
             onDismissRequest = { playlistToRename = null },
             containerColor = Color(0xFF1E1E2E),
-            title = { Text("Rename playlist", color = Color.White, fontWeight = FontWeight.SemiBold) },
+            title = { Text("Rename playlist", color = Fvox.onSurface, fontWeight = FontWeight.SemiBold) },
             text = {
                 OutlinedTextField(
                     value = newName,
@@ -1201,11 +1202,11 @@ fun PlaylistsTab(
                     label = { Text("Name") },
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = accent,
-                        unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
+                        unfocusedBorderColor = Fvox.onSurface.copy(alpha = 0.2f),
                         focusedLabelColor = accent,
                         unfocusedLabelColor = Color.Gray,
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
+                        focusedTextColor = Fvox.onSurface,
+                        unfocusedTextColor = Fvox.onSurface,
                         cursorColor = accent
                     )
                 )
@@ -1218,7 +1219,7 @@ fun PlaylistsTab(
             },
             dismissButton = {
                 TextButton(onClick = { playlistToRename = null }) {
-                    Text("Cancel", color = Color.White.copy(alpha = 0.6f))
+                    Text("Cancel", color = Fvox.onSurface.copy(alpha = 0.6f))
                 }
             }
         )
@@ -1258,7 +1259,7 @@ fun AddTracksToPlaylistDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = Color(0xFF1E1E2E),
-        title = { Text("Add to $playlistName", color = Color.White, fontWeight = FontWeight.SemiBold) },
+        title = { Text("Add to $playlistName", color = Fvox.onSurface, fontWeight = FontWeight.SemiBold) },
         text = {
             Column {
                 OutlinedTextField(
@@ -1269,11 +1270,11 @@ fun AddTracksToPlaylistDialog(
                     modifier = Modifier.fillMaxWidth(),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = accent,
-                        unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
+                        unfocusedBorderColor = Fvox.onSurface.copy(alpha = 0.2f),
                         focusedLabelColor = accent,
                         unfocusedLabelColor = Color.Gray,
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
+                        focusedTextColor = Fvox.onSurface,
+                        unfocusedTextColor = Fvox.onSurface,
                         cursorColor = accent
                     )
                 )
@@ -1292,19 +1293,19 @@ fun AddTracksToPlaylistDialog(
                             Column(Modifier.weight(1f)) {
                                 Text(
                                     track.title,
-                                    color = Color.White.copy(alpha = if (isIn) 0.4f else 0.9f),
+                                    color = Fvox.onSurface.copy(alpha = if (isIn) 0.4f else 0.9f),
                                     fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis
                                 )
                                 Text(
                                     track.artist,
-                                    color = Color.White.copy(alpha = 0.4f),
+                                    color = Fvox.onSurface.copy(alpha = 0.4f),
                                     fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis
                                 )
                             }
                             Icon(
                                 if (isIn) Icons.Default.Check else Icons.Default.Add,
                                 contentDescription = if (isIn) "Added" else "Add",
-                                tint = if (isIn) Color.White.copy(alpha = 0.4f) else accent,
+                                tint = if (isIn) Fvox.onSurface.copy(alpha = 0.4f) else accent,
                                 modifier = Modifier.size(20.dp)
                             )
                         }
@@ -1350,7 +1351,7 @@ fun PlaylistItem(
             .pointerInput(Unit) {
                 detectTapGestures(onTap = { onExpand() }, onLongPress = { onDelete?.invoke() })
             },
-        color = Color.White.copy(alpha = 0.04f),
+        color = Fvox.onSurface.copy(alpha = 0.04f),
         shape = RoundedCornerShape(16.dp)
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
@@ -1371,7 +1372,7 @@ fun PlaylistItem(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = playlist.name,
-                        color = Color.White,
+                        color = Fvox.onSurface,
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 15.sp,
                         maxLines = 1,
@@ -1379,13 +1380,13 @@ fun PlaylistItem(
                     )
                     Text(
                         text = countLabel,
-                        color = Color.White.copy(alpha = 0.4f),
+                        color = Fvox.onSurface.copy(alpha = 0.4f),
                         fontSize = 12.sp
                     )
                 }
                 if (isExpanded && onRename != null) {
                     IconButton(onClick = { onRename() }) {
-                        Icon(Icons.Default.Edit, contentDescription = "Rename playlist", tint = Color.White.copy(alpha = 0.5f), modifier = Modifier.size(18.dp))
+                        Icon(Icons.Default.Edit, contentDescription = "Rename playlist", tint = Fvox.onSurface.copy(alpha = 0.5f), modifier = Modifier.size(18.dp))
                     }
                 }
                 if (isExpanded) {
@@ -1400,7 +1401,7 @@ fun PlaylistItem(
                     Icon(
                         imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.KeyboardArrowDown,
                         contentDescription = if (isExpanded) "Collapse" else "Expand",
-                        tint = Color.White.copy(alpha = 0.4f)
+                        tint = Fvox.onSurface.copy(alpha = 0.4f)
                     )
                 }
             }
@@ -1434,7 +1435,7 @@ fun CreatePlaylistDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = Color(0xFF1E1E2E),
-        title = { Text("New Playlist", color = Color.White, fontWeight = FontWeight.SemiBold) },
+        title = { Text("New Playlist", color = Fvox.onSurface, fontWeight = FontWeight.SemiBold) },
         text = {
             Column {
                 OutlinedTextField(
@@ -1444,11 +1445,11 @@ fun CreatePlaylistDialog(
                     singleLine = true,
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = accent,
-                        unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
+                        unfocusedBorderColor = Fvox.onSurface.copy(alpha = 0.2f),
                         focusedLabelColor = accent,
                         unfocusedLabelColor = Color.Gray,
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
+                        focusedTextColor = Fvox.onSurface,
+                        unfocusedTextColor = Fvox.onSurface,
                         cursorColor = accent
                     ),
                     modifier = Modifier.fillMaxWidth()
@@ -1462,12 +1463,12 @@ fun CreatePlaylistDialog(
                         colors = SwitchDefaults.colors(checkedThumbColor = accent, checkedTrackColor = accent.copy(alpha = 0.5f))
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Smart Playlist (Auto-updates via Tags)", color = Color.White.copy(alpha = 0.7f), fontSize = 13.sp)
+                    Text("Smart Playlist (Auto-updates via Tags)", color = Fvox.onSurface.copy(alpha = 0.7f), fontSize = 13.sp)
                 }
 
                 if (isSmartPlaylist) {
                     Spacer(modifier = Modifier.height(14.dp))
-                    Text("Include tracks tagged with:", color = Color.White.copy(alpha = 0.55f), fontSize = 12.sp)
+                    Text("Include tracks tagged with:", color = Fvox.onSurface.copy(alpha = 0.55f), fontSize = 12.sp)
                     Spacer(modifier = Modifier.height(8.dp))
                     LazyVerticalGrid(
                         columns = GridCells.Fixed(2),
@@ -1486,14 +1487,14 @@ fun CreatePlaylistDialog(
                                 label = { Text(formatTagDisplayName(tag.name), fontSize = 12.sp, maxLines = 1) },
                                 colors = FilterChipDefaults.filterChipColors(
                                     selectedContainerColor = Color(tag.color).copy(alpha = 0.22f),
-                                    selectedLabelColor = Color.White,
-                                    containerColor = Color.White.copy(alpha = 0.06f),
-                                    labelColor = Color.White.copy(alpha = 0.6f)
+                                    selectedLabelColor = Fvox.onSurface,
+                                    containerColor = Fvox.onSurface.copy(alpha = 0.06f),
+                                    labelColor = Fvox.onSurface.copy(alpha = 0.6f)
                                 ),
                                 border = FilterChipDefaults.filterChipBorder(
                                     enabled = true, selected = isSelected,
                                     selectedBorderColor = Color(tag.color).copy(alpha = 0.6f),
-                                    borderColor = Color.White.copy(alpha = 0.1f)
+                                    borderColor = Fvox.onSurface.copy(alpha = 0.1f)
                                 )
                             )
                         }
@@ -1515,7 +1516,7 @@ fun CreatePlaylistDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel", color = Color.White.copy(alpha = 0.6f)) }
+            TextButton(onClick = onDismiss) { Text("Cancel", color = Fvox.onSurface.copy(alpha = 0.6f)) }
         }
     )
 }
@@ -1536,7 +1537,7 @@ fun FolderItem(
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
             .clickable(onClick = onExpand),
-        color = Color.White.copy(alpha = 0.04f),
+        color = Fvox.onSurface.copy(alpha = 0.04f),
         shape = RoundedCornerShape(16.dp)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
@@ -1547,13 +1548,13 @@ fun FolderItem(
                 Surface(
                     modifier = Modifier.size(56.dp),
             shape = RoundedCornerShape(12.dp),
-            color = Color.White.copy(alpha = 0.07f)
+            color = Fvox.onSurface.copy(alpha = 0.07f)
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(
                     Icons.Default.Folder,
                     contentDescription = null,
-                    tint = Color.White.copy(alpha = 0.6f),
+                    tint = Fvox.onSurface.copy(alpha = 0.6f),
                     modifier = Modifier.size(26.dp)
                 )
             }
@@ -1562,7 +1563,7 @@ fun FolderItem(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = folderName,
-                        color = Color.White,
+                        color = Fvox.onSurface,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
@@ -1571,7 +1572,7 @@ fun FolderItem(
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = "$trackCount tracks",
-                        color = Color.White.copy(alpha = 0.5f),
+                        color = Fvox.onSurface.copy(alpha = 0.5f),
                         fontSize = 13.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -1588,7 +1589,7 @@ fun FolderItem(
                 Icon(
                     imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.KeyboardArrowDown,
                     contentDescription = if (isExpanded) "Collapse" else "Expand",
-                    tint = Color.White.copy(alpha = 0.4f)
+                    tint = Fvox.onSurface.copy(alpha = 0.4f)
                 )
             }
             if (isExpanded) {
@@ -1613,7 +1614,7 @@ fun SelectPlaylistDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = Color(0xFF1E1E2E),
-        title = { Text("Add to Playlist", color = Color.White, fontWeight = FontWeight.SemiBold) },
+        title = { Text("Add to Playlist", color = Fvox.onSurface, fontWeight = FontWeight.SemiBold) },
         text = {
             Column {
                 if (onCreateNew != null) {
@@ -1626,11 +1627,11 @@ fun SelectPlaylistDialog(
                             modifier = Modifier.fillMaxWidth(),
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = accent,
-                                unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
+                                unfocusedBorderColor = Fvox.onSurface.copy(alpha = 0.2f),
                                 focusedLabelColor = accent,
                                 unfocusedLabelColor = Color.Gray,
-                                focusedTextColor = Color.White,
-                                unfocusedTextColor = Color.White,
+                                focusedTextColor = Fvox.onSurface,
+                                unfocusedTextColor = Fvox.onSurface,
                                 cursorColor = accent
                             )
                         )
@@ -1648,7 +1649,7 @@ fun SelectPlaylistDialog(
                             Text("Create new playlist", color = accent, fontSize = 15.sp, fontWeight = FontWeight.Medium)
                         }
                         if (playlists.isNotEmpty()) {
-                            HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
+                            HorizontalDivider(color = Fvox.onSurface.copy(alpha = 0.08f))
                         }
                     }
                 }
@@ -1667,9 +1668,9 @@ fun SelectPlaylistDialog(
                                         .padding(vertical = 12.dp, horizontal = 8.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(Icons.Default.PlaylistPlay, contentDescription = null, tint = Color.White.copy(alpha = 0.5f))
+                                    Icon(Icons.Default.PlaylistPlay, contentDescription = null, tint = Fvox.onSurface.copy(alpha = 0.5f))
                                     Spacer(modifier = Modifier.width(12.dp))
-                                    Text(playlist.name, color = Color.White, fontSize = 15.sp)
+                                    Text(playlist.name, color = Fvox.onSurface, fontSize = 15.sp)
                                 }
                             }
                         }
@@ -1684,7 +1685,7 @@ fun SelectPlaylistDialog(
                     enabled = newName.isNotBlank()
                 ) { Text("Create", color = if (newName.isNotBlank()) accent else Color.Gray, fontWeight = FontWeight.SemiBold) }
             } else {
-                TextButton(onClick = onDismiss) { Text("Close", color = Color.White.copy(alpha = 0.6f)) }
+                TextButton(onClick = onDismiss) { Text("Close", color = Fvox.onSurface.copy(alpha = 0.6f)) }
             }
         }
     )
@@ -1702,12 +1703,12 @@ fun ExpandedTrackList(
     onAddSongs: (() -> Unit)? = null
 ) {
     Spacer(modifier = Modifier.height(10.dp))
-    HorizontalDivider(color = Color.White.copy(alpha = 0.07f), thickness = 1.dp)
+    HorizontalDivider(color = Fvox.onSurface.copy(alpha = 0.07f), thickness = 1.dp)
     Spacer(modifier = Modifier.height(10.dp))
     if (tracks.isEmpty()) {
         Text(
             text = "No tracks inside.",
-            color = Color.White.copy(alpha = 0.35f),
+            color = Fvox.onSurface.copy(alpha = 0.35f),
             fontSize = 13.sp
         )
     } else {
@@ -1723,7 +1724,7 @@ fun ExpandedTrackList(
             ) {
                 Text(
                     text = track.title,
-                    color = if (isCurrent) accent else Color.White.copy(alpha = 0.85f),
+                    color = if (isCurrent) accent else Fvox.onSurface.copy(alpha = 0.85f),
                     fontSize = 13.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -1732,7 +1733,7 @@ fun ExpandedTrackList(
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = track.artist,
-                    color = if (isCurrent) accent.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.4f),
+                    color = if (isCurrent) accent.copy(alpha = 0.7f) else Fvox.onSurface.copy(alpha = 0.4f),
                     fontSize = 12.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -1746,7 +1747,7 @@ fun ExpandedTrackList(
                         Icon(
                             Icons.Default.Close,
                             contentDescription = "Remove from playlist",
-                            tint = Color.White.copy(alpha = 0.35f),
+                            tint = Fvox.onSurface.copy(alpha = 0.35f),
                             modifier = Modifier.size(16.dp)
                         )
                     }
@@ -1777,9 +1778,9 @@ fun ExpandedTrackList(
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(Icons.Default.Add, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+            Icon(Icons.Default.Add, contentDescription = null, tint = Fvox.onSurface, modifier = Modifier.size(18.dp))
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Add songs", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+            Text("Add songs", color = Fvox.onSurface, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
         }
     }
 }

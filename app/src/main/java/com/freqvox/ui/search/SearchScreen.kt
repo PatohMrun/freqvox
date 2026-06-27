@@ -23,6 +23,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import com.freqvox.ui.theme.Fvox
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.TextRange
@@ -106,7 +107,7 @@ fun SearchScreen(
             text = "Browse",
             fontSize = 32.sp,
             fontWeight = FontWeight.Bold,
-            color = Color.White,
+            color = Fvox.onSurface,
             modifier = Modifier.padding(bottom = 16.dp)
         )
 
@@ -137,8 +138,8 @@ fun SearchScreen(
                 unfocusedBorderColor = Color(0xFF1E1E2E),
                 focusedContainerColor = Color(0xFF1E1E2E),
                 unfocusedContainerColor = Color(0xFF1E1E2E),
-                focusedTextColor = Color.White,
-                unfocusedTextColor = Color.White
+                focusedTextColor = Fvox.onSurface,
+                unfocusedTextColor = Fvox.onSurface
             ),
             shape = RoundedCornerShape(50), // Pill shaped
             singleLine = true
@@ -149,7 +150,7 @@ fun SearchScreen(
                 text = "Browse by Tag",
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.White,
+                color = Fvox.onSurface,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
             
@@ -162,20 +163,20 @@ fun SearchScreen(
                         Icon(
                             Icons.Default.Search, 
                             contentDescription = null, 
-                            tint = Color.White.copy(alpha = 0.2f),
+                            tint = Fvox.onSurface.copy(alpha = 0.2f),
                             modifier = Modifier.size(64.dp)
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
                             text = "No tags yet.",
-                            color = Color.White.copy(alpha = 0.7f),
+                            color = Fvox.onSurface.copy(alpha = 0.7f),
                             fontSize = 18.sp,
                             fontWeight = FontWeight.SemiBold
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = "Tag your songs to easily find them here.",
-                            color = Color.White.copy(alpha = 0.4f),
+                            color = Fvox.onSurface.copy(alpha = 0.4f),
                             fontSize = 14.sp
                         )
                     }
@@ -268,9 +269,9 @@ fun TagFilterRow(
                 },
                 colors = FilterChipDefaults.filterChipColors(
                     selectedContainerColor = Color(tag.color).copy(alpha = 0.35f),
-                    selectedLabelColor = Color.White,
+                    selectedLabelColor = Fvox.onSurface,
                     containerColor = Color(0xFF1E1E2E),
-                    labelColor = Color.White.copy(alpha = 0.75f)
+                    labelColor = Fvox.onSurface.copy(alpha = 0.75f)
                 )
             )
         }
@@ -317,12 +318,12 @@ fun TagCard(name: String, baseColor: Color, modifier: Modifier = Modifier, onTag
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.2f))
+                .background(Fvox.scrim.copy(alpha = 0.2f))
         )
         
         Text(
             text = formatTagDisplayName(name),
-            color = Color.White,
+            color = Fvox.onSurface,
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold,
             modifier = Modifier

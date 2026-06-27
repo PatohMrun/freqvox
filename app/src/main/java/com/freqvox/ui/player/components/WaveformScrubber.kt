@@ -9,6 +9,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import com.freqvox.ui.theme.Fvox
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
@@ -65,6 +66,8 @@ fun WaveformScrubber(
     // Keep the latest onSeek without restarting the pointerInput modifier.
     val onSeekState = rememberUpdatedState(onSeek)
 
+    // Captured for the (non-composable) draw lambda below.
+    val waveColor = com.freqvox.ui.theme.LocalFreqvoxColors.current.onSurface
     Column(modifier = modifier.fillMaxWidth()) {
         Canvas(
             modifier = Modifier
@@ -128,7 +131,7 @@ fun WaveformScrubber(
                 endY   = canvasHeight
             )
             val inactiveBrush = Brush.verticalGradient(
-                colors = listOf(Color.White.copy(alpha = 0.12f), Color.White.copy(alpha = 0.06f)),
+                colors = listOf(waveColor.copy(alpha = 0.12f), waveColor.copy(alpha = 0.06f)),
                 startY = 0f,
                 endY   = canvasHeight
             )
@@ -150,7 +153,7 @@ fun WaveformScrubber(
 
             val playheadX = canvasWidth * p
             drawLine(
-                color       = Color.White.copy(alpha = 0.9f),
+                color       = waveColor.copy(alpha = 0.9f),
                 start       = Offset(playheadX, 0f),
                 end         = Offset(playheadX, canvasHeight),
                 strokeWidth = 2.dp.toPx()
@@ -163,8 +166,8 @@ fun WaveformScrubber(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(currentPosStr, color = Color.White.copy(alpha = 0.6f), fontSize = 11.sp)
-            Text(durationStr,   color = Color.White.copy(alpha = 0.6f), fontSize = 11.sp)
+            Text(currentPosStr, color = Fvox.onSurface.copy(alpha = 0.6f), fontSize = 11.sp)
+            Text(durationStr,   color = Fvox.onSurface.copy(alpha = 0.6f), fontSize = 11.sp)
         }
     }
 }

@@ -13,6 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import com.freqvox.ui.theme.Fvox
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -45,7 +46,7 @@ fun SleepTimerSheet(
                 .padding(bottom = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("Sleep Timer", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Text("Sleep Timer", color = Fvox.onSurface, fontSize = 18.sp, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(4.dp))
             when {
                 isActive -> Text("Stops in ${formatTimer(timeLeftMs)}", color = accent, fontSize = 13.sp, fontWeight = FontWeight.Medium)
@@ -57,10 +58,10 @@ fun SleepTimerSheet(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
-                    .background(if (stopAfterTrack) accent.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.07f))
+                    .background(if (stopAfterTrack) accent.copy(alpha = 0.22f) else Fvox.onSurface.copy(alpha = 0.07f))
                     .border(
                         1.dp,
-                        if (stopAfterTrack) accent.copy(alpha = 0.6f) else Color.White.copy(alpha = 0.1f),
+                        if (stopAfterTrack) accent.copy(alpha = 0.6f) else Fvox.onSurface.copy(alpha = 0.1f),
                         RoundedCornerShape(12.dp)
                     )
                     .clickable { onEndOfTrack(); onDismiss() }
@@ -68,9 +69,9 @@ fun SleepTimerSheet(
                 contentAlignment = Alignment.Center
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.MusicNote, contentDescription = null, tint = if (stopAfterTrack) accent else Color.White.copy(alpha = 0.7f), modifier = Modifier.size(18.dp))
+                    Icon(Icons.Default.MusicNote, contentDescription = null, tint = if (stopAfterTrack) accent else Fvox.onSurface.copy(alpha = 0.7f), modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("End of current track", color = if (stopAfterTrack) Color.White else Color.White.copy(alpha = 0.85f), fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                    Text("End of current track", color = if (stopAfterTrack) Fvox.onSurface else Fvox.onSurface.copy(alpha = 0.85f), fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
                 }
             }
             Spacer(modifier = Modifier.height(16.dp))
@@ -82,15 +83,15 @@ fun SleepTimerSheet(
                             modifier = Modifier
                                 .weight(1f)
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(Color.White.copy(alpha = 0.07f))
-                                .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
+                                .background(Fvox.onSurface.copy(alpha = 0.07f))
+                                .border(1.dp, Fvox.onSurface.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
                                 .clickable { onSelectMinutes(minutes); onDismiss() }
                                 .padding(vertical = 14.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("$minutes", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                                Text("min", color = Color.White.copy(alpha = 0.5f), fontSize = 11.sp)
+                                Text("$minutes", color = Fvox.onSurface, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                                Text("min", color = Fvox.onSurface.copy(alpha = 0.5f), fontSize = 11.sp)
                             }
                         }
                     }

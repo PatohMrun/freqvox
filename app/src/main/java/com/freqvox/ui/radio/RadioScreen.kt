@@ -23,6 +23,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import com.freqvox.ui.theme.Fvox
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -59,7 +60,7 @@ fun RadioScreen(
     // ── Fixed header (stays put while the list scrolls under it) ────────────────
     Spacer(modifier = Modifier.height(24.dp))
     Column(modifier = Modifier.padding(horizontal = 24.dp)) {
-        Text("Radio", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color.White)
+        Text("Radio", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Fvox.onSurface)
         Text(
             when {
                 isLoading -> "Loading…"
@@ -69,7 +70,7 @@ fun RadioScreen(
                 else -> "${stations.size} live streams"
             },
             fontSize = 14.sp,
-            color = Color.White.copy(alpha = 0.4f)
+            color = Fvox.onSurface.copy(alpha = 0.4f)
         )
     }
     Spacer(modifier = Modifier.height(16.dp))
@@ -105,7 +106,7 @@ fun RadioScreen(
                 Text(
                     "Country",
                     fontSize = 11.sp,
-                    color = Color.White.copy(alpha = 0.35f),
+                    color = Fvox.onSurface.copy(alpha = 0.35f),
                     fontWeight = FontWeight.Medium,
                     modifier = Modifier.padding(end = 2.dp)
                 )
@@ -117,11 +118,11 @@ fun RadioScreen(
                         modifier = Modifier
                             .clip(CircleShape)
                             .background(
-                                if (isSelected) Color(0xFF2563EB) else Color.White.copy(alpha = 0.06f)
+                                if (isSelected) Color(0xFF2563EB) else Fvox.onSurface.copy(alpha = 0.06f)
                             )
                             .border(
                                 1.dp,
-                                if (isSelected) Color.Transparent else Color.White.copy(alpha = 0.10f),
+                                if (isSelected) Color.Transparent else Fvox.onSurface.copy(alpha = 0.10f),
                                 CircleShape
                             )
                             .clickable { viewModel.selectCountry(code) }
@@ -129,7 +130,7 @@ fun RadioScreen(
                     ) {
                         Text(
                             label,
-                            color = if (isSelected) Color.White else Color.White.copy(alpha = 0.55f),
+                            color = if (isSelected) Fvox.onSurface else Fvox.onSurface.copy(alpha = 0.55f),
                             fontSize = 12.sp,
                             fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
                         )
@@ -157,11 +158,11 @@ fun RadioScreen(
                             .background(
                                 if (isSelected) {
                                     if (isFavoritesTab) Color(0xFFFF4D7C) else Color(0xFF7C4DFF)
-                                } else Color.White.copy(alpha = 0.07f)
+                                } else Fvox.onSurface.copy(alpha = 0.07f)
                             )
                             .border(
                                 1.dp,
-                                if (isSelected) Color.Transparent else Color.White.copy(alpha = 0.12f),
+                                if (isSelected) Color.Transparent else Fvox.onSurface.copy(alpha = 0.12f),
                                 CircleShape
                             )
                             .clickable { viewModel.selectGenre(genre) }
@@ -175,13 +176,13 @@ fun RadioScreen(
                                 Icon(
                                     Icons.Default.Favorite,
                                     contentDescription = null,
-                                    tint = if (isSelected) Color.White else Color(0xFFFF4D7C),
+                                    tint = if (isSelected) Fvox.onSurface else Color(0xFFFF4D7C),
                                     modifier = Modifier.size(11.dp)
                                 )
                             }
                             Text(
                                 genre,
-                                color = if (isSelected) Color.White else Color.White.copy(alpha = 0.6f),
+                                color = if (isSelected) Fvox.onSurface else Fvox.onSurface.copy(alpha = 0.6f),
                                 fontSize = 13.sp,
                                 fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
                             )
@@ -234,23 +235,23 @@ fun RadioScreen(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 32.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text("No stations found", color = Color.White.copy(alpha = 0.5f), fontSize = 15.sp)
+                    Text("No stations found", color = Fvox.onSurface.copy(alpha = 0.5f), fontSize = 15.sp)
                     if (selectedCountryCode != null && selectedGenre != "Favorites") {
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             "Try switching to World to search globally",
-                            color = Color.White.copy(alpha = 0.3f),
+                            color = Fvox.onSurface.copy(alpha = 0.3f),
                             fontSize = 12.sp
                         )
                         Spacer(modifier = Modifier.height(12.dp))
                         Box(
                             modifier = Modifier
                                 .clip(CircleShape)
-                                .background(Color.White.copy(alpha = 0.08f))
+                                .background(Fvox.onSurface.copy(alpha = 0.08f))
                                 .clickable { viewModel.selectCountry(null) }
                                 .padding(horizontal = 16.dp, vertical = 8.dp)
                         ) {
-                            Text("Show World stations", color = Color.White.copy(alpha = 0.7f), fontSize = 13.sp)
+                            Text("Show World stations", color = Fvox.onSurface.copy(alpha = 0.7f), fontSize = 13.sp)
                         }
                     }
                 }
@@ -271,7 +272,7 @@ fun RadioScreen(
                     sectionLabel,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White,
+                    color = Fvox.onSurface,
                     modifier = Modifier.padding(horizontal = 24.dp)
                 )
                 Spacer(modifier = Modifier.height(10.dp))
@@ -306,7 +307,7 @@ private fun RadioSearchBar(
     Row(
         modifier = modifier
             .clip(RoundedCornerShape(12.dp))
-            .background(Color.White.copy(alpha = if (focused) 0.10f else 0.07f))
+            .background(Fvox.onSurface.copy(alpha = if (focused) 0.10f else 0.07f))
             .border(
                 1.dp,
                 if (focused) Color(0xFF7C4DFF).copy(alpha = 0.5f) else Color.Transparent,
@@ -318,7 +319,7 @@ private fun RadioSearchBar(
         Icon(
             Icons.Default.Search,
             contentDescription = null,
-            tint = Color.White.copy(alpha = 0.4f),
+            tint = Fvox.onSurface.copy(alpha = 0.4f),
             modifier = Modifier.size(16.dp)
         )
         Spacer(modifier = Modifier.width(8.dp))
@@ -328,7 +329,7 @@ private fun RadioSearchBar(
             modifier = Modifier
                 .weight(1f)
                 .onFocusChanged { focused = it.isFocused },
-            textStyle = TextStyle(color = Color.White, fontSize = 14.sp),
+            textStyle = TextStyle(color = Fvox.onSurface, fontSize = 14.sp),
             singleLine = true,
             cursorBrush = SolidColor(Color(0xFF7C4DFF)),
             decorationBox = { inner ->
@@ -336,7 +337,7 @@ private fun RadioSearchBar(
                     if (query.isEmpty()) {
                         Text(
                             "Search stations…",
-                            color = Color.White.copy(alpha = 0.3f),
+                            color = Fvox.onSurface.copy(alpha = 0.3f),
                             fontSize = 14.sp
                         )
                     }
@@ -349,7 +350,7 @@ private fun RadioSearchBar(
             Icon(
                 Icons.Default.Close,
                 contentDescription = "Clear",
-                tint = Color.White.copy(alpha = 0.4f),
+                tint = Fvox.onSurface.copy(alpha = 0.4f),
                 modifier = Modifier
                     .size(16.dp)
                     .clickable { onQueryChange("") }
@@ -392,14 +393,14 @@ fun NowPlayingRadioCard(
                     station.name,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White,
+                    color = Fvox.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     "${station.genre} · ${station.description}",
                     fontSize = 12.sp,
-                    color = Color.White.copy(alpha = 0.5f),
+                    color = Fvox.onSurface.copy(alpha = 0.5f),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -416,7 +417,7 @@ fun NowPlayingRadioCard(
                 Icon(
                     imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                     contentDescription = null,
-                    tint = Color.White,
+                    tint = Fvox.onSurface,
                     modifier = Modifier.size(22.dp)
                 )
             }
@@ -456,7 +457,7 @@ fun StationCard(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(if (isCurrentlyPlaying) accent.copy(alpha = 0.12f) else Color.White.copy(alpha = 0.04f))
+            .background(if (isCurrentlyPlaying) accent.copy(alpha = 0.12f) else Fvox.onSurface.copy(alpha = 0.04f))
             .then(if (isCurrentlyPlaying) Modifier.border(1.dp, accent.copy(alpha = 0.4f), RoundedCornerShape(16.dp)) else Modifier)
             .clickable { onPlay() }
             .padding(12.dp),
@@ -469,8 +470,8 @@ fun StationCard(
                 .background(Brush.radialGradient(listOf(accent.copy(alpha = 0.55f), accent.copy(alpha = 0.15f)))),
             contentAlignment = Alignment.Center
         ) {
-            if (isCurrentlyPlaying) LivePulse(color = Color.White)
-            else Icon(Icons.Default.Radio, contentDescription = null, tint = Color.White.copy(alpha = 0.65f), modifier = Modifier.size(22.dp))
+            if (isCurrentlyPlaying) LivePulse(color = Fvox.onSurface)
+            else Icon(Icons.Default.Radio, contentDescription = null, tint = Fvox.onSurface.copy(alpha = 0.65f), modifier = Modifier.size(22.dp))
         }
 
         Spacer(modifier = Modifier.width(12.dp))
@@ -478,7 +479,7 @@ fun StationCard(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 station.name,
-                color = if (isCurrentlyPlaying) accent else Color.White,
+                color = if (isCurrentlyPlaying) accent else Fvox.onSurface,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 14.sp,
                 maxLines = 1,
@@ -487,7 +488,7 @@ fun StationCard(
             Spacer(modifier = Modifier.height(2.dp))
             Text(
                 station.description,
-                color = Color.White.copy(alpha = 0.45f),
+                color = Fvox.onSurface.copy(alpha = 0.45f),
                 fontSize = 12.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -507,7 +508,7 @@ fun StationCard(
             Icon(
                 imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                 contentDescription = if (isFavorite) "Unfavorite" else "Favorite",
-                tint = if (isFavorite) Color(0xFFFF4D7C) else Color.White.copy(alpha = 0.3f),
+                tint = if (isFavorite) Color(0xFFFF4D7C) else Fvox.onSurface.copy(alpha = 0.3f),
                 modifier = Modifier.size(18.dp)
             )
         }

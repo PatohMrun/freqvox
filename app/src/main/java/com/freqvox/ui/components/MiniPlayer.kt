@@ -31,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import com.freqvox.ui.theme.Fvox
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
@@ -101,7 +102,7 @@ fun MiniPlayer(
                 translationY = offsetY
             }
             .shadow(8.dp, clip = false)
-            .background(Color(0xFF12121A))
+            .background(Fvox.surface)
     ) {
         Box(modifier = Modifier.fillMaxWidth()) {
             // ── Content row ────────────────────────────────────────────────────
@@ -172,7 +173,7 @@ fun MiniPlayer(
                         modifier = Modifier
                             .size(40.dp)
                             .clip(RoundedCornerShape(6.dp)),
-                        color = Color(0xFF12121A)
+                        color = Fvox.surface
                     ) {
                         if (artworkUri != null) {
                             AsyncImage(
@@ -197,7 +198,7 @@ fun MiniPlayer(
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = trackTitle,
-                            color = Color.White,
+                            color = Fvox.onSurface,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
                             maxLines = 1,
@@ -210,7 +211,7 @@ fun MiniPlayer(
                         ) {
                             Text(
                                 text = artist.ifBlank { "Unknown Artist" },
-                                color = Color.White.copy(alpha = 0.5f),
+                                color = Fvox.onSurface.copy(alpha = 0.5f),
                                 fontSize = 12.sp,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
@@ -219,7 +220,7 @@ fun MiniPlayer(
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = "${formatTime(currentPosition)} / ${formatTime(duration)}",
-                                color = Color.White.copy(alpha = 0.5f),
+                                color = Fvox.onSurface.copy(alpha = 0.5f),
                                 fontSize = 10.sp
                             )
                         }
@@ -235,7 +236,7 @@ fun MiniPlayer(
                         Icon(
                             Icons.Default.SkipPrevious,
                             contentDescription = "Previous",
-                            tint = Color.White,
+                            tint = Fvox.onSurface,
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -256,7 +257,7 @@ fun MiniPlayer(
                             Icon(
                                 imageVector = if (playing) Icons.Default.Pause else Icons.Default.PlayArrow,
                                 contentDescription = if (playing) "Pause" else "Play",
-                                tint = Color.White,
+                                tint = Fvox.onSurface,
                                 modifier = Modifier.size(28.dp)
                             )
                         }
@@ -265,7 +266,7 @@ fun MiniPlayer(
                         Icon(
                             Icons.Default.SkipNext,
                             contentDescription = "Next",
-                            tint = Color.White,
+                            tint = Fvox.onSurface,
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -307,6 +308,9 @@ fun MiniPlayer(
                     },
                 contentAlignment = Alignment.TopCenter
             ) {
+                // Captured in composable scope so the (non-composable) draw lambda can use
+                // the active theme color.
+                val scrubColor = com.freqvox.ui.theme.LocalFreqvoxColors.current.onSurface
                 Canvas(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -323,7 +327,7 @@ fun MiniPlayer(
                     }
 
                     drawLine(
-                        color = Color.White.copy(alpha = 0.06f),
+                        color = scrubColor.copy(alpha = 0.06f),
                         start = androidx.compose.ui.geometry.Offset(0f, y),
                         end = androidx.compose.ui.geometry.Offset(size.width, y),
                         strokeWidth = trackHeight,
@@ -345,7 +349,7 @@ fun MiniPlayer(
                     // until the user actively scrubs.
                     if (isDragging) {
                         drawCircle(
-                            color = Color.White,
+                            color = scrubColor,
                             radius = 6.dp.toPx(),
                             center = androidx.compose.ui.geometry.Offset(progressWidth, y)
                         )

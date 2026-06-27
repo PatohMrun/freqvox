@@ -18,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import com.freqvox.ui.theme.Fvox
 import androidx.compose.ui.unit.dp
 
 @Composable
@@ -38,7 +39,7 @@ fun DislikeButton(
         finishedListener = { buttonPressed = false }
     )
     val activeColor = Color(0xFF78909C)
-    val inactiveColor = Color.White.copy(alpha = 0.3f)
+    val inactiveColor = Fvox.onSurface.copy(alpha = 0.3f)
     val iconColor by animateColorAsState(
         targetValue = if (isDisliked) activeColor else inactiveColor,
         animationSpec = tween(300),

@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.22] - 2026-06-27
+### Added
+- **Light theme**: A full light mode with a System / Light / Dark toggle in the Home header (System follows the device setting). The album-art gradient signature is preserved in both modes — the same contrast principle that caps accent brightness in dark mode is mirrored for light (background goes near-white with a faint tint of the cover's hue; accents stay dark enough to read on white). System bars follow the mode.
+- Theme choice is persisted across launches.
+
+### Changed
+- The UI now paints from semantic color tokens (`FreqvoxColors`) instead of hardcoded colors, so every surface flips with the theme. Dark mode is visually unchanged. (Decorative monogram artwork and on-artwork scrims intentionally stay fixed, since they sit on the colorful album gradient, not a theme surface.)
+
 ## [2.21] - 2026-06-27
 ### Fixed
 - **Radio header**: The "Radio" title now stays fixed at the top instead of scrolling away with the station list, matching the locked-header behavior on other pages.

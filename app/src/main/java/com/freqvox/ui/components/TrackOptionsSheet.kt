@@ -15,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import com.freqvox.ui.theme.Fvox
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -42,7 +43,7 @@ fun TrackOptionsSheet(
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = Color(0xFF12121A),
+        containerColor = Fvox.surface,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         dragHandle = { BottomSheetDefaults.DragHandle() },
         contentWindowInsets = { WindowInsets(0, 0, 0, 0) }
@@ -55,8 +56,8 @@ fun TrackOptionsSheet(
                 .padding(bottom = 16.dp)
         ) {
             Column(modifier = Modifier.padding(start = 8.dp, bottom = 8.dp)) {
-                Text(track.title, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(track.artist, color = Color.White.copy(alpha = 0.5f), fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(track.title, color = Fvox.onSurface, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(track.artist, color = Fvox.onSurface.copy(alpha = 0.5f), fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             OptionRow(Icons.Default.Sell, "Tag") { onDismiss(); onTag() }
             OptionRow(Icons.Default.PlaylistAdd, "Add to playlist") { onDismiss(); onAddToPlaylist() }
@@ -74,7 +75,7 @@ private fun OptionRow(icon: ImageVector, label: String, danger: Boolean = false,
             .fillMaxWidth()
             .padding(vertical = 2.dp)
             .clip(RoundedCornerShape(12.dp))
-            .background(Color.White.copy(alpha = 0.04f))
+            .background(Fvox.onSurface.copy(alpha = 0.04f))
             .clickable { onClick() }
             .padding(14.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -83,7 +84,7 @@ private fun OptionRow(icon: ImageVector, label: String, danger: Boolean = false,
         Spacer(Modifier.width(14.dp))
         Text(
             label,
-            color = if (danger) Color(0xFFFF5252) else Color.White,
+            color = if (danger) Color(0xFFFF5252) else Fvox.onSurface,
             fontSize = 15.sp,
             fontWeight = FontWeight.Medium
         )

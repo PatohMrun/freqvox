@@ -252,7 +252,7 @@ fun MainScreen(
 
                                 NavigationBar(
                                     containerColor = MaterialTheme.colorScheme.background.copy(alpha = 0.92f),
-                                    contentColor = Color.White
+                                    contentColor = com.freqvox.ui.theme.Fvox.onSurface
                                 ) {
                                     bottomNavScreens.forEach { screen ->
                                         NavigationBarItem(
@@ -359,7 +359,7 @@ fun MainScreen(
                                 ModalBottomSheet(
                                     onDismissRequest = { showTagSheet = false },
                                     sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-                                    containerColor = Color(0xFF12121A),
+                                    containerColor = com.freqvox.ui.theme.Fvox.surface,
                                     dragHandle = { BottomSheetDefaults.DragHandle() },
                                     contentWindowInsets = { WindowInsets(0, 0, 0, 0) }
                                 ) {
@@ -562,21 +562,24 @@ private fun DynamicGradientBackground(
     val gradientPrimary   = com.freqvox.ui.theme.dynamic.LocalGradientPrimary.current
     val gradientSecondary = com.freqvox.ui.theme.dynamic.LocalGradientSecondary.current
     val gradientTertiary  = com.freqvox.ui.theme.dynamic.LocalGradientTertiary.current
+    // The gradient fades into the page background; captured here so it anchors to near-black
+    // in dark mode and near-white in light mode (the remember lambda below isn't composable).
+    val gradientAnchor    = com.freqvox.ui.theme.LocalFreqvoxColors.current.background
 
     val gradientAngle = remember(trackTitle) {
         kotlin.math.abs(trackTitle.hashCode()) % 6
     }
 
-    val gradientBrush = remember(gradientPrimary, gradientSecondary, gradientTertiary, gradientAngle) {
+    val gradientBrush = remember(gradientPrimary, gradientSecondary, gradientTertiary, gradientAngle, gradientAnchor) {
         val c1 = gradientPrimary.copy(alpha = 0.40f)
         val c2 = gradientSecondary.copy(alpha = 0.30f)
         val c3 = gradientTertiary.copy(alpha = 0.20f)
         when (gradientAngle) {
             0 -> androidx.compose.ui.graphics.Brush.verticalGradient(
-                colors = listOf(c1, c2, c3, Color(0xFF06060C))
+                colors = listOf(c1, c2, c3, gradientAnchor)
             )
             1 -> androidx.compose.ui.graphics.Brush.verticalGradient(
-                colors = listOf(c3, Color(0xFF06060C), c1, c2)
+                colors = listOf(c3, gradientAnchor, c1, c2)
             )
             2 -> androidx.compose.ui.graphics.Brush.linearGradient(
                 colors = listOf(c1, c2, c3),
@@ -589,13 +592,13 @@ private fun DynamicGradientBackground(
                 end   = androidx.compose.ui.geometry.Offset(0f, Float.POSITIVE_INFINITY)
             )
             4 -> androidx.compose.ui.graphics.Brush.verticalGradient(
-                colors = listOf(Color(0xFF06060C), c3, c2, c1)
+                colors = listOf(gradientAnchor, c3, c2, c1)
             )
             else -> androidx.compose.ui.graphics.Brush.verticalGradient(
                 0.0f to c1,
                 0.4f to c2,
                 0.7f to c3,
-                1.0f to Color(0xFF06060C)
+                1.0f to gradientAnchor
             )
         }
     }

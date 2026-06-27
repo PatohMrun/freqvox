@@ -51,6 +51,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
+import com.freqvox.ui.theme.Fvox
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -268,7 +269,7 @@ fun PlayerScreen(
                 scaleX = scale
                 scaleY = scale
             }
-            .background(Color(0xFF12121A))
+            .background(Fvox.surface)
             .nestedScroll(dismissConnection)
             .statusBarsPadding()
             .navigationBarsPadding()
@@ -288,14 +289,14 @@ fun PlayerScreen(
                 Icon(
                     Icons.Default.KeyboardArrowDown,
                     contentDescription = "Back",
-                    tint = Color.White.copy(alpha = 0.8f),
+                    tint = Fvox.onSurface.copy(alpha = 0.8f),
                     modifier = Modifier.size(28.dp)
                 )
             }
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
                     text = "NOW PLAYING",
-                    color = Color.White.copy(alpha = 0.5f),
+                    color = Fvox.onSurface.copy(alpha = 0.5f),
                     fontSize = 10.sp,
                     letterSpacing = 3.sp,
                     fontWeight = FontWeight.Medium
@@ -306,7 +307,7 @@ fun PlayerScreen(
                     Icon(
                         Icons.Default.MoreVert,
                         contentDescription = "Options",
-                        tint = Color.White.copy(alpha = 0.8f)
+                        tint = Fvox.onSurface.copy(alpha = 0.8f)
                     )
                 }
                 DropdownMenu(
@@ -315,18 +316,18 @@ fun PlayerScreen(
                     modifier = Modifier.background(Color(0xFF1E1E2E))
                 ) {
                     DropdownMenuItem(
-                        text = { Text("Sleep timer", color = Color.White.copy(alpha = 0.85f), fontSize = 14.sp) },
-                        leadingIcon = { Icon(Icons.Default.Bedtime, contentDescription = null, tint = if (sleepTimerActive) Color(0xFF7C4DFF) else Color.White.copy(alpha = 0.6f), modifier = Modifier.size(18.dp)) },
+                        text = { Text("Sleep timer", color = Fvox.onSurface.copy(alpha = 0.85f), fontSize = 14.sp) },
+                        leadingIcon = { Icon(Icons.Default.Bedtime, contentDescription = null, tint = if (sleepTimerActive) Color(0xFF7C4DFF) else Fvox.onSurface.copy(alpha = 0.6f), modifier = Modifier.size(18.dp)) },
                         onClick = { showMoreMenu = false; showSleepSheet = true }
                     )
                     DropdownMenuItem(
-                        text = { Text("Tag this track", color = Color.White.copy(alpha = 0.85f), fontSize = 14.sp) },
-                        leadingIcon = { Icon(Icons.Default.Label, contentDescription = null, tint = Color.White.copy(alpha = 0.6f), modifier = Modifier.size(18.dp)) },
+                        text = { Text("Tag this track", color = Fvox.onSurface.copy(alpha = 0.85f), fontSize = 14.sp) },
+                        leadingIcon = { Icon(Icons.Default.Label, contentDescription = null, tint = Fvox.onSurface.copy(alpha = 0.6f), modifier = Modifier.size(18.dp)) },
                         onClick = { showMoreMenu = false; onTagSwipeUp() }
                     )
                     DropdownMenuItem(
-                        text = { Text("Playback speed", color = Color.White.copy(alpha = 0.85f), fontSize = 14.sp) },
-                        leadingIcon = { Icon(Icons.Default.Speed, contentDescription = null, tint = if (playbackSpeed != 1f) Color(0xFF7C4DFF) else Color.White.copy(alpha = 0.6f), modifier = Modifier.size(18.dp)) },
+                        text = { Text("Playback speed", color = Fvox.onSurface.copy(alpha = 0.85f), fontSize = 14.sp) },
+                        leadingIcon = { Icon(Icons.Default.Speed, contentDescription = null, tint = if (playbackSpeed != 1f) Color(0xFF7C4DFF) else Fvox.onSurface.copy(alpha = 0.6f), modifier = Modifier.size(18.dp)) },
                         trailingIcon = { if (playbackSpeed != 1f) Text("${formatSpeed(playbackSpeed)}×", color = Color(0xFF7C4DFF), fontSize = 12.sp, fontWeight = FontWeight.SemiBold) },
                         onClick = { showMoreMenu = false; showSpeedSheet = true }
                     )
@@ -395,7 +396,7 @@ fun PlayerScreen(
                     .background(Color(0xFF1A1A26).copy(alpha = 0.85f))
                     .border(
                         width = 1.dp,
-                        color = Color.White.copy(alpha = 0.08f),
+                        color = Fvox.onSurface.copy(alpha = 0.08f),
                         shape = RoundedCornerShape(24.dp)
                     ),
                 contentAlignment = Alignment.Center
@@ -426,20 +427,20 @@ fun PlayerScreen(
                             .fillMaxWidth(0.5f)
                             .align(if (seekBubbleIsForward) Alignment.CenterEnd else Alignment.CenterStart)
                             .graphicsLayer { alpha = seekBubbleAlpha }
-                            .background(Color.White.copy(alpha = 0.12f)),
+                            .background(Fvox.onSurface.copy(alpha = 0.12f)),
                         contentAlignment = Alignment.Center
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Icon(
                                 imageVector = if (seekBubbleIsForward) Icons.Default.Forward10 else Icons.Default.Replay10,
                                 contentDescription = null,
-                                tint = Color.White,
+                                tint = Fvox.onSurface,
                                 modifier = Modifier.size(44.dp)
                             )
                             Spacer(modifier = Modifier.height(6.dp))
                             Text(
                                 text = if (seekBubbleIsForward) "+10 sec" else "-10 sec",
-                                color = Color.White.copy(alpha = 0.9f),
+                                color = Fvox.onSurface.copy(alpha = 0.9f),
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.SemiBold
                             )
@@ -456,8 +457,8 @@ fun PlayerScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(20.dp))
-                .background(Color.White.copy(alpha = 0.07f))
-                .border(1.dp, Color.White.copy(alpha = 0.10f), RoundedCornerShape(20.dp))
+                .background(Fvox.onSurface.copy(alpha = 0.07f))
+                .border(1.dp, Fvox.onSurface.copy(alpha = 0.10f), RoundedCornerShape(20.dp))
                 .padding(horizontal = 16.dp, vertical = 14.dp)
         ) {
             Row(
@@ -468,7 +469,7 @@ fun PlayerScreen(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = trackTitle,
-                        color = Color.White,
+                        color = Fvox.onSurface,
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
@@ -477,7 +478,7 @@ fun PlayerScreen(
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = artist,
-                        color = Color.White.copy(alpha = 0.55f),
+                        color = Fvox.onSurface.copy(alpha = 0.55f),
                         fontSize = 16.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -517,8 +518,8 @@ fun PlayerScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(20.dp))
-                .background(Color.White.copy(alpha = 0.06f))
-                .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(20.dp))
+                .background(Fvox.onSurface.copy(alpha = 0.06f))
+                .border(1.dp, Fvox.onSurface.copy(alpha = 0.08f), RoundedCornerShape(20.dp))
                 .padding(horizontal = 16.dp, vertical = 10.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -535,7 +536,7 @@ fun PlayerScreen(
                     Icon(
                         Icons.Default.Shuffle,
                         contentDescription = "Shuffle",
-                        tint = if (shuffleEnabled) accentPrimary else Color.White.copy(alpha = 0.35f),
+                        tint = if (shuffleEnabled) accentPrimary else Fvox.onSurface.copy(alpha = 0.35f),
                         modifier = Modifier.size(19.dp)
                     )
                 }
@@ -545,7 +546,7 @@ fun PlayerScreen(
                     Icon(
                         Icons.Default.SkipPrevious,
                         contentDescription = "Previous",
-                        tint = Color.White.copy(alpha = 0.85f),
+                        tint = Fvox.onSurface.copy(alpha = 0.85f),
                         modifier = Modifier.size(26.dp)
                     )
                 }
@@ -563,7 +564,7 @@ fun PlayerScreen(
                     Icon(
                         Icons.Default.Replay10,
                         contentDescription = "-10s",
-                        tint = Color.White.copy(alpha = 0.65f),
+                        tint = Fvox.onSurface.copy(alpha = 0.65f),
                         modifier = Modifier.size(22.dp)
                     )
                 }
@@ -596,7 +597,7 @@ fun PlayerScreen(
                             Icon(
                                 imageVector = if (playing) Icons.Default.Pause else Icons.Default.PlayArrow,
                                 contentDescription = "Play/Pause",
-                                tint = Color.White,
+                                tint = Fvox.onSurface,
                                 modifier = Modifier.size(30.dp)
                             )
                         }
@@ -616,7 +617,7 @@ fun PlayerScreen(
                     Icon(
                         Icons.Default.Forward10,
                         contentDescription = "+10s",
-                        tint = Color.White.copy(alpha = 0.65f),
+                        tint = Fvox.onSurface.copy(alpha = 0.65f),
                         modifier = Modifier.size(22.dp)
                     )
                 }
@@ -626,7 +627,7 @@ fun PlayerScreen(
                     Icon(
                         Icons.Default.SkipNext,
                         contentDescription = "Next",
-                        tint = Color.White.copy(alpha = 0.85f),
+                        tint = Fvox.onSurface.copy(alpha = 0.85f),
                         modifier = Modifier.size(26.dp)
                     )
                 }
@@ -636,13 +637,13 @@ fun PlayerScreen(
                     Icon(
                         imageVector = if (repeatMode == 1) Icons.Default.RepeatOne else Icons.Default.Repeat,
                         contentDescription = "Repeat",
-                        tint = if (repeatMode != 0) accentPrimary else Color.White.copy(alpha = 0.35f),
+                        tint = if (repeatMode != 0) accentPrimary else Fvox.onSurface.copy(alpha = 0.35f),
                         modifier = Modifier.size(19.dp)
                     )
                 }
             }
 
-            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = Color.White.copy(alpha = 0.08f))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = Fvox.onSurface.copy(alpha = 0.08f))
 
             // ── Volume Row ─────────────────────────────────────────────────────
             SleekVolumeControl(
@@ -725,7 +726,7 @@ fun PlayerScreen(
             ) {
                 Text(
                     "Sleep Timer",
-                    color = Color.White,
+                    color = Fvox.onSurface,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -754,11 +755,11 @@ fun PlayerScreen(
                         .clip(RoundedCornerShape(12.dp))
                         .background(
                             if (stopAfterTrack) Color(0xFF7C4DFF).copy(alpha = 0.22f)
-                            else Color.White.copy(alpha = 0.07f)
+                            else Fvox.onSurface.copy(alpha = 0.07f)
                         )
                         .border(
                             1.dp,
-                            if (stopAfterTrack) Color(0xFF7C4DFF).copy(alpha = 0.6f) else Color.White.copy(alpha = 0.1f),
+                            if (stopAfterTrack) Color(0xFF7C4DFF).copy(alpha = 0.6f) else Fvox.onSurface.copy(alpha = 0.1f),
                             RoundedCornerShape(12.dp)
                         )
                         .clickable { onStopAfterTrack(); showSleepSheet = false }
@@ -769,13 +770,13 @@ fun PlayerScreen(
                         Icon(
                             Icons.Default.MusicNote,
                             contentDescription = null,
-                            tint = if (stopAfterTrack) Color(0xFF7C4DFF) else Color.White.copy(alpha = 0.7f),
+                            tint = if (stopAfterTrack) Color(0xFF7C4DFF) else Fvox.onSurface.copy(alpha = 0.7f),
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             "End of current track",
-                            color = if (stopAfterTrack) Color.White else Color.White.copy(alpha = 0.85f),
+                            color = if (stopAfterTrack) Fvox.onSurface else Fvox.onSurface.copy(alpha = 0.85f),
                             fontSize = 15.sp,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -794,8 +795,8 @@ fun PlayerScreen(
                                 modifier = Modifier
                                     .weight(1f)
                                     .clip(RoundedCornerShape(12.dp))
-                                    .background(Color.White.copy(alpha = 0.07f))
-                                    .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
+                                    .background(Fvox.onSurface.copy(alpha = 0.07f))
+                                    .border(1.dp, Fvox.onSurface.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
                                     .clickable { onSleepTimer(minutes); showSleepSheet = false }
                                     .padding(vertical = 14.dp),
                                 contentAlignment = Alignment.Center
@@ -803,13 +804,13 @@ fun PlayerScreen(
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                     Text(
                                         text = "$minutes",
-                                        color = Color.White,
+                                        color = Fvox.onSurface,
                                         fontSize = 22.sp,
                                         fontWeight = FontWeight.Bold
                                     )
                                     Text(
                                         text = "min",
-                                        color = Color.White.copy(alpha = 0.5f),
+                                        color = Fvox.onSurface.copy(alpha = 0.5f),
                                         fontSize = 11.sp
                                     )
                                 }
@@ -821,12 +822,12 @@ fun PlayerScreen(
 
                 HorizontalDivider(
                     modifier = Modifier.padding(vertical = 8.dp),
-                    color = Color.White.copy(alpha = 0.07f)
+                    color = Fvox.onSurface.copy(alpha = 0.07f)
                 )
 
                 Text(
                     "CUSTOM",
-                    color = Color.White.copy(alpha = 0.4f),
+                    color = Fvox.onSurface.copy(alpha = 0.4f),
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.5.sp
@@ -841,7 +842,7 @@ fun PlayerScreen(
                     OutlinedTextField(
                         value = customMinutes,
                         onValueChange = { customMinutes = it.filter { c -> c.isDigit() }.take(3) },
-                        placeholder = { Text("Minutes", color = Color.White.copy(alpha = 0.3f), fontSize = 13.sp) },
+                        placeholder = { Text("Minutes", color = Fvox.onSurface.copy(alpha = 0.3f), fontSize = 13.sp) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true,
                         modifier = Modifier
@@ -858,13 +859,13 @@ fun PlayerScreen(
                                 }
                             },
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White,
+                            focusedTextColor = Fvox.onSurface,
+                            unfocusedTextColor = Fvox.onSurface,
                             focusedBorderColor = Color(0xFF7C4DFF),
-                            unfocusedBorderColor = Color.White.copy(alpha = 0.15f),
+                            unfocusedBorderColor = Fvox.onSurface.copy(alpha = 0.15f),
                             cursorColor = Color(0xFF7C4DFF),
-                            focusedContainerColor = Color.White.copy(alpha = 0.04f),
-                            unfocusedContainerColor = Color.White.copy(alpha = 0.04f)
+                            focusedContainerColor = Fvox.onSurface.copy(alpha = 0.04f),
+                            unfocusedContainerColor = Fvox.onSurface.copy(alpha = 0.04f)
                         ),
                         shape = RoundedCornerShape(12.dp)
                     )
@@ -884,7 +885,7 @@ fun PlayerScreen(
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.height(54.dp)
                     ) {
-                        Text("Set", fontWeight = FontWeight.Bold, color = Color.White)
+                        Text("Set", fontWeight = FontWeight.Bold, color = Fvox.onSurface)
                     }
                 }
 
@@ -948,7 +949,7 @@ fun PlayerScreen(
                     .padding(bottom = 32.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text("Playback Speed", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Text("Playback Speed", color = Fvox.onSurface, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(18.dp))
                 Row(
                     modifier = Modifier
@@ -963,11 +964,11 @@ fun PlayerScreen(
                                 .clip(RoundedCornerShape(12.dp))
                                 .background(
                                     if (selected) Color(0xFF7C4DFF).copy(alpha = 0.25f)
-                                    else Color.White.copy(alpha = 0.06f)
+                                    else Fvox.onSurface.copy(alpha = 0.06f)
                                 )
                                 .border(
                                     1.dp,
-                                    if (selected) Color(0xFF7C4DFF).copy(alpha = 0.6f) else Color.White.copy(alpha = 0.1f),
+                                    if (selected) Color(0xFF7C4DFF).copy(alpha = 0.6f) else Fvox.onSurface.copy(alpha = 0.1f),
                                     RoundedCornerShape(12.dp)
                                 )
                                 .clickable { onSetSpeed(speed); showSpeedSheet = false }
@@ -975,7 +976,7 @@ fun PlayerScreen(
                         ) {
                             Text(
                                 "${formatSpeed(speed)}×",
-                                color = if (selected) Color.White else Color.White.copy(alpha = 0.6f),
+                                color = if (selected) Fvox.onSurface else Fvox.onSurface.copy(alpha = 0.6f),
                                 fontSize = 15.sp,
                                 fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
                             )
@@ -1009,7 +1010,7 @@ private fun ExtraControlButton(
                 .clip(RoundedCornerShape(12.dp))
                 .background(
                     if (isActive) Color(0xFF7C4DFF).copy(alpha = 0.2f)
-                    else Color.White.copy(alpha = 0.07f)
+                    else Fvox.onSurface.copy(alpha = 0.07f)
                 )
                 .then(
                     if (isActive) Modifier.border(1.dp, Color(0xFF7C4DFF).copy(alpha = 0.5f), RoundedCornerShape(12.dp))
@@ -1020,14 +1021,14 @@ private fun ExtraControlButton(
             Icon(
                 imageVector        = icon,
                 contentDescription = label,
-                tint               = if (isActive) Color(0xFF7C4DFF) else Color.White.copy(alpha = 0.65f),
+                tint               = if (isActive) Color(0xFF7C4DFF) else Fvox.onSurface.copy(alpha = 0.65f),
                 modifier           = Modifier.size(20.dp)
             )
         }
         Spacer(modifier = Modifier.height(4.dp))
         Text(
             text     = label,
-            color    = Color.White.copy(alpha = 0.4f),
+            color    = Fvox.onSurface.copy(alpha = 0.4f),
             fontSize = 9.sp,
             fontWeight = FontWeight.Medium,
             letterSpacing = 0.5.sp
@@ -1065,7 +1066,7 @@ fun EqualizerAnimation(accentColor: Color = Color(0xFF4DFFB4)) {
                     .width(3.dp)
                     .fillMaxHeight(height)
                     .background(
-                        Brush.verticalGradient(colors = listOf(Color.White.copy(alpha = 0.9f), accentColor)),
+                        Brush.verticalGradient(colors = listOf(Fvox.onSurface.copy(alpha = 0.9f), accentColor)),
                         RoundedCornerShape(2.dp)
                     )
             )

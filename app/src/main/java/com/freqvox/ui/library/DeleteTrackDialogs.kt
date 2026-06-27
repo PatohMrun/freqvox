@@ -9,6 +9,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import com.freqvox.ui.theme.Fvox
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import com.freqvox.data.local.entities.TrackEntity
@@ -26,12 +27,12 @@ fun DeleteTrackStepOneDialog(
             Icon(Icons.Default.Delete, contentDescription = null, tint = Color(0xFFFF4D7C))
         },
         title = {
-            Text("Remove song?", color = Color.White, fontWeight = FontWeight.SemiBold)
+            Text("Remove song?", color = Fvox.onSurface, fontWeight = FontWeight.SemiBold)
         },
         text = {
             Text(
                 "\"${track.title}\" will be removed from Freqvox. On the next step you'll confirm permanent deletion from your device.",
-                color = Color.White.copy(alpha = 0.7f),
+                color = Fvox.onSurface.copy(alpha = 0.7f),
                 fontSize = 14.sp
             )
         },
@@ -42,7 +43,7 @@ fun DeleteTrackStepOneDialog(
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel", color = Color.White.copy(alpha = 0.6f))
+                Text("Cancel", color = Fvox.onSurface.copy(alpha = 0.6f))
             }
         }
     )
@@ -61,12 +62,12 @@ fun DeleteTrackStepTwoDialog(
             Icon(Icons.Default.Warning, contentDescription = null, tint = Color(0xFFFF5252))
         },
         title = {
-            Text("Delete from device?", color = Color.White, fontWeight = FontWeight.SemiBold)
+            Text("Delete from device?", color = Fvox.onSurface, fontWeight = FontWeight.SemiBold)
         },
         text = {
             Text(
                 "This permanently deletes \"${track.title}\" from your phone storage. This cannot be undone.",
-                color = Color.White.copy(alpha = 0.7f),
+                color = Fvox.onSurface.copy(alpha = 0.7f),
                 fontSize = 14.sp
             )
         },
@@ -77,7 +78,7 @@ fun DeleteTrackStepTwoDialog(
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel", color = Color.White.copy(alpha = 0.6f))
+                Text("Cancel", color = Fvox.onSurface.copy(alpha = 0.6f))
             }
         }
     )

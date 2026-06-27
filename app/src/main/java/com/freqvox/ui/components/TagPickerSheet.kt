@@ -8,6 +8,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import com.freqvox.ui.theme.Fvox
 import com.freqvox.data.local.entities.TagEntity
 import com.freqvox.ui.player.components.TagOverlay
 
@@ -26,7 +27,7 @@ fun TagPickerSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = Color(0xFF12121A),
+        containerColor = Fvox.surface,
         contentWindowInsets = { WindowInsets(0, 0, 0, 0) }
     ) {
         TagOverlay(

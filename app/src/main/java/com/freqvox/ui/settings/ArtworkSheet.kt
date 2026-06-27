@@ -26,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import com.freqvox.ui.theme.Fvox
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -49,13 +50,13 @@ fun ArtworkConsentDialog(
         onDismissRequest = onAcknowledge,
         containerColor = Color(0xFF1A1A26),
         icon = { Icon(Icons.Default.Image, contentDescription = null, tint = accent) },
-        title = { Text("Album art", color = Color.White, fontWeight = FontWeight.Bold) },
+        title = { Text("Album art", color = Fvox.onSurface, fontWeight = FontWeight.Bold) },
         text = {
             Text(
                 "Freqvox can fill in missing album art by looking it up online. It's on by " +
                     "default and works over any connection, including mobile data. You can " +
                     "limit it to Wi-Fi — or turn it off — anytime under Album art.",
-                color = Color.White.copy(alpha = 0.7f),
+                color = Fvox.onSurface.copy(alpha = 0.7f),
                 fontSize = 14.sp
             )
         },
@@ -66,7 +67,7 @@ fun ArtworkConsentDialog(
         },
         dismissButton = {
             TextButton(onClick = onManageSettings) {
-                Text("Settings", color = Color.White.copy(alpha = 0.6f))
+                Text("Settings", color = Fvox.onSurface.copy(alpha = 0.6f))
             }
         }
     )
@@ -122,7 +123,7 @@ fun ArtworkSheet(
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = Color(0xFF12121A),
+        containerColor = Fvox.surface,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         dragHandle = { BottomSheetDefaults.DragHandle() },
         contentWindowInsets = { WindowInsets(0, 0, 0, 0) }
@@ -136,7 +137,7 @@ fun ArtworkSheet(
         ) {
             Text(
                 text = "Album art",
-                color = Color.White,
+                color = Fvox.onSurface,
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(start = 4.dp, top = 4.dp)
@@ -144,7 +145,7 @@ fun ArtworkSheet(
             Text(
                 text = "Freqvox shows embedded covers and a generated cover when none exists. " +
                     "It can also fetch missing art online.",
-                color = Color.White.copy(alpha = 0.4f),
+                color = Fvox.onSurface.copy(alpha = 0.4f),
                 fontSize = 12.sp,
                 modifier = Modifier.padding(start = 4.dp, top = 4.dp, bottom = 16.dp)
             )
@@ -242,7 +243,7 @@ private fun ToggleRow(
             .fillMaxWidth()
             .padding(bottom = 8.dp)
             .clip(RoundedCornerShape(14.dp))
-            .background(Color.White.copy(alpha = 0.04f))
+            .background(Fvox.onSurface.copy(alpha = 0.04f))
             .clickable { onCheckedChange(!checked) }
             .padding(12.dp)
             .padding(start = if (indent) 12.dp else 0.dp),
@@ -251,19 +252,19 @@ private fun ToggleRow(
         Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(22.dp))
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
-            Text(title, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-            Text(subtitle, color = Color.White.copy(alpha = 0.4f), fontSize = 11.sp)
+            Text(title, color = Fvox.onSurface, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            Text(subtitle, color = Fvox.onSurface.copy(alpha = 0.4f), fontSize = 11.sp)
         }
         Spacer(Modifier.width(8.dp))
         Switch(
             checked = checked,
             onCheckedChange = onCheckedChange,
             colors = SwitchDefaults.colors(
-                checkedThumbColor = Color.White,
+                checkedThumbColor = Fvox.onSurface,
                 checkedTrackColor = accent,
-                uncheckedThumbColor = Color.White.copy(alpha = 0.6f),
-                uncheckedTrackColor = Color.White.copy(alpha = 0.08f),
-                uncheckedBorderColor = Color.White.copy(alpha = 0.15f)
+                uncheckedThumbColor = Fvox.onSurface.copy(alpha = 0.6f),
+                uncheckedTrackColor = Fvox.onSurface.copy(alpha = 0.08f),
+                uncheckedBorderColor = Fvox.onSurface.copy(alpha = 0.15f)
             )
         )
     }
@@ -283,7 +284,7 @@ private fun ActionRow(
             .fillMaxWidth()
             .padding(bottom = 8.dp)
             .clip(RoundedCornerShape(14.dp))
-            .background(Color.White.copy(alpha = 0.04f))
+            .background(Fvox.onSurface.copy(alpha = 0.04f))
             .clickable(enabled = enabled, onClick = onClick)
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -298,7 +299,7 @@ private fun ActionRow(
             Icon(
                 icon,
                 contentDescription = null,
-                tint = if (enabled) accent else Color.White.copy(alpha = 0.35f),
+                tint = if (enabled) accent else Fvox.onSurface.copy(alpha = 0.35f),
                 modifier = Modifier.size(22.dp)
             )
         }
@@ -306,11 +307,11 @@ private fun ActionRow(
         Column(Modifier.weight(1f)) {
             Text(
                 title,
-                color = if (enabled) Color.White else Color.White.copy(alpha = 0.5f),
+                color = if (enabled) Fvox.onSurface else Fvox.onSurface.copy(alpha = 0.5f),
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold
             )
-            Text(subtitle, color = Color.White.copy(alpha = 0.4f), fontSize = 11.sp)
+            Text(subtitle, color = Fvox.onSurface.copy(alpha = 0.4f), fontSize = 11.sp)
         }
     }
 }

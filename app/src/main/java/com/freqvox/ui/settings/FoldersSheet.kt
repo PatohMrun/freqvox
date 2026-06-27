@@ -15,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import com.freqvox.ui.theme.Fvox
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -31,7 +32,7 @@ fun FoldersSheet(
     val accent = Color(0xFF7C4DFF)
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = Color(0xFF12121A),
+        containerColor = Fvox.surface,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         dragHandle = { BottomSheetDefaults.DragHandle() },
         contentWindowInsets = { WindowInsets(0, 0, 0, 0) }
@@ -46,14 +47,14 @@ fun FoldersSheet(
         ) {
             Text(
                 text = "Hidden Folders",
-                color = Color.White,
+                color = Fvox.onSurface,
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(start = 4.dp, top = 4.dp)
             )
             Text(
                 text = "Hidden folders are excluded from your library on the next scan.",
-                color = Color.White.copy(alpha = 0.4f),
+                color = Fvox.onSurface.copy(alpha = 0.4f),
                 fontSize = 12.sp,
                 modifier = Modifier.padding(start = 4.dp, top = 4.dp, bottom = 12.dp)
             )
@@ -74,7 +75,7 @@ fun FoldersSheet(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(14.dp))
-                                .background(Color.White.copy(alpha = 0.04f))
+                                .background(Fvox.onSurface.copy(alpha = 0.04f))
                                 .clickable { onToggle(folder) }
                                 .padding(12.dp),
                             verticalAlignment = Alignment.CenterVertically
@@ -89,7 +90,7 @@ fun FoldersSheet(
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
                                     name,
-                                    color = if (isHidden) Color.White.copy(alpha = 0.45f) else Color.White,
+                                    color = if (isHidden) Fvox.onSurface.copy(alpha = 0.45f) else Fvox.onSurface,
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.SemiBold,
                                     maxLines = 1,
@@ -97,7 +98,7 @@ fun FoldersSheet(
                                 )
                                 Text(
                                     folder,
-                                    color = Color.White.copy(alpha = 0.3f),
+                                    color = Fvox.onSurface.copy(alpha = 0.3f),
                                     fontSize = 11.sp,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
@@ -108,11 +109,11 @@ fun FoldersSheet(
                                 checked = isHidden,
                                 onCheckedChange = { onToggle(folder) },
                                 colors = SwitchDefaults.colors(
-                                    checkedThumbColor = Color.White,
+                                    checkedThumbColor = Fvox.onSurface,
                                     checkedTrackColor = Color(0xFF78909C),
-                                    uncheckedThumbColor = Color.White.copy(alpha = 0.6f),
-                                    uncheckedTrackColor = Color.White.copy(alpha = 0.08f),
-                                    uncheckedBorderColor = Color.White.copy(alpha = 0.15f)
+                                    uncheckedThumbColor = Fvox.onSurface.copy(alpha = 0.6f),
+                                    uncheckedTrackColor = Fvox.onSurface.copy(alpha = 0.08f),
+                                    uncheckedBorderColor = Fvox.onSurface.copy(alpha = 0.15f)
                                 )
                             )
                         }

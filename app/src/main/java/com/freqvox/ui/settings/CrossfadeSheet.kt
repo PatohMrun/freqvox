@@ -12,6 +12,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import com.freqvox.ui.theme.Fvox
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -32,7 +33,7 @@ fun CrossfadeSheet(
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = Color(0xFF12121A),
+        containerColor = Fvox.surface,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         dragHandle = { BottomSheetDefaults.DragHandle() },
         contentWindowInsets = { WindowInsets(0, 0, 0, 0) }
@@ -46,7 +47,7 @@ fun CrossfadeSheet(
         ) {
             Text(
                 text = "Crossfade",
-                color = Color.White,
+                color = Fvox.onSurface,
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(start = 4.dp, top = 4.dp)
@@ -54,7 +55,7 @@ fun CrossfadeSheet(
             Text(
                 text = "Overlap the end of one track with the start of the next. " +
                     "Off keeps tracks gapless.",
-                color = Color.White.copy(alpha = 0.4f),
+                color = Fvox.onSurface.copy(alpha = 0.4f),
                 fontSize = 12.sp,
                 modifier = Modifier.padding(start = 4.dp, top = 4.dp, bottom = 16.dp)
             )
@@ -68,7 +69,7 @@ fun CrossfadeSheet(
                         .clip(RoundedCornerShape(14.dp))
                         .background(
                             if (selected) accent.copy(alpha = 0.18f)
-                            else Color.White.copy(alpha = 0.04f)
+                            else Fvox.onSurface.copy(alpha = 0.04f)
                         )
                         .clickable { onSelect(seconds) }
                         .padding(16.dp),
@@ -76,7 +77,7 @@ fun CrossfadeSheet(
                 ) {
                     Text(
                         text = if (seconds == 0) "Off" else "$seconds seconds",
-                        color = Color.White,
+                        color = Fvox.onSurface,
                         fontSize = 15.sp,
                         fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
                         modifier = Modifier.weight(1f)

@@ -8,6 +8,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import com.freqvox.ui.theme.Fvox
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
@@ -120,7 +121,7 @@ fun FreqvoxVisualizer(
     if (trackTitle.isNotEmpty()) {
         Text(
             text = trackTitle.take(1).uppercase(),
-            color = Color.White.copy(alpha = 0.7f),
+            color = Fvox.onSurface.copy(alpha = 0.7f),
             fontSize = 56.sp,
             fontWeight = FontWeight.Bold
         )

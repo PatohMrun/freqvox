@@ -45,6 +45,7 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import com.freqvox.ui.theme.Fvox
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.graphics.graphicsLayer
@@ -401,7 +402,7 @@ fun HomeScreen(
                     Icon(
                         imageVector = Icons.Default.KeyboardArrowUp,
                         contentDescription = "Back to top",
-                        tint = Color.White,
+                        tint = Fvox.onSurface,
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -423,14 +424,14 @@ fun EndOfFeedFooter(modifier: Modifier = Modifier) {
     ) {
         Text(
             text = "You've explored a lot",
-            color = Color.White,
+            color = Fvox.onSurface,
             fontSize = 16.sp,
             fontWeight = FontWeight.SemiBold
         )
         Spacer(modifier = Modifier.height(6.dp))
         Text(
             text = "Pull down to refresh for a completely new mix",
-            color = Color.White.copy(alpha = 0.45f),
+            color = Fvox.onSurface.copy(alpha = 0.45f),
             fontSize = 13.sp,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center
         )
@@ -454,7 +455,7 @@ fun GridFeedBlock(
                         modifier = Modifier
                             .weight(1f)
                             .clip(RoundedCornerShape(16.dp))
-                            .background(Color.White.copy(alpha = 0.04f))
+                            .background(Fvox.onSurface.copy(alpha = 0.04f))
                             .combinedClickable(
                                 onClick = { onClick(track) },
                                 onLongClick = { onLongPress(track) }
@@ -473,7 +474,7 @@ fun GridFeedBlock(
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
                             text = track.title,
-                            color = Color.White,
+                            color = Fvox.onSurface,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold,
                             maxLines = 1,
@@ -481,7 +482,7 @@ fun GridFeedBlock(
                         )
                         Text(
                             text = track.artist,
-                            color = Color.White.copy(alpha = 0.5f),
+                            color = Fvox.onSurface.copy(alpha = 0.5f),
                             fontSize = 12.sp,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
@@ -510,7 +511,7 @@ fun SpotlightFeedBlock(
             .aspectRatio(1f) // huge square
             .clip(RoundedCornerShape(24.dp))
             .combinedClickable(onClick = onClick, onLongClick = onLongPress)
-            .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(24.dp)),
+            .border(1.dp, Fvox.onSurface.copy(alpha = 0.08f), RoundedCornerShape(24.dp)),
         contentAlignment = Alignment.Center
     ) {
         val artPath = track.artworkPath
@@ -529,7 +530,7 @@ fun SpotlightFeedBlock(
                         Brush.verticalGradient(
                             colors = listOf(
                                 Color(0xFF7C4DFF).copy(alpha = 0.25f),
-                                Color(0xFF12121A).copy(alpha = 0.80f)
+                                Fvox.surface.copy(alpha = 0.80f)
                             )
                         )
                     )
@@ -552,6 +553,7 @@ fun SpotlightFeedBlock(
                 )
 
                 drawCircle(
+                    // Decorative spotlight on a fixed-dark no-art card; not theme-driven.
                     color = Color.White.copy(alpha = 0.05f),
                     radius = radius,
                     center = center,
@@ -568,12 +570,12 @@ fun SpotlightFeedBlock(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Surface(
-                color = Color.White.copy(alpha = 0.15f),
+                color = Fvox.onSurface.copy(alpha = 0.15f),
                 shape = RoundedCornerShape(8.dp)
             ) {
                 Text(
                     text = "Spotlight",
-                    color = Color.White,
+                    color = Fvox.onSurface,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
@@ -583,7 +585,7 @@ fun SpotlightFeedBlock(
             if (artPath == null) {
                 Text(
                     text = track.title.take(1).uppercase(),
-                    color = Color.White.copy(alpha = 0.8f),
+                    color = Fvox.onSurface.copy(alpha = 0.8f),
                     fontSize = 80.sp,
                     fontWeight = FontWeight.Black
                 )
@@ -592,7 +594,7 @@ fun SpotlightFeedBlock(
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
                 Text(
                     text = track.title,
-                    color = Color.White,
+                    color = Fvox.onSurface,
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
@@ -601,7 +603,7 @@ fun SpotlightFeedBlock(
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = track.artist,
-                    color = Color.White.copy(alpha = 0.5f),
+                    color = Fvox.onSurface.copy(alpha = 0.5f),
                     fontSize = 16.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -624,13 +626,13 @@ fun Header(greeting: String, totalSongs: Int, totalDurationMs: Long, onSearchCli
                 text = greeting,
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.White
+                color = Fvox.onSurface
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = "$totalSongs Tracks • $hours Hours",
                 fontSize = 14.sp,
-                color = Color.White.copy(alpha = 0.5f),
+                color = Fvox.onSurface.copy(alpha = 0.5f),
                 fontWeight = FontWeight.Medium
             )
         }
@@ -639,7 +641,7 @@ fun Header(greeting: String, totalSongs: Int, totalDurationMs: Long, onSearchCli
                 Icon(
                     imageVector = Icons.Default.Search,
                     contentDescription = "Search",
-                    tint = Color.White
+                    tint = Fvox.onSurface
                 )
             }
             Spacer(modifier = Modifier.width(8.dp))
@@ -651,7 +653,7 @@ fun Header(greeting: String, totalSongs: Int, totalDurationMs: Long, onSearchCli
                         ThemeMode.SYSTEM -> Icons.Default.BrightnessAuto
                     },
                     contentDescription = "Theme: ${themeMode.name.lowercase()}",
-                    tint = Color.White
+                    tint = Fvox.onSurface
                 )
             }
             Spacer(modifier = Modifier.width(8.dp))
@@ -659,7 +661,7 @@ fun Header(greeting: String, totalSongs: Int, totalDurationMs: Long, onSearchCli
                 Icon(
                     imageVector = Icons.Default.Settings,
                     contentDescription = "Settings",
-                    tint = Color.White
+                    tint = Fvox.onSurface
                 )
             }
             Spacer(modifier = Modifier.width(8.dp))
@@ -669,7 +671,7 @@ fun Header(greeting: String, totalSongs: Int, totalDurationMs: Long, onSearchCli
                     .size(44.dp)
                     .clickable { onOpenPanel() },
                 shape = CircleShape,
-                color = Color.White.copy(alpha = 0.1f)
+                color = Fvox.onSurface.copy(alpha = 0.1f)
             ) {
                 Image(
                     painter = painterResource(id = com.freqvox.R.drawable.brand_icon),
@@ -694,7 +696,7 @@ fun HeroFeedCard(
             .height(200.dp)
             .clip(RoundedCornerShape(24.dp))
             .combinedClickable(onClick = onClick, onLongClick = onLongPress)
-            .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(24.dp))
+            .border(1.dp, Fvox.onSurface.copy(alpha = 0.1f), RoundedCornerShape(24.dp))
     ) {
         val artPath = track.artworkPath
         if (artPath != null) {
@@ -714,7 +716,7 @@ fun HeroFeedCard(
                         Brush.verticalGradient(
                             colors = listOf(
                                 Color(0xFF7C4DFF).copy(alpha = 0.25f),
-                                Color(0xFF12121A).copy(alpha = 0.80f)
+                                Fvox.surface.copy(alpha = 0.80f)
                             )
                         )
                     )
@@ -726,7 +728,7 @@ fun HeroFeedCard(
                     .matchParentSize()
                     .background(
                         Brush.linearGradient(
-                            colors = listOf(Color(0xFF7C4DFF).copy(alpha = 0.3f), Color(0xFF12121A))
+                            colors = listOf(Color(0xFF7C4DFF).copy(alpha = 0.3f), Fvox.surface)
                         )
                     )
             )
@@ -734,7 +736,7 @@ fun HeroFeedCard(
                 text = track.title.take(1).uppercase(),
                 fontSize = 180.sp,
                 fontWeight = FontWeight.Black,
-                color = Color.White.copy(alpha = 0.03f),
+                color = Fvox.onSurface.copy(alpha = 0.03f),
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .offset(x = 20.dp, y = 40.dp)
@@ -753,12 +755,12 @@ fun HeroFeedCard(
                 verticalAlignment = Alignment.Top
             ) {
                 Surface(
-                    color = Color.White.copy(alpha = 0.15f),
+                    color = Fvox.onSurface.copy(alpha = 0.15f),
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Text(
                         text = "Jump Back In",
-                        color = Color.White,
+                        color = Fvox.onSurface,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
@@ -767,13 +769,13 @@ fun HeroFeedCard(
                 
                 Surface(
                     shape = CircleShape,
-                    color = Color.White,
+                    color = Fvox.onSurface,
                     modifier = Modifier.size(40.dp)
                 ) {
                     Icon(
                         Icons.Default.PlayArrow,
                         contentDescription = "Play",
-                        tint = Color.Black,
+                        tint = Fvox.scrim,
                         modifier = Modifier.padding(8.dp)
                     )
                 }
@@ -782,7 +784,7 @@ fun HeroFeedCard(
             Column {
                 Text(
                     text = track.title,
-                    color = Color.White,
+                    color = Fvox.onSurface,
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
@@ -791,7 +793,7 @@ fun HeroFeedCard(
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = track.artist,
-                    color = Color.White.copy(alpha = 0.7f),
+                    color = Fvox.onSurface.copy(alpha = 0.7f),
                     fontSize = 16.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -820,7 +822,7 @@ fun FeedTrackCard(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(if (isCurrentTrack) activeAccent.copy(alpha = bgAlpha) else Color.White.copy(alpha = bgAlpha))
+            .background(if (isCurrentTrack) activeAccent.copy(alpha = bgAlpha) else Fvox.onSurface.copy(alpha = bgAlpha))
             .then(borderModifier)
             .combinedClickable(onClick = onClick, onLongClick = onLongPress)
             .padding(12.dp),
@@ -837,7 +839,7 @@ fun FeedTrackCard(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = track.title,
-                color = if (isCurrentTrack) activeAccent else Color.White,
+                color = if (isCurrentTrack) activeAccent else Fvox.onSurface,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
@@ -846,7 +848,7 @@ fun FeedTrackCard(
             Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = track.artist,
-                color = Color.White.copy(alpha = 0.5f),
+                color = Fvox.onSurface.copy(alpha = 0.5f),
                 fontSize = 14.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -855,7 +857,7 @@ fun FeedTrackCard(
         Icon(
             imageVector = if (isCurrentTrack && isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
             contentDescription = if (isCurrentTrack && isPlaying) "Pause" else "Play",
-            tint = if (isCurrentTrack) activeAccent else Color.White.copy(alpha = 0.3f),
+            tint = if (isCurrentTrack) activeAccent else Fvox.onSurface.copy(alpha = 0.3f),
             modifier = Modifier.size(28.dp)
         )
     }
@@ -880,7 +882,7 @@ fun SectionTitle(title: String, icon: androidx.compose.ui.graphics.vector.ImageV
             text = title,
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold,
-            color = Color.White
+            color = Fvox.onSurface
         )
     }
 }
@@ -931,7 +933,7 @@ fun QuickPicksRow(
                 Spacer(modifier = Modifier.height(10.dp))
                 Text(
                     text = track.title,
-                    color = Color.White,
+                    color = Fvox.onSurface,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
@@ -939,7 +941,7 @@ fun QuickPicksRow(
                 )
                 Text(
                     text = track.artist,
-                    color = Color.White.copy(alpha = 0.5f),
+                    color = Fvox.onSurface.copy(alpha = 0.5f),
                     fontSize = 12.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -975,14 +977,14 @@ private fun LibraryStatusState(
             Spacer(Modifier.height(20.dp))
             Text(
                 "Scanning your library…",
-                color = Color.White,
+                color = Fvox.onSurface,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.SemiBold
             )
             Spacer(Modifier.height(6.dp))
             Text(
                 "Looking for music on your device",
-                color = Color.White.copy(alpha = 0.5f),
+                color = Fvox.onSurface.copy(alpha = 0.5f),
                 fontSize = 13.sp,
                 textAlign = TextAlign.Center
             )
@@ -990,13 +992,13 @@ private fun LibraryStatusState(
             Icon(
                 imageVector = Icons.Default.LibraryMusic,
                 contentDescription = null,
-                tint = Color.White.copy(alpha = 0.25f),
+                tint = Fvox.onSurface.copy(alpha = 0.25f),
                 modifier = Modifier.size(56.dp)
             )
             Spacer(Modifier.height(16.dp))
             Text(
                 "No music found",
-                color = Color.White,
+                color = Fvox.onSurface,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.SemiBold
             )
@@ -1004,7 +1006,7 @@ private fun LibraryStatusState(
             Text(
                 "Make sure you have audio files on this device and that Freqvox has " +
                     "permission to access them.",
-                color = Color.White.copy(alpha = 0.5f),
+                color = Fvox.onSurface.copy(alpha = 0.5f),
                 fontSize = 13.sp,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(horizontal = 16.dp)
@@ -1148,6 +1150,8 @@ fun ProceduralArtwork(track: TrackEntity, modifier: Modifier = Modifier) {
         val radius = size.minDimension * params.scale
         when (params.shapeType) {
             0 -> {
+                // Procedural monogram shapes sit on the track's vivid gradient (not a theme
+                // surface), so they stay literal white/black in both modes.
                 drawCircle(color = Color.White.copy(alpha = params.shapeAlpha), radius = radius, center = centerPoint)
                 drawCircle(color = Color.Black.copy(alpha = params.shapeAlpha * 0.5f), radius = radius * 0.6f, center = Offset(centerPoint.x + radius * 0.3f, centerPoint.y - radius * 0.3f))
             }
@@ -1192,7 +1196,7 @@ fun FeaturedBannerBlock(
             .height(130.dp)
             .clip(RoundedCornerShape(20.dp))
             .combinedClickable(onClick = onClick, onLongClick = onLongPress)
-            .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(20.dp))
+            .border(1.dp, Fvox.onSurface.copy(alpha = 0.1f), RoundedCornerShape(20.dp))
     ) {
         val artPath = track.artworkPath
         if (artPath != null) {
@@ -1231,7 +1235,7 @@ fun FeaturedBannerBlock(
                 text = track.title.uppercase(),
                 fontSize = 80.sp,
                 fontWeight = FontWeight.Black,
-                color = Color.White.copy(alpha = 0.05f),
+                color = Fvox.onSurface.copy(alpha = 0.05f),
                 maxLines = 1,
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
@@ -1246,12 +1250,12 @@ fun FeaturedBannerBlock(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Surface(
-                    color = Color.Black.copy(alpha = 0.3f),
+                    color = Fvox.scrim.copy(alpha = 0.3f),
                     shape = RoundedCornerShape(6.dp)
                 ) {
                     Text(
                         text = "Featured Track",
-                        color = Color.White.copy(alpha = 0.8f),
+                        color = Fvox.onSurface.copy(alpha = 0.8f),
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
@@ -1260,7 +1264,7 @@ fun FeaturedBannerBlock(
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = track.title,
-                    color = Color.White,
+                    color = Fvox.onSurface,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
@@ -1268,7 +1272,7 @@ fun FeaturedBannerBlock(
                 )
                 Text(
                     text = track.artist,
-                    color = Color.White.copy(alpha = 0.6f),
+                    color = Fvox.onSurface.copy(alpha = 0.6f),
                     fontSize = 14.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -1277,13 +1281,13 @@ fun FeaturedBannerBlock(
             
             Surface(
                 shape = CircleShape,
-                color = Color.White.copy(alpha = 0.1f),
+                color = Fvox.onSurface.copy(alpha = 0.1f),
                 modifier = Modifier.size(48.dp)
             ) {
                 Icon(
                     Icons.Default.PlayArrow,
                     contentDescription = "Play",
-                    tint = Color.White,
+                    tint = Fvox.onSurface,
                     modifier = Modifier.padding(12.dp)
                 )
             }
