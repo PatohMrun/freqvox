@@ -96,6 +96,18 @@ class FreqvoxPlaybackService : MediaLibraryService() {
             .setAudioAttributes(audioAttributes, /* handleAudioFocus= */ false)
             .build()
         tailPlayer = tail
+
+        // Share ONE audio session between the main and tail players. The Equalizer is bound
+        // to a single audio session, so without this the outgoing track plays un-equalized
+        // for the few seconds of a crossfade. Generating an explicit id up front also makes
+        // equalizer init deterministic instead of waiting for the lazy session callback.
+        val audioManager = getSystemService(AUDIO_SERVICE) as android.media.AudioManager
+        val sharedSession = audioManager.generateAudioSessionId()
+        if (sharedSession != android.media.AudioManager.ERROR) {
+            player.setAudioSessionId(sharedSession)
+            tail.setAudioSessionId(sharedSession)
+        }
+
         val controller = CrossfadeController(player, tail, crossfadePrefs)
         crossfadeController = controller
 

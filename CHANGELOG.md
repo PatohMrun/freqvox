@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.19] - 2026-06-27
+### Fixed
+- **Equalizer during crossfade**: The main and tail players now share one audio session, so the equalizer is applied to the outgoing track during a crossfade instead of it briefly playing flat. Also makes equalizer initialization deterministic.
+
 ## [2.18] - 2026-06-27
 ### Performance
 - **VidMate re-link query**: Matching tracks to VidMate thumbnails now scopes the MediaStore query with `_ID IN (…)` instead of scanning the entire audio table and filtering in memory — faster, and no longer scales with total library size.
