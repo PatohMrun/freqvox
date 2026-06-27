@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.26] - 2026-06-27
+### Fixed
+- Buttons on the accent fill (the main player play/pause control, Home back-to-top, Library "+" FAB, the sleep-timer "Set" button) now use white icons/labels instead of dark ones that were invisible on the dark accent in light mode.
+
 ## [2.25] - 2026-06-27
 ### Fixed
 - Search: the colorful tag browse cards now use white labels in both themes (were dark text that washed out on the saturated gradient in light mode).

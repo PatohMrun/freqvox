@@ -403,7 +403,7 @@ fun HomeScreen(
                     Icon(
                         imageVector = Icons.Default.KeyboardArrowUp,
                         contentDescription = "Back to top",
-                        tint = Fvox.onSurface,
+                        tint = Fvox.onAccent,
                         modifier = Modifier.size(20.dp)
                     )
                 }

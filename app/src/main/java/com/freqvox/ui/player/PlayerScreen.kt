@@ -608,7 +608,7 @@ fun PlayerScreen(
                             Icon(
                                 imageVector = if (playing) Icons.Default.Pause else Icons.Default.PlayArrow,
                                 contentDescription = "Play/Pause",
-                                tint = Fvox.onSurface,
+                                tint = Fvox.onAccent,
                                 modifier = Modifier.size(30.dp)
                             )
                         }
@@ -896,7 +896,7 @@ fun PlayerScreen(
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.height(54.dp)
                     ) {
-                        Text("Set", fontWeight = FontWeight.Bold, color = Fvox.onSurface)
+                        Text("Set", fontWeight = FontWeight.Bold, color = Fvox.onAccent)
                     }
                 }
 

@@ -1168,7 +1168,7 @@ fun PlaylistsTab(
                 .align(Alignment.BottomEnd)
                 .padding(end = 20.dp, bottom = 90.dp),
             containerColor = Fvox.accent,
-            contentColor = Fvox.onSurface
+            contentColor = Fvox.onAccent
         ) {
             Icon(Icons.Default.Add, contentDescription = "New playlist")
         }
