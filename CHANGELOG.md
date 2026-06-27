@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.28] - 2026-06-27
+### Added
+- Side panel groups (Insights, Audio, Library, Backup, Playlists, Tags) are now collapsible accordions — tap a header to fold/unfold with an animated chevron. Expanded by default; collapse state persists.
+
 ## [2.27] - 2026-06-27
 ### Fixed
 - The bright pink/red accent (Radio "NOW PLAYING" + live pulse, favorites, error text, cancel-timer, delete actions) vibrated harshly on white in light mode. Added a theme-aware "rose" accent token — bright pink in dark, a deeper rose in light — and applied it to those on-surface spots.

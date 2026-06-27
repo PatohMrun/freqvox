@@ -11,7 +11,14 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.CompareArrows
@@ -26,9 +33,14 @@ import androidx.compose.material.icons.filled.Sell
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import com.freqvox.ui.theme.Fvox
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -139,83 +151,89 @@ fun AppSidePanel(
                 }
             }
 
-            PanelSection("INSIGHTS")
-            PanelRow(Icons.Default.QueryStats, "Listening stats", onOpenStats)
-
-            PanelSection("AUDIO")
-            PanelRow(Icons.Default.Equalizer, "Equalizer", onOpenEqualizer)
-            PanelRow(Icons.Default.CompareArrows, "Crossfade", onOpenCrossfade)
-            PanelRow(Icons.Default.Bedtime, "Sleep timer", onOpenSleep)
-
-            PanelSection("LIBRARY")
-            PanelRow(Icons.Default.Refresh, "Rescan library", onRescan)
-            PanelRow(Icons.Default.FolderOff, "Hidden folders", onOpenFolders)
-            PanelRow(Icons.Default.Sell, "Manage tags", onOpenTags)
-            PanelRow(Icons.Default.Image, "Album art", onOpenArtwork)
-
-            PanelSection("BACKUP")
-            PanelRow(Icons.Default.Backup, "Back up library") {
-                val stamp = SimpleDateFormat("yyyyMMdd", Locale.US).format(Date())
-                exportLauncher.launch("freqvox-backup-$stamp.json")
+            AccordionSection("INSIGHTS") {
+                PanelRow(Icons.Default.QueryStats, "Listening stats", onOpenStats)
             }
-            PanelRow(Icons.Default.Restore, "Restore from backup") {
-                importLauncher.launch(arrayOf("application/json", "text/*", "*/*"))
+
+            AccordionSection("AUDIO") {
+                PanelRow(Icons.Default.Equalizer, "Equalizer", onOpenEqualizer)
+                PanelRow(Icons.Default.CompareArrows, "Crossfade", onOpenCrossfade)
+                PanelRow(Icons.Default.Bedtime, "Sleep timer", onOpenSleep)
+            }
+
+            AccordionSection("LIBRARY") {
+                PanelRow(Icons.Default.Refresh, "Rescan library", onRescan)
+                PanelRow(Icons.Default.FolderOff, "Hidden folders", onOpenFolders)
+                PanelRow(Icons.Default.Sell, "Manage tags", onOpenTags)
+                PanelRow(Icons.Default.Image, "Album art", onOpenArtwork)
+            }
+
+            AccordionSection("BACKUP") {
+                PanelRow(Icons.Default.Backup, "Back up library") {
+                    val stamp = SimpleDateFormat("yyyyMMdd", Locale.US).format(Date())
+                    exportLauncher.launch("freqvox-backup-$stamp.json")
+                }
+                PanelRow(Icons.Default.Restore, "Restore from backup") {
+                    importLauncher.launch(arrayOf("application/json", "text/*", "*/*"))
+                }
             }
 
             // ── Quick jump: playlists ───────────────────────────────────────────
             if (playlists.isNotEmpty()) {
-                PanelSection("PLAYLISTS")
-                playlists.forEach { playlist ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(10.dp))
-                            .clickable { onPlaylistClick(playlist) }
-                            .padding(vertical = 10.dp, horizontal = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            Icons.Default.QueueMusic,
-                            contentDescription = null,
-                            tint = Fvox.accent,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text(
-                            playlist.name,
-                            color = Fvox.onSurface.copy(alpha = 0.85f),
-                            fontSize = 14.sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
+                AccordionSection("PLAYLISTS") {
+                    playlists.forEach { playlist ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(10.dp))
+                                .clickable { onPlaylistClick(playlist) }
+                                .padding(vertical = 10.dp, horizontal = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.QueueMusic,
+                                contentDescription = null,
+                                tint = Fvox.accent,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                playlist.name,
+                                color = Fvox.onSurface.copy(alpha = 0.85f),
+                                fontSize = 14.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                     }
                 }
             }
 
             // ── Quick jump: tags ────────────────────────────────────────────────
             if (tags.isNotEmpty()) {
-                PanelSection("TAGS")
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    tags.forEach { tag ->
-                        val color = Color(tag.color)
-                        Box(
-                            modifier = Modifier
-                                .clip(CircleShape)
-                                .background(color.copy(alpha = 0.18f))
-                                .border(1.dp, color.copy(alpha = 0.5f), CircleShape)
-                                .clickable { onTagClick(tag) }
-                                .padding(horizontal = 14.dp, vertical = 8.dp)
-                        ) {
-                            Text(
-                                formatTagDisplayName(tag.name),
-                                color = Fvox.onSurface.copy(alpha = 0.85f),
-                                fontSize = 13.sp
-                            )
+                AccordionSection("TAGS") {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        tags.forEach { tag ->
+                            val color = Color(tag.color)
+                            Box(
+                                modifier = Modifier
+                                    .clip(CircleShape)
+                                    .background(color.copy(alpha = 0.18f))
+                                    .border(1.dp, color.copy(alpha = 0.5f), CircleShape)
+                                    .clickable { onTagClick(tag) }
+                                    .padding(horizontal = 14.dp, vertical = 8.dp)
+                            ) {
+                                Text(
+                                    formatTagDisplayName(tag.name),
+                                    color = Fvox.onSurface.copy(alpha = 0.85f),
+                                    fontSize = 13.sp
+                                )
+                            }
                         }
                     }
                 }
@@ -242,17 +260,55 @@ fun AppSidePanel(
     }
 }
 
+/**
+ * A foldable section: tappable header (label + rotating chevron) over a vertically
+ * expanding/collapsing body. Expanded by default, so the panel looks unchanged until folded.
+ * Collapse state is keyed by title and survives recomposition / config changes.
+ */
 @Composable
-private fun PanelSection(title: String) {
-    Spacer(modifier = Modifier.height(20.dp))
-    Text(
-        title,
-        color = Fvox.onSurface.copy(alpha = 0.4f),
-        fontSize = 11.sp,
-        fontWeight = FontWeight.Bold,
-        letterSpacing = 1.5.sp,
-        modifier = Modifier.padding(start = 8.dp, bottom = 6.dp)
+private fun AccordionSection(
+    title: String,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    var expanded by rememberSaveable(title) { mutableStateOf(true) }
+    val chevronRotation by animateFloatAsState(
+        targetValue = if (expanded) 180f else 0f,
+        label = "accordionChevron"
     )
+
+    Spacer(modifier = Modifier.height(20.dp))
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .clickable { expanded = !expanded }
+            .padding(start = 8.dp, end = 8.dp, top = 4.dp, bottom = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            title,
+            color = Fvox.onSurface.copy(alpha = 0.4f),
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 1.5.sp,
+            modifier = Modifier.weight(1f)
+        )
+        Icon(
+            Icons.Default.KeyboardArrowDown,
+            contentDescription = if (expanded) "Collapse $title" else "Expand $title",
+            tint = Fvox.onSurface.copy(alpha = 0.4f),
+            modifier = Modifier
+                .size(18.dp)
+                .rotate(chevronRotation)
+        )
+    }
+    AnimatedVisibility(
+        visible = expanded,
+        enter = expandVertically() + fadeIn(),
+        exit = shrinkVertically() + fadeOut()
+    ) {
+        Column(content = content)
+    }
 }
 
 @Composable
