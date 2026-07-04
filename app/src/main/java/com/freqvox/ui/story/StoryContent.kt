@@ -17,6 +17,31 @@ object StoryContent {
         return StoryDrop(id = "tip-$periodIndex", createdDay = epochDay, kind = seg.kind, segments = listOf(seg))
     }
 
+    /** A multi-segment "Your week in Freqvox" recap. Segments are included only when they have data. */
+    fun weeklyRecap(stats: MainViewModel.ListeningStats, weekKey: Long, epochDay: Long): StoryDrop {
+        val segs = mutableListOf<StorySegment>()
+        segs += StorySegment("recap-intro", SegmentKind.RECAP, "Your week in Freqvox",
+            "Here's what your week sounded like.", SegmentVisual.Illustration(IllustrationKind.STATS))
+        if (stats.weekMinutes > 0 && stats.weekDailyMinutes.isNotEmpty())
+            segs += StorySegment("recap-minutes", SegmentKind.RECAP, "${stats.weekMinutes} minutes",
+                "Your listening, day by day.", SegmentVisual.Sparkline(stats.weekDailyMinutes, "last 7 days"))
+        stats.topArtistTrack?.let { t ->
+            segs += StorySegment("recap-artist", SegmentKind.RECAP, "Top artist: ${t.artist}",
+                "On heavy rotation this week.", SegmentVisual.AlbumArt(t))
+        }
+        stats.topTracks.firstOrNull()?.let { (t, c) ->
+            segs += StorySegment("recap-track", SegmentKind.RECAP, "On repeat",
+                "${t.title} — $c play${if (c == 1) "" else "s"}, your most-played.", SegmentVisual.AlbumArt(t))
+        }
+        if (stats.newThisWeek.isNotEmpty())
+            segs += StorySegment("recap-new", SegmentKind.RECAP, "${stats.newThisWeek.size} new this week",
+                "Fresh additions to your library.", SegmentVisual.ArtCollage(stats.newThisWeek))
+        if (stats.currentStreakDays >= 2)
+            segs += StorySegment("recap-streak", SegmentKind.RECAP, "${stats.currentStreakDays}-day streak",
+                "Consistency pays off.", SegmentVisual.StreakCalendar(stats.activeDays14))
+        return StoryDrop("recap-$weekKey", epochDay, SegmentKind.RECAP, segs)
+    }
+
     private fun segments(stats: MainViewModel.ListeningStats): List<StorySegment> {
         val list = mutableListOf<StorySegment>()
 

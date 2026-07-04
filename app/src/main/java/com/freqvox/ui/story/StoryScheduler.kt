@@ -15,7 +15,17 @@ class StoryScheduler @Inject constructor(
     private val prefs: StoryPreferences
 ) {
     fun activeDrop(stats: MainViewModel.ListeningStats, epochDay: Long): StoryDrop {
-        // Milestone and weekly-recap branches slot in above this line in later phases.
+        // Milestone branch slots in above this line in a later phase.
+
+        // Weekly recap (Monday-anchored): the top-priority drop each week until it's been seen.
+        val dow = java.time.LocalDate.ofEpochDay(epochDay).dayOfWeek.value  // 1=Mon … 7=Sun
+        val mondayKey = epochDay - (dow - 1)
+        val recapId = "recap-$mondayKey"
+        if (stats.totalPlays > 0 && prefs.lastSeenDropId != recapId) {
+            return StoryContent.weeklyRecap(stats, mondayKey, epochDay)
+        }
+
+        // Otherwise a throttled tip/explainer that changes every few days.
         val period = Math.floorDiv(epochDay, TIP_INTERVAL_DAYS)
         return StoryContent.tipDrop(stats, period, epochDay)
     }

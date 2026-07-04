@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.54] - 2026-07-05
+### Added
+- **"Your week in Freqvox" recap**: once a week the header ring opens a multi-segment story — minutes listened (day-by-day sparkline), your top artist and most-played track (with art), new additions (cover collage) and your streak. It takes priority over tips until you've seen it.
+
 ## [2.53] - 2026-07-05
 ### Added
 - **Story graphics**: story segments can now render real drawn visuals — album art, cover collages, a listening sparkline, bar and hour-of-day charts, a streak calendar, and simple illustrations — ready for the weekly recap and milestones. (Internal groundwork; surfaces in the next updates.)

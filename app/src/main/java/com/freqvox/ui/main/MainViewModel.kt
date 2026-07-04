@@ -452,7 +452,11 @@ class MainViewModel @Inject constructor(
         val weekMinutes: Long = 0,
         val weeklyGoalMinutes: Int = 300,   // gentle default: ~5 hours/week
         val topArtists: List<Pair<String, Int>> = emptyList(),  // artist → total plays
-        val topTags: List<Pair<String, Int>> = emptyList()      // tag name → total plays
+        val topTags: List<Pair<String, Int>> = emptyList(),     // tag name → total plays
+        val weekDailyMinutes: List<Float> = emptyList(),        // last 7 days, normalized 0..1
+        val activeDays14: List<Boolean> = emptyList(),          // last 14 days, listened?
+        val newThisWeek: List<TrackEntity> = emptyList(),       // added in the last 7 days
+        val topArtistTrack: TrackEntity? = null                 // a cover for the #1 artist
     )
 
     val listeningStats: StateFlow<ListeningStats> = combine(allTracks, playHistory, taggedTrackIds) { tracks, history, tagMap ->
@@ -483,6 +487,22 @@ class MainViewModel @Inject constructor(
         val weekStartMs = monday.atStartOfDay(zone).toInstant().toEpochMilli()
         val weekMinutes = history.filter { it.playedAt >= weekStartMs }.sumOf { it.durationPlayed } / 60_000
 
+        // Recap data: per-day minutes (last 7), active-day flags (last 14), new adds, top-artist cover.
+        val minutesByDay = LongArray(7)
+        history.forEach { ph ->
+            val d = java.time.Instant.ofEpochMilli(ph.playedAt).atZone(zone).toLocalDate()
+            val delta = today.toEpochDay() - d.toEpochDay()
+            if (delta in 0..6) minutesByDay[(6 - delta).toInt()] += ph.durationPlayed
+        }
+        val maxDay = (minutesByDay.maxOrNull() ?: 0L).coerceAtLeast(1L)
+        val weekDailyMinutes = minutesByDay.map { (it.toFloat() / maxDay).coerceIn(0f, 1f) }
+        val activeDays14 = (13 downTo 0).map { back -> (today.toEpochDay() - back) in playDays }
+        val weekAgoSec = System.currentTimeMillis() / 1000 - 7L * 86_400
+        val newThisWeek = tracks.filter { it.dateAdded > weekAgoSec }.sortedByDescending { it.dateAdded }.take(6)
+        val topArtistName = tracks.filter { it.playCount > 0 && it.artist.isNotBlank() }
+            .groupBy { it.artist }.maxByOrNull { e -> e.value.sumOf { it.playCount } }?.key
+        val topArtistTrack = topArtistName?.let { name -> tracks.filter { it.artist == name }.maxByOrNull { it.playCount } }
+
         ListeningStats(
             totalMinutes = tracks.sumOf { it.totalPlayTime } / 60_000,
             totalPlays = tracks.sumOf { it.playCount },
@@ -512,7 +532,11 @@ class MainViewModel @Inject constructor(
                     .filter { it.value > 0 }
                     .entries.sortedByDescending { it.value }
                     .take(6).map { it.key to it.value }
-            }
+            },
+            weekDailyMinutes = weekDailyMinutes,
+            activeDays14 = activeDays14,
+            newThisWeek = newThisWeek,
+            topArtistTrack = topArtistTrack
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ListeningStats())
 
