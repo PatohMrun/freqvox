@@ -116,6 +116,7 @@ fun MainScreen(
     var showArtworkSheet by remember { mutableStateOf(false) }
     var showAccentSheet by remember { mutableStateOf(false) }
     var showDuplicatesSheet by remember { mutableStateOf(false) }
+    var showProfilesSheet by remember { mutableStateOf(false) }
     val openPanel: () -> Unit = { scope.launch { drawerState.open() } }
 
     // Sync current track to ViewModel using the exposed ID for reliability
@@ -207,6 +208,7 @@ fun MainScreen(
                         onOpenArtwork = { scope.launch { drawerState.close() }; showArtworkSheet = true },
                         onOpenAccent = { scope.launch { drawerState.close() }; showAccentSheet = true },
                         onOpenDuplicates = { scope.launch { drawerState.close() }; showDuplicatesSheet = true },
+                        onOpenProfiles = { scope.launch { drawerState.close() }; showProfilesSheet = true },
                         onRescan = {
                             scope.launch { drawerState.close() }
                             viewModel.scanLibrary()
@@ -516,6 +518,16 @@ fun MainScreen(
                     tracks = tracks,
                     playHistory = viewModel.playHistory.value,
                     onDismiss = { entityStats = null }
+                )
+            }
+            if (showProfilesSheet) {
+                val tagProfiles by viewModel.tagProfiles.collectAsStateWithLifecycle()
+                com.freqvox.ui.settings.TagProfilesSheet(
+                    tags = allTags.distinctBy { it.name.lowercase() }.filter { it.name.lowercase() != "disliked" },
+                    presets = viewModel.eqPresets,
+                    profiles = tagProfiles,
+                    onSet = { tag, preset -> viewModel.setTagProfile(tag, preset) },
+                    onDismiss = { showProfilesSheet = false }
                 )
             }
             if (showDuplicatesSheet) {

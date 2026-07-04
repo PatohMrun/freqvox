@@ -37,8 +37,51 @@ class MainViewModel @Inject constructor(
     private val crossfadePrefs: CrossfadePreferences,
     private val themePrefs: com.freqvox.data.prefs.ThemePreferences,
     private val sidePanelPrefs: com.freqvox.data.prefs.SidePanelPreferences,
-    private val accentPrefs: com.freqvox.data.prefs.AccentPreferences
+    private val accentPrefs: com.freqvox.data.prefs.AccentPreferences,
+    private val tagProfilePrefs: com.freqvox.data.prefs.TagProfilePreferences
 ) : ViewModel() {
+
+    // ── Per-tag playback profiles (tag → EQ preset) ────────────────────────────
+    private val _tagProfiles = MutableStateFlow(tagProfilePrefs.all())
+    val tagProfiles: StateFlow<Map<String, Int>> = _tagProfiles.asStateFlow()
+    val eqPresets: List<String> get() = playbackController.equalizerManager.getPresets()
+
+    fun setTagProfile(tag: String, presetIndex: Int) {
+        if (presetIndex < 0) tagProfilePrefs.removeProfile(tag) else tagProfilePrefs.setProfile(tag, presetIndex)
+        _tagProfiles.value = tagProfilePrefs.all()
+    }
+
+    // Apply state: remember the preset that was active before a profile took over, to restore
+    // it when the next track has no profiled tag.
+    private var tagProfileActive = false
+    private var tagProfileSavedPreset = -1
+
+    /** Started from an init block below currentTrackTags (init blocks run in declaration order). */
+    private fun observeTagProfiles() {
+        viewModelScope.launch {
+            combine(currentTrackTags, _tagProfiles) { tags, profiles -> tags to profiles }
+                .collect { (tags, profiles) -> applyTagProfile(tags, profiles) }
+        }
+    }
+
+    private fun applyTagProfile(tags: List<TagEntity>, profiles: Map<String, Int>) {
+        val eq = playbackController.equalizerManager
+        // Only touch the EQ once it's initialised — calling usePreset on an uninitialised
+        // equalizer would persist zeroed band levels.
+        if (eq.numBands <= 0) return
+        val preset = tags.firstNotNullOfOrNull { profiles[it.name.lowercase()] }
+        if (preset != null) {
+            if (!tagProfileActive) {
+                tagProfileSavedPreset = eq.currentPreset.value.toInt()
+                tagProfileActive = true
+            }
+            eq.usePreset(preset.toShort())
+            if (!eq.isEnabled.value) eq.setEnabled(true)
+        } else if (tagProfileActive) {
+            tagProfileActive = false
+            if (tagProfileSavedPreset >= 0) eq.usePreset(tagProfileSavedPreset.toShort())
+        }
+    }
 
     // Side-panel accordion expand/collapse, persisted so it survives drawer close + app restart.
     fun isPanelSectionExpanded(title: String, default: Boolean) =
@@ -202,6 +245,9 @@ class MainViewModel @Inject constructor(
             }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    // Now that currentTrackTags exists, start applying per-tag playback profiles.
+    init { observeTagProfiles() }
 
     val isCurrentTrackLiked: StateFlow<Boolean> = currentTrackTags
         .map { tags -> tags.any { it.name.lowercase() == "liked" } }

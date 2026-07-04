@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.QueueMusic
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.Sell
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -109,6 +110,7 @@ fun AppSidePanel(
     onOpenArtwork: () -> Unit,
     onOpenAccent: () -> Unit,
     onOpenDuplicates: () -> Unit,
+    onOpenProfiles: () -> Unit,
     onRescan: () -> Unit,
     onPlaylistClick: (PlaylistEntity) -> Unit,
     onTagClick: (TagEntity) -> Unit
@@ -167,6 +169,7 @@ fun AppSidePanel(
                 PanelRow(Icons.Default.Equalizer, "Equalizer", onOpenEqualizer)
                 PanelRow(Icons.Default.CompareArrows, "Crossfade", onOpenCrossfade)
                 PanelRow(Icons.Default.Bedtime, "Sleep timer", onOpenSleep)
+                PanelRow(Icons.Default.Tune, "Playback profiles", onOpenProfiles)
                 PanelToggleRow(
                     icon = Icons.Default.VolumeUp,
                     title = "Volume normalization",

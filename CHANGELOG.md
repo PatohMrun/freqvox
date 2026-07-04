@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.49] - 2026-07-05
+### Added
+- **Playback profiles (per-tag EQ)** (side panel → Audio → Playback profiles): assign an equalizer preset to any tag, and it's applied automatically whenever a track carrying that tag plays (reverting to your previous preset afterwards). Great for a "podcast" or "bass boost" tag.
+
 ## [2.48] - 2026-07-05
 ### Changed
 - **Synced lyrics now auto-scroll**: when a track has a timestamped `.lrc`, the lyrics view keeps the current line centered and moving as the song plays, and you can tap any line to jump to that moment.
