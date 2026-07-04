@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.36] - 2026-07-04
+### Fixed
+- **Hidden folders wording**: the sheet said folders are excluded "on the next scan", which was misleading — hiding actually takes effect immediately and non-destructively. Reworded to "disappear from your library right away. Nothing is deleted — un-hide any time."
+
 ## [2.35] - 2026-07-04
 ### Changed
 - **Tag sheet**: the "New custom tag" button is now pinned to the top of the sheet (full-width and accent-styled) instead of being the last cell in the grid, so it stays reachable as your tag list grows rather than getting buried at the bottom.

@@ -53,7 +53,7 @@ fun FoldersSheet(
                 modifier = Modifier.padding(start = 4.dp, top = 4.dp)
             )
             Text(
-                text = "Hidden folders are excluded from your library on the next scan.",
+                text = "Hidden folders disappear from your library right away. Nothing is deleted — un-hide any time.",
                 color = Fvox.onSurface.copy(alpha = 0.4f),
                 fontSize = 12.sp,
                 modifier = Modifier.padding(start = 4.dp, top = 4.dp, bottom = 12.dp)

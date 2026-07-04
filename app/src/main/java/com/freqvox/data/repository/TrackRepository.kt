@@ -35,7 +35,9 @@ class TrackRepository @Inject constructor(
     val allTrackTagCrossRefs: Flow<List<TrackTagCrossRef>> = tagDao.getAllTrackTagCrossRefs()
 
     // Folders the user has chosen to keep out of the library (ringtones, voice
-    // notes, etc.). Stored as raw folderPath strings, matched during scanLibrary.
+    // notes, etc.). Stored as raw folderPath strings. Exclusion is applied as a live
+    // filter in MainViewModel (allTracks/activeTracks) — not at scan time — so hiding
+    // takes effect immediately and non-destructively (rows stay in the DB).
     private val scanPrefs = context.getSharedPreferences("freqvox_scan", Context.MODE_PRIVATE)
 
     fun getExcludedFolders(): Set<String> =
