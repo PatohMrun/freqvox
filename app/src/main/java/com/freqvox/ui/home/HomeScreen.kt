@@ -110,6 +110,9 @@ fun HomeScreen(
 
     val greeting = rememberGreeting()
     val allPlaylists by viewModel.allPlaylists.collectAsStateWithLifecycle()
+    val hasUnseenMoment by viewModel.hasUnseenMoment.collectAsStateWithLifecycle()
+    val moment by viewModel.moment.collectAsStateWithLifecycle()
+    var showMoment by remember { mutableStateOf(false) }
     val trackActions = rememberTrackActionsState()
     var optionsTrack by remember { mutableStateOf<TrackEntity?>(null) }
     // Long-press now opens a richer options menu (Tag is one entry inside) instead of
@@ -155,6 +158,11 @@ fun HomeScreen(
         )
     }
     TrackActionsDialogs(state = trackActions, viewModel = viewModel, playlists = allPlaylists)
+
+    if (showMoment) {
+        LaunchedEffect(Unit) { viewModel.markMomentSeen() }
+        MomentSheet(moment = moment, onDismiss = { showMoment = false })
+    }
 
     // Endless feed — every page is a fresh remix of the same library with a
     // different per-page seed. Pulling to refresh resets back to page 1 AND
@@ -244,6 +252,8 @@ fun HomeScreen(
             themeMode = themeMode,
             onCycleTheme = { viewModel.cycleTheme() },
             onOpenPanel = onOpenPanel,
+            hasUnseenMoment = hasUnseenMoment,
+            onOpenMoments = { showMoment = true },
             modifier = Modifier.padding(horizontal = 24.dp, vertical = 24.dp)
         )
         LazyColumn(
@@ -634,7 +644,7 @@ fun SpotlightFeedBlock(
 }
 
 @Composable
-fun Header(greeting: String, totalSongs: Int, totalDurationMs: Long, onSearchClick: () -> Unit, themeMode: ThemeMode = ThemeMode.SYSTEM, onCycleTheme: () -> Unit = {}, onOpenPanel: () -> Unit = {}, modifier: Modifier = Modifier) {
+fun Header(greeting: String, totalSongs: Int, totalDurationMs: Long, onSearchClick: () -> Unit, themeMode: ThemeMode = ThemeMode.SYSTEM, onCycleTheme: () -> Unit = {}, onOpenPanel: () -> Unit = {}, hasUnseenMoment: Boolean = false, onOpenMoments: () -> Unit = {}, modifier: Modifier = Modifier) {
     val hours = totalDurationMs / (1000 * 60 * 60)
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -706,19 +716,36 @@ fun Header(greeting: String, totalSongs: Int, totalDurationMs: Long, onSearchCli
                 )
             }
             Spacer(modifier = Modifier.width(8.dp))
-            // Logo → opens the right-side "more features" panel
-            Surface(
+            // Logo DP → opens today's "moment". A vivid ring means it's unseen; a faint ring
+            // means seen. (Settings now lives solely on the gear, resolving the old redundancy.)
+            Box(
                 modifier = Modifier
-                    .size(44.dp)
-                    .clickable { onOpenPanel() },
-                shape = CircleShape,
-                color = Fvox.onSurface.copy(alpha = 0.1f)
+                    .size(46.dp)
+                    .then(
+                        if (hasUnseenMoment)
+                            Modifier.border(
+                                2.5.dp,
+                                Brush.sweepGradient(listOf(Fvox.accent, Fvox.accentAlt, Fvox.accent)),
+                                CircleShape
+                            )
+                        else
+                            Modifier.border(1.5.dp, Fvox.onSurface.copy(alpha = 0.18f), CircleShape)
+                    )
+                    .padding(3.dp)
+                    .clickable { onOpenMoments() },
+                contentAlignment = Alignment.Center
             ) {
-                Image(
-                    painter = painterResource(id = com.freqvox.R.drawable.brand_icon),
-                    contentDescription = "Menu",
-                    modifier = Modifier.fillMaxSize()
-                )
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    shape = CircleShape,
+                    color = Fvox.onSurface.copy(alpha = 0.1f)
+                ) {
+                    Image(
+                        painter = painterResource(id = com.freqvox.R.drawable.brand_icon),
+                        contentDescription = "Moments",
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
             }
         }
     }

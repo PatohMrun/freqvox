@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.51] - 2026-07-05
+### Added
+- **Moments (header story-ring)**: the logo in the Home header now shows a "moment" each day — a tip or a highlight from your stats. A vivid ring means there's something new; tap it to read, and the ring fades once seen. Settings now live solely on the gear icon (the logo no longer duplicates it).
+
 ## [2.50] - 2026-07-05
 ### Added
 - **Edit track info**: long-press a song on Home → "Edit info" to fix its title, artist or album. Changes are written to MediaStore (with the system's one-time permission prompt on Android 11+) and reflected across the app. (Updates the library metadata, not the file's embedded tags.)

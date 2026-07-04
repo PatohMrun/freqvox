@@ -38,7 +38,8 @@ class MainViewModel @Inject constructor(
     private val themePrefs: com.freqvox.data.prefs.ThemePreferences,
     private val sidePanelPrefs: com.freqvox.data.prefs.SidePanelPreferences,
     private val accentPrefs: com.freqvox.data.prefs.AccentPreferences,
-    private val tagProfilePrefs: com.freqvox.data.prefs.TagProfilePreferences
+    private val tagProfilePrefs: com.freqvox.data.prefs.TagProfilePreferences,
+    private val momentsPrefs: com.freqvox.data.prefs.MomentsPreferences
 ) : ViewModel() {
 
     // ── Per-tag playback profiles (tag → EQ preset) ────────────────────────────
@@ -514,6 +515,26 @@ class MainViewModel @Inject constructor(
             }
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ListeningStats())
+
+    // ── "Moments" (header DP story-ring) ───────────────────────────────────────
+    private val momentEpochDay: Long = java.time.LocalDate.now().toEpochDay()
+    val moment: StateFlow<com.freqvox.ui.home.Moment> = listeningStats
+        .map { com.freqvox.ui.home.generateMoment(it, momentEpochDay) }
+        .stateIn(
+            viewModelScope, SharingStarted.WhileSubscribed(5000),
+            com.freqvox.ui.home.generateMoment(ListeningStats(), momentEpochDay)
+        )
+    private val _momentSeenDay = MutableStateFlow(momentsPrefs.lastSeenDay)
+    val hasUnseenMoment: StateFlow<Boolean> = _momentSeenDay
+        .map { it != momentEpochDay }
+        .stateIn(
+            viewModelScope, SharingStarted.WhileSubscribed(5000),
+            momentsPrefs.lastSeenDay != momentEpochDay
+        )
+    fun markMomentSeen() {
+        momentsPrefs.lastSeenDay = momentEpochDay
+        _momentSeenDay.value = momentEpochDay
+    }
 
     // ── Hidden folders ─────────────────────────────────────────────────────────
     // Draws from the UNFILTERED library so hidden folders remain listed (and can be
