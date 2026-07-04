@@ -131,6 +131,42 @@ class FreqvoxEqualizerManager(context: Context) {
         equalizer = null
     }
 
+    /**
+     * Restore EQ state from a backup. Updates the live flows and persists to prefs, then applies
+     * to a running equalizer if one exists — otherwise [init] picks it up from the flows/prefs on
+     * the next playback start. A preset ≥ 0 wins over explicit band levels (mirrors [usePreset]).
+     */
+    fun importState(enabled: Boolean, preset: Short, levels: Map<Int, Int>) {
+        _isEnabled.value = enabled
+        _currentPreset.value = preset
+        prefs.edit().apply {
+            putBoolean(KEY_ENABLED, enabled)
+            putInt(KEY_PRESET, preset.toInt())
+            apply()
+        }
+        if (levels.isNotEmpty()) {
+            _bandLevels.value = levels
+            saveBandLevels(levels)
+        }
+        try {
+            equalizer?.let { eq ->
+                eq.enabled = enabled
+                if (preset >= 0) {
+                    eq.usePreset(preset)
+                    val applied = mutableMapOf<Int, Int>()
+                    for (i in 0 until numBands) applied[i] = eq.getBandLevel(i.toShort()).toInt()
+                    _bandLevels.value = applied
+                    saveBandLevels(applied)
+                } else {
+                    levels.forEach { (band, level) ->
+                        try { eq.setBandLevel(band.toShort(), level.coerceIn(minLevel, maxLevel).toShort()) }
+                        catch (e: Exception) { Log.e(TAG, "Import band $band failed", e) }
+                    }
+                }
+            }
+        } catch (e: Exception) { Log.e(TAG, "EQ import apply failed", e) }
+    }
+
     private fun saveBandLevels(levels: Map<Int, Int>) {
         prefs.edit().apply {
             putInt(KEY_BAND_COUNT, levels.size)

@@ -11,6 +11,7 @@ import com.freqvox.data.artwork.ArtworkPreferences
 import com.freqvox.data.prefs.ThemeMode
 import com.freqvox.data.prefs.ThemePreferences
 import com.freqvox.playback.CrossfadePreferences
+import com.freqvox.playback.FreqvoxEqualizerManager
 import com.freqvox.data.local.entities.PlayHistoryEntity
 import com.freqvox.data.local.entities.PlaylistEntity
 import com.freqvox.data.local.entities.PlaylistTrackCrossRef
@@ -30,8 +31,8 @@ import javax.inject.Singleton
  * Exports / restores everything the user *curates* — tags, per-track tag
  * assignments, listening stats (aggregates + timestamped play/skip history),
  * playlists, hidden folders, and app settings (crossfade / album mode / volume
- * normalization / theme / album-art policy) — to a single JSON file the user
- * picks via the Storage Access Framework (no storage permission required).
+ * normalization / theme / album-art policy / equalizer) — to a single JSON file
+ * the user picks via the Storage Access Framework (no storage permission required).
  *
  * Design notes:
  *  - Tracks are keyed by **path**, not the MediaStore id, because MediaStore
@@ -54,7 +55,8 @@ class BackupRepository @Inject constructor(
     private val trackRepository: TrackRepository,
     private val crossfadePrefs: CrossfadePreferences,
     private val themePrefs: ThemePreferences,
-    private val artworkPrefs: ArtworkPreferences
+    private val artworkPrefs: ArtworkPreferences,
+    private val eqManager: FreqvoxEqualizerManager
 ) {
     sealed class Result {
         data class Success(val message: String) : Result()
@@ -182,6 +184,12 @@ class BackupRepository @Inject constructor(
             .put("artOnlineEnabled", artworkPrefs.onlineEnabled)
             .put("artAllowCellular", artworkPrefs.allowCellular)
             .put("artAllowMeteredWifi", artworkPrefs.allowMeteredWifi)
+            .put("eqEnabled", eqManager.isEnabled.value)
+            .put("eqPreset", eqManager.currentPreset.value.toInt())
+        // Equalizer band levels (band index → millibel), for a custom (non-preset) curve.
+        val eqBands = JSONObject()
+        eqManager.bandLevels.value.forEach { (band, level) -> eqBands.put(band.toString(), level) }
+        settings.put("eqBands", eqBands)
         root.put("settings", settings)
 
         return root.toString(2)
@@ -358,6 +366,18 @@ class BackupRepository @Inject constructor(
             if (s.has("artOnlineEnabled")) artworkPrefs.onlineEnabled = s.optBoolean("artOnlineEnabled")
             if (s.has("artAllowCellular")) artworkPrefs.allowCellular = s.optBoolean("artAllowCellular")
             if (s.has("artAllowMeteredWifi")) artworkPrefs.allowMeteredWifi = s.optBoolean("artAllowMeteredWifi", true)
+
+            if (s.has("eqEnabled") || s.has("eqBands") || s.has("eqPreset")) {
+                val bands = mutableMapOf<Int, Int>()
+                s.optJSONObject("eqBands")?.let { bo ->
+                    bo.keys().forEach { k -> k.toIntOrNull()?.let { band -> bands[band] = bo.optInt(k) } }
+                }
+                eqManager.importState(
+                    enabled = s.optBoolean("eqEnabled", false),
+                    preset = s.optInt("eqPreset", -1).toShort(),
+                    levels = bands
+                )
+            }
         }
 
         return Result.Success(
@@ -381,10 +401,11 @@ class BackupRepository @Inject constructor(
     }
 
     companion object {
-        // v2 adds "excludedFolders". v3 adds "history" (timestamped play/skip events) and
-        // "settings" (crossfade / album mode / volume normalization / theme / art policy).
-        // Older files simply lack the newer keys and restore fine — every added block is
-        // guarded by a presence check, so v1/v2 backups remain fully compatible.
-        private const val BACKUP_VERSION = 3
+        // v2 adds "excludedFolders". v3 adds "history" (timestamped play/skip events) and a
+        // "settings" block (crossfade / album mode / volume normalization / theme / art policy).
+        // v4 extends "settings" with the equalizer (enabled / preset / band levels). Older files
+        // simply lack the newer keys and restore fine — every added block/field is guarded by a
+        // presence check, so v1–v3 backups remain fully compatible.
+        private const val BACKUP_VERSION = 4
     }
 }
