@@ -359,6 +359,19 @@ class MainViewModel @Inject constructor(
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    // Likely-duplicate groups: tracks sharing a normalized title+artist (case/punctuation
+    // insensitive). Each group is sorted most-played first so the user keeps the "primary".
+    val duplicateGroups: StateFlow<List<List<TrackEntity>>> = allTracks
+        .map { tracks ->
+            tracks.groupBy {
+                (it.title + "|" + it.artist).replace(Regex("[^A-Za-z0-9]"), "").lowercase()
+            }.values
+                .filter { it.size > 1 }
+                .map { grp -> grp.sortedByDescending { it.playCount } }
+                .sortedByDescending { it.size }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     val recentlyAdded: StateFlow<List<TrackEntity>> = activeTracks
         .map { tracks -> tracks.take(10) }
         .stateIn(

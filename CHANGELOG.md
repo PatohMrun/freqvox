@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.45] - 2026-07-05
+### Added
+- **Duplicate finder** (side panel → Library → Find duplicates): groups tracks that share a title and artist (ignoring case/punctuation), shows each copy with its folder, length, album and play count — with the most-played one marked "kept" — so you can delete the extras through the normal delete confirmation.
+
 ## [2.44] - 2026-07-04
 ### Added
 - **Per-artist & per-tag stats**: the stats sheet now has "Top Artists" and "Top Tags" sections; tapping any of them opens a focused breakdown for that artist or tag — total time, plays, tracks played, first/last heard, and its most-played tracks.

@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.CompareArrows
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Equalizer
 import androidx.compose.material.icons.filled.FolderOff
 import androidx.compose.material.icons.filled.Image
@@ -107,6 +108,7 @@ fun AppSidePanel(
     onOpenTags: () -> Unit,
     onOpenArtwork: () -> Unit,
     onOpenAccent: () -> Unit,
+    onOpenDuplicates: () -> Unit,
     onRescan: () -> Unit,
     onPlaylistClick: (PlaylistEntity) -> Unit,
     onTagClick: (TagEntity) -> Unit
@@ -183,6 +185,7 @@ fun AppSidePanel(
                 PanelRow(Icons.Default.FolderOff, "Hidden folders", onOpenFolders)
                 PanelRow(Icons.Default.Sell, "Manage tags", onOpenTags)
                 PanelRow(Icons.Default.Image, "Album art", onOpenArtwork)
+                PanelRow(Icons.Default.ContentCopy, "Find duplicates", onOpenDuplicates)
             }
 
             AccordionSection(viewModel, "BACKUP") {

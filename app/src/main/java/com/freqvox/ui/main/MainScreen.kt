@@ -115,6 +115,7 @@ fun MainScreen(
     var showSleepSheet by remember { mutableStateOf(false) }
     var showArtworkSheet by remember { mutableStateOf(false) }
     var showAccentSheet by remember { mutableStateOf(false) }
+    var showDuplicatesSheet by remember { mutableStateOf(false) }
     val openPanel: () -> Unit = { scope.launch { drawerState.open() } }
 
     // Sync current track to ViewModel using the exposed ID for reliability
@@ -205,6 +206,7 @@ fun MainScreen(
                         onOpenTags = { scope.launch { drawerState.close() }; showTagManagerSheet = true },
                         onOpenArtwork = { scope.launch { drawerState.close() }; showArtworkSheet = true },
                         onOpenAccent = { scope.launch { drawerState.close() }; showAccentSheet = true },
+                        onOpenDuplicates = { scope.launch { drawerState.close() }; showDuplicatesSheet = true },
                         onRescan = {
                             scope.launch { drawerState.close() }
                             viewModel.scanLibrary()
@@ -514,6 +516,18 @@ fun MainScreen(
                     tracks = tracks,
                     playHistory = viewModel.playHistory.value,
                     onDismiss = { entityStats = null }
+                )
+            }
+            if (showDuplicatesSheet) {
+                val duplicateGroups by viewModel.duplicateGroups.collectAsStateWithLifecycle()
+                val dupActions = com.freqvox.ui.components.rememberTrackActionsState()
+                com.freqvox.ui.components.TrackActionsDialogs(
+                    state = dupActions, viewModel = viewModel, playlists = allPlaylists
+                )
+                com.freqvox.ui.settings.DuplicatesSheet(
+                    groups = duplicateGroups,
+                    onDelete = { dupActions.openDeleteFlow(it) },
+                    onDismiss = { showDuplicatesSheet = false }
                 )
             }
             if (showFoldersSheet) {
