@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.31] - 2026-07-04
+### Fixed
+- Crossfade click/scratch: the session player is now muted *before* the internal jump to the next track, not after. That jump forces the audio pipeline to flush and reconfigure the output — previously it did so at full volume, producing an audible pop at the start of every crossfade. Muting first makes the flush silent. (If a faint artifact remains, the next suspect is a sample-rate mismatch between the two tracks forcing a resample — noted for follow-up.)
+
 ## [2.30] - 2026-06-28
 ### Changed
 - Home "Spotlight" no longer always shows your single most-played track — it now rotates among your top 15 most-played (using the per-page seed), so it varies across feed pages and pull-to-refresh.

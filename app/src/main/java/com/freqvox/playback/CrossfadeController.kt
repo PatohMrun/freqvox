@@ -174,10 +174,14 @@ class CrossfadeController(
         tailPlayer.volume = rampTail * duckFactor
         tailPlayer.play()
 
-        // Incoming track: jump the session player forward NOW
+        // Incoming track: jump the session player forward NOW.
+        // Mute BEFORE the seek: seekToNextMediaItem() on the live renderer forces
+        // DefaultAudioSink to flush + reconfigure the AudioTrack, and that flush is the
+        // source of the audible crossfade click. Setting volume to 0 first (rampMain is 0f
+        // at fade start anyway) makes the flush silent instead of popping at full gain.
         selfTriggeredJump = true
-        mainPlayer.seekToNextMediaItem()
         mainPlayer.volume = rampMain * duckFactor
+        mainPlayer.seekToNextMediaItem()
         mainPlayer.play()
 
         ramp(windowMs)
