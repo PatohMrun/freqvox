@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.44] - 2026-07-04
+### Added
+- **Per-artist & per-tag stats**: the stats sheet now has "Top Artists" and "Top Tags" sections; tapping any of them opens a focused breakdown for that artist or tag — total time, plays, tracks played, first/last heard, and its most-played tracks.
+
 ## [2.43] - 2026-07-04
 ### Added
 - **Daily Mixes**: a row of themed mixes near the top of the Home feed, built from your tags and most-present artists. They're seeded by the date, so they stay the same all day (instead of reshuffling every time the feed regenerates) and refresh to a new set tomorrow. Tap a mix to play it.

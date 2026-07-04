@@ -1,6 +1,7 @@
 package com.freqvox.ui.settings
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -22,6 +23,8 @@ import com.freqvox.ui.main.MainViewModel
 @Composable
 fun StatsSheet(
     stats: MainViewModel.ListeningStats,
+    onOpenArtist: (String) -> Unit = {},
+    onOpenTag: (String) -> Unit = {},
     onDismiss: () -> Unit
 ) {
     val accent = Fvox.accent
@@ -144,6 +147,36 @@ fun StatsSheet(
                         subtitle = track.artist,
                         trailing = "$count play${if (count == 1) "" else "s"}",
                         accent = accent
+                    )
+                }
+            }
+
+            // ── Top artists (tap to drill down) ────────────────────────────────
+            if (stats.topArtists.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(28.dp))
+                SectionLabel("TOP ARTISTS")
+                stats.topArtists.forEachIndexed { i, (artist, count) ->
+                    TappableRankRow(
+                        rank = i + 1,
+                        title = artist,
+                        trailing = "$count play${if (count == 1) "" else "s"}",
+                        accent = accent,
+                        onClick = { onOpenArtist(artist) }
+                    )
+                }
+            }
+
+            // ── Top tags (tap to drill down) ───────────────────────────────────
+            if (stats.topTags.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(28.dp))
+                SectionLabel("TOP TAGS")
+                stats.topTags.forEachIndexed { i, (tag, count) ->
+                    TappableRankRow(
+                        rank = i + 1,
+                        title = com.freqvox.ui.tag.formatTagDisplayName(tag),
+                        trailing = "$count play${if (count == 1) "" else "s"}",
+                        accent = accent,
+                        onClick = { onOpenTag(tag) }
                     )
                 }
             }
@@ -291,6 +324,25 @@ private fun RankRow(rank: Int, title: String, subtitle: String, trailing: String
         }
         Spacer(modifier = Modifier.width(8.dp))
         Text(trailing, color = Fvox.onSurface.copy(alpha = 0.55f), fontSize = 12.sp)
+    }
+}
+
+@Composable
+private fun TappableRankRow(rank: Int, title: String, trailing: String, accent: Color, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .clickable(onClick = onClick)
+            .padding(vertical = 10.dp, horizontal = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text("$rank", color = accent, fontSize = 16.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(24.dp))
+        Text(title, color = Fvox.onSurface, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(trailing, color = Fvox.onSurface.copy(alpha = 0.55f), fontSize = 12.sp)
+        Spacer(modifier = Modifier.width(6.dp))
+        Text("›", color = Fvox.onSurface.copy(alpha = 0.4f), fontSize = 18.sp)
     }
 }
 

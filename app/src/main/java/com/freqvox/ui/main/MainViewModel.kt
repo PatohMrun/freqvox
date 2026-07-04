@@ -390,10 +390,12 @@ class MainViewModel @Inject constructor(
         val mostSkipped: List<Pair<TrackEntity, Int>> = emptyList(),
         val currentStreakDays: Int = 0,
         val weekMinutes: Long = 0,
-        val weeklyGoalMinutes: Int = 300   // gentle default: ~5 hours/week
+        val weeklyGoalMinutes: Int = 300,   // gentle default: ~5 hours/week
+        val topArtists: List<Pair<String, Int>> = emptyList(),  // artist → total plays
+        val topTags: List<Pair<String, Int>> = emptyList()      // tag name → total plays
     )
 
-    val listeningStats: StateFlow<ListeningStats> = combine(allTracks, playHistory) { tracks, history ->
+    val listeningStats: StateFlow<ListeningStats> = combine(allTracks, playHistory, taggedTrackIds) { tracks, history, tagMap ->
         // MediaStore DATE_ADDED is in seconds, so compare against a seconds threshold.
         val monthAgoSec = System.currentTimeMillis() / 1000 - 30L * 86_400
 
@@ -437,7 +439,20 @@ class MainViewModel @Inject constructor(
                 .take(5)
                 .map { it to it.skipCount },
             currentStreakDays = streak,
-            weekMinutes = weekMinutes
+            weekMinutes = weekMinutes,
+            topArtists = tracks.filter { it.playCount > 0 && it.artist.isNotBlank() }
+                .groupBy { it.artist }
+                .mapValues { e -> e.value.sumOf { it.playCount } }
+                .entries.sortedByDescending { it.value }
+                .take(6).map { it.key to it.value },
+            topTags = run {
+                val playById = tracks.associate { it.id to it.playCount }
+                tagMap.filterKeys { !it.equals("disliked", ignoreCase = true) }
+                    .mapValues { (_, ids) -> ids.sumOf { playById[it] ?: 0 } }
+                    .filter { it.value > 0 }
+                    .entries.sortedByDescending { it.value }
+                    .take(6).map { it.key to it.value }
+            }
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ListeningStats())
 

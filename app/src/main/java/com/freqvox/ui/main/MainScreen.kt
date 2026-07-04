@@ -105,6 +105,9 @@ fun MainScreen(
     // Right-side "more features" panel + the sheets it launches.
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     var showStatsSheet by remember { mutableStateOf(false) }
+    var entityStats by remember {
+        mutableStateOf<Triple<String, String, List<com.freqvox.data.local.entities.TrackEntity>>?>(null)
+    }
     var showFoldersSheet by remember { mutableStateOf(false) }
     var showTagManagerSheet by remember { mutableStateOf(false) }
     var showEqSheet by remember { mutableStateOf(false) }
@@ -488,7 +491,29 @@ fun MainScreen(
             if (showStatsSheet) {
                 com.freqvox.ui.settings.StatsSheet(
                     stats = listeningStats,
+                    onOpenArtist = { artist ->
+                        val subset = viewModel.allTracks.value.filter { it.artist == artist }
+                        entityStats = Triple(artist, "${subset.size} track${if (subset.size == 1) "" else "s"}", subset)
+                    },
+                    onOpenTag = { tag ->
+                        val ids = viewModel.taggedTrackIds.value[tag.lowercase()] ?: emptySet()
+                        val subset = viewModel.allTracks.value.filter { it.id in ids }
+                        entityStats = Triple(
+                            com.freqvox.ui.tag.formatTagDisplayName(tag),
+                            "${subset.size} track${if (subset.size == 1) "" else "s"}",
+                            subset
+                        )
+                    },
                     onDismiss = { showStatsSheet = false }
+                )
+            }
+            entityStats?.let { (title, subtitle, tracks) ->
+                com.freqvox.ui.settings.EntityStatsSheet(
+                    title = title,
+                    subtitle = subtitle,
+                    tracks = tracks,
+                    playHistory = viewModel.playHistory.value,
+                    onDismiss = { entityStats = null }
                 )
             }
             if (showFoldersSheet) {
