@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.33] - 2026-07-04
+### Added
+- **Boolean tag filtering** in Browse (Search): tap a tag to *require* it, tap again to *exclude* it, tap a third time to clear. Songs are filtered live to those carrying **all** required tags and **none** of the excluded ones — e.g. "chill AND workout", "hype NOT throwback". A summary line spells out the active expression, with a Clear shortcut. When no filter is set, the colourful browse-by-tag grid stays exactly as before, and plain text search is unchanged.
+
 ## [2.32] - 2026-07-04
 ### Added
 - **Album mode** (in the Crossfade sheet, on by default): when crossfade is on, consecutive tracks from the *same album* now butt-join gaplessly instead of fading into each other — so albums mastered to segue track-to-track (live sets, DJ mixes, concept records) stay seamless. Transitions between *different* albums still crossfade normally. It's a no-op (and shown disabled) when crossfade is Off.

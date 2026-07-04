@@ -2,6 +2,7 @@ package com.freqvox.ui.search
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
@@ -11,6 +12,8 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Block
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
@@ -54,6 +57,9 @@ fun SearchScreen(
     val allTags by viewModel.allTags.collectAsStateWithLifecycle()
     val dislikedTrackIds by viewModel.dislikedTrackIds.collectAsStateWithLifecycle()
     val allPlaylists by viewModel.allPlaylists.collectAsStateWithLifecycle()
+    val includeTagNames by viewModel.includeTagNames.collectAsStateWithLifecycle()
+    val excludeTagNames by viewModel.excludeTagNames.collectAsStateWithLifecycle()
+    val tagFilterResults by viewModel.tagFilterResults.collectAsStateWithLifecycle()
 
     val currentTrackTitle by playbackController.currentTrackTitle.collectAsStateWithLifecycle()
     val isPlaying by playbackController.isPlaying.collectAsStateWithLifecycle()
@@ -182,11 +188,59 @@ fun SearchScreen(
                     }
                 }
             } else {
-                // applyTagFilter (not onSearchQueryChange) so the ViewModel
-                // can tell this came from a chip tap vs. free typing. Only
-                // matters for the Disliked chip today, but the distinction
-                // is now available for any future strict-tag behaviour.
-                TagsGrid(tags = allTags, onTagClick = { viewModel.applyTagFilter(it) })
+                // Boolean tag filter: tap a chip to require it, tap again to exclude it.
+                BooleanTagFilterRow(
+                    tags = allTags,
+                    include = includeTagNames,
+                    exclude = excludeTagNames,
+                    onCycle = { viewModel.cycleTagFilterState(it) },
+                    onClear = { viewModel.clearTagFilter() },
+                    modifier = Modifier.padding(bottom = 12.dp)
+                )
+                val filterActive = includeTagNames.isNotEmpty() || excludeTagNames.isNotEmpty()
+                if (!filterActive) {
+                    // No filter set → colorful browse grid. Tapping a card runs a normal
+                    // text search for that tag (applyTagFilter, unchanged behaviour).
+                    TagsGrid(tags = allTags, onTagClick = { viewModel.applyTagFilter(it) })
+                } else if (tagFilterResults.isEmpty()) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(top = 40.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("No songs match these tags", color = Fvox.onSurface.copy(alpha = 0.5f))
+                    }
+                } else {
+                    LazyColumn(contentPadding = PaddingValues(bottom = 120.dp)) {
+                        itemsIndexed(
+                            tagFilterResults,
+                            key = { _, track -> track.id },
+                            contentType = { _, _ -> "track" }
+                        ) { index, track ->
+                            LibraryTrackItem(
+                                track = track,
+                                isCurrentTrack = track.title == currentTrackTitle,
+                                isPlaying = isPlaying,
+                                isDisliked = track.id in dislikedTrackIds,
+                                modifier = Modifier.animateItem(),
+                                onClick = {
+                                    if (track.title == currentTrackTitle) playbackController.togglePlayPause()
+                                    else playbackController.playQueue(tagFilterResults, index)
+                                },
+                                onAddToPlaylist = { trackActions.openAddToPlaylist(track) },
+                                onRequestDelete = { trackActions.openDeleteFlow(track) },
+                                onToggleDislike = { viewModel.toggleDislikeForTrack(track.id) },
+                                onPlayNext = {
+                                    playbackController.playTrackNext(track)
+                                    viewModel.postSnackbar("Playing next")
+                                },
+                                onAddToQueue = {
+                                    playbackController.addToQueue(track)
+                                    viewModel.postSnackbar("Added to queue")
+                                }
+                            )
+                        }
+                    }
+                }
             }
         } else {
             // Chips stay visible while results are shown so tapping Disliked (or
@@ -275,6 +329,110 @@ fun TagFilterRow(
                     containerColor = Fvox.surfaceVariant,
                     labelColor = Fvox.onSurface.copy(alpha = 0.75f)
                 )
+            )
+        }
+    }
+}
+
+/**
+ * Tri-state boolean tag filter. Each chip cycles neutral → require (AND) → exclude (NOT) →
+ * neutral. A track matches when it has ALL required tags and NONE of the excluded ones.
+ * Required chips fill with the tag's own colour + a check; excluded chips go rose-outlined
+ * with a block glyph. A summary line spells out the active expression.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun BooleanTagFilterRow(
+    tags: List<TagEntity>,
+    include: Set<String>,
+    exclude: Set<String>,
+    onCycle: (String) -> Unit,
+    onClear: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier.fillMaxWidth()) {
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            tags.forEach { tag ->
+                val name = tag.name.lowercase()
+                val required = name in include
+                val excluded = name in exclude
+                val tagColor = Color(tag.color)
+                val bg = when {
+                    required -> tagColor
+                    excluded -> Fvox.accentAlt.copy(alpha = 0.14f)
+                    else -> Fvox.surfaceVariant
+                }
+                val labelColor = when {
+                    required -> Color.White
+                    excluded -> Fvox.accentAlt
+                    else -> Fvox.onSurface.copy(alpha = 0.75f)
+                }
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(50))
+                        .background(bg)
+                        .then(
+                            if (excluded) Modifier.border(1.dp, Fvox.accentAlt, RoundedCornerShape(50))
+                            else Modifier
+                        )
+                        .clickable { onCycle(tag.name) }
+                        .padding(horizontal = 12.dp, vertical = 7.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (required) {
+                        Icon(Icons.Default.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
+                        Spacer(Modifier.width(4.dp))
+                    } else if (excluded) {
+                        Icon(Icons.Default.Block, contentDescription = null, tint = Fvox.accentAlt, modifier = Modifier.size(14.dp))
+                        Spacer(Modifier.width(4.dp))
+                    }
+                    Text(
+                        text = formatTagDisplayName(tag.name),
+                        color = labelColor,
+                        fontSize = 13.sp,
+                        fontWeight = if (required || excluded) FontWeight.SemiBold else FontWeight.Normal
+                    )
+                }
+            }
+        }
+
+        if (include.isNotEmpty() || exclude.isNotEmpty()) {
+            val summary = buildString {
+                if (include.isNotEmpty()) append(include.joinToString(" AND ") { formatTagDisplayName(it) })
+                if (exclude.isNotEmpty()) {
+                    if (isNotEmpty()) append(" · ")
+                    append("not ")
+                    append(exclude.joinToString(", ") { formatTagDisplayName(it) })
+                }
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = summary,
+                    color = Fvox.onSurface.copy(alpha = 0.6f),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    text = "Clear",
+                    color = Fvox.accent,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable { onClear() }.padding(horizontal = 8.dp, vertical = 4.dp)
+                )
+            }
+        } else {
+            Text(
+                text = "Tap a tag to require it · tap again to exclude",
+                color = Fvox.onSurface.copy(alpha = 0.4f),
+                fontSize = 12.sp,
+                modifier = Modifier.padding(top = 8.dp)
             )
         }
     }

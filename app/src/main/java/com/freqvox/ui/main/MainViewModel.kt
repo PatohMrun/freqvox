@@ -291,6 +291,44 @@ class MainViewModel @Inject constructor(
         initialValue = emptyList()
     )
 
+    // ── Boolean tag filter (Search → Browse) ──────────────────────────────────
+    // Tri-state per tag: absent = neutral, in include = REQUIRED (AND), in exclude
+    // = FORBIDDEN (NOT). A track matches when it carries ALL include tags and NONE
+    // of the exclude tags — e.g. "chill AND workout", "hype NOT throwback". Keyed by
+    // lowercase tag name to line up with taggedTrackIds. Independent of the text query
+    // (only surfaced in the blank-query browse view), so the two don't interfere.
+    private val _includeTagNames = MutableStateFlow<Set<String>>(emptySet())
+    val includeTagNames: StateFlow<Set<String>> = _includeTagNames.asStateFlow()
+    private val _excludeTagNames = MutableStateFlow<Set<String>>(emptySet())
+    val excludeTagNames: StateFlow<Set<String>> = _excludeTagNames.asStateFlow()
+
+    /** Cycle a tag: neutral → require → exclude → neutral. */
+    fun cycleTagFilterState(tagName: String) {
+        val name = tagName.lowercase()
+        val inc = _includeTagNames.value
+        val exc = _excludeTagNames.value
+        when {
+            name in inc -> { _includeTagNames.value = inc - name; _excludeTagNames.value = exc + name }
+            name in exc -> { _excludeTagNames.value = exc - name }
+            else -> { _includeTagNames.value = inc + name }
+        }
+    }
+
+    fun clearTagFilter() {
+        _includeTagNames.value = emptySet()
+        _excludeTagNames.value = emptySet()
+    }
+
+    val tagFilterResults: StateFlow<List<TrackEntity>> = combine(
+        activeTracks, taggedTrackIds, _includeTagNames, _excludeTagNames
+    ) { tracks, tagMap, include, exclude ->
+        if (include.isEmpty() && exclude.isEmpty()) emptyList()
+        else tracks.filter { track ->
+            include.all { tag -> tagMap[tag]?.contains(track.id) == true } &&
+                exclude.none { tag -> tagMap[tag]?.contains(track.id) == true }
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     val recentlyAdded: StateFlow<List<TrackEntity>> = activeTracks
         .map { tracks -> tracks.take(10) }
         .stateIn(
