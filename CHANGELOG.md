@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.41] - 2026-07-04
+### Added
+- **"On This Day" feed section**: the Home feed can now surface tracks you played on this same calendar date in an earlier month or year, ranked by how often you played them that day — a nostalgic pull from your listening history.
+
 ## [2.40] - 2026-07-04
 ### Added
 - **Sleep-timer fade-out**: a minute-based sleep timer now fades the volume down gently over the final 20 seconds instead of cutting off abruptly (volume is always restored afterward).

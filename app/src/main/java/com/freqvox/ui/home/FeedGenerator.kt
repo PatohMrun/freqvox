@@ -121,6 +121,27 @@ object FeedGenerator {
         // ── TrackEntity-based buckets ─────────────────────────────────────────
         val trackById = tracks.associateBy { it.id }
 
+        // "On this day" — tracks played on this same calendar date (day-of-month) in an earlier
+        // month/year, ranked by how often they were played that day. Nostalgic pull from history.
+        val onThisDay: List<TrackEntity> = run {
+            val today = Calendar.getInstance()
+            val todayDom = today.get(Calendar.DAY_OF_MONTH)
+            val todayMonth = today.get(Calendar.MONTH)
+            val todayYear = today.get(Calendar.YEAR)
+            val c = Calendar.getInstance()
+            context.playHistory
+                .filter { ph ->
+                    c.timeInMillis = ph.playedAt
+                    val earlier = c.get(Calendar.YEAR) < todayYear ||
+                        (c.get(Calendar.YEAR) == todayYear && c.get(Calendar.MONTH) < todayMonth)
+                    c.get(Calendar.DAY_OF_MONTH) == todayDom && earlier
+                }
+                .groupBy { it.trackId }
+                .entries.sortedByDescending { it.value.size }
+                .mapNotNull { trackById[it.key] }
+                .take(12)
+        }
+
         val heavyRotation = tracks
             .filter { it.playCount > 2 }
             .sortedByDescending { it.playCount }
@@ -312,6 +333,10 @@ object FeedGenerator {
         // Recently played
         if (recentlyPlayed.size >= 3)
             feedOptions.add(FeedItem.VerticalList("Recently Played", recentlyPlayed.take(5), Icons.Default.History))
+
+        // On this day — a nostalgic pull from the same date in earlier months/years
+        if (onThisDay.size >= 3)
+            feedOptions.add(createDynamicSection("On This Day", onThisDay, Icons.Default.Today))
 
         // Recently added
         if (recentlyAdded.size >= 4)
