@@ -13,6 +13,11 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.lazy.LazyColumn
@@ -42,6 +47,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -113,6 +119,8 @@ fun HomeScreen(
     val allPlaylists by viewModel.allPlaylists.collectAsStateWithLifecycle()
     val hasUnseenStory by viewModel.hasUnseenStory.collectAsStateWithLifecycle()
     val activeStory by viewModel.activeStoryDrop.collectAsStateWithLifecycle()
+    val storyStats by viewModel.listeningStats.collectAsStateWithLifecycle()
+    val storyContext = androidx.compose.ui.platform.LocalContext.current
     var showStory by remember { mutableStateOf(false) }
     val trackActions = rememberTrackActionsState()
     var optionsTrack by remember { mutableStateOf<TrackEntity?>(null) }
@@ -176,7 +184,18 @@ fun HomeScreen(
                     else -> onStoryAction(action)
                 }
             },
-            onDismiss = { showStory = false }
+            onDismiss = { showStory = false },
+            onShare = {
+                com.freqvox.media.StoryShareCard.shareRecap(
+                    context = storyContext,
+                    weekMinutes = storyStats.weekMinutes,
+                    dailyMinutes = storyStats.weekDailyMinutes,
+                    topArtist = storyStats.topArtistTrack?.artist,
+                    topTrack = storyStats.topTracks.firstOrNull()?.first?.title,
+                    streakDays = storyStats.currentStreakDays,
+                    artPath = storyStats.topArtistTrack?.artworkPath
+                )
+            }
         )
     }
 
@@ -732,11 +751,18 @@ fun Header(greeting: String, totalSongs: Int, totalDurationMs: Long, onSearchCli
                 )
             }
             Spacer(modifier = Modifier.width(8.dp))
-            // Logo DP → opens today's "moment". A vivid ring means it's unseen; a faint ring
-            // means seen. (Settings now lives solely on the gear, resolving the old redundancy.)
+            // Logo DP → opens the current story. A vivid, gently pulsing ring means it's unseen;
+            // a faint static ring means seen. (Settings now lives solely on the gear.)
+            val ringPulse = rememberInfiniteTransition(label = "ring")
+            val pulse by ringPulse.animateFloat(
+                initialValue = 1f, targetValue = 1.06f,
+                animationSpec = infiniteRepeatable(tween(1100), RepeatMode.Reverse), label = "ringScale"
+            )
+            val ringScale = if (hasUnseenMoment) pulse else 1f
             Box(
                 modifier = Modifier
                     .size(46.dp)
+                    .scale(ringScale)
                     .then(
                         if (hasUnseenMoment)
                             Modifier.border(

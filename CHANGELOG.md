@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.57] - 2026-07-05
+### Added
+- **Share your week**: the weekly recap story has a share button that exports a poster image — minutes, a sparkline of your week, top artist, most-played track and streak — to the Android share sheet.
+### Changed
+- The header ring now gently pulses while there's a new, unseen story, and sits still once you've viewed it.
+
 ## [2.56] - 2026-07-05
 ### Added
 - **Explainer stories + working tips**: the ring now teaches — illustrated cards explain how your feed stays endlessly fresh from your tags and habits ("your feed is alive", "why this song?", "tags do the heavy lifting"). Stat cards use real charts (streak calendar, weekly sparkline, top-artist art, top-artist bars). Tip cards' buttons now deep-link straight to the feature — Crossfade, Playback profiles, Appearance, Stats, Browse, duplicates, or play a Daily Mix.

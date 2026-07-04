@@ -12,6 +12,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -39,7 +40,8 @@ private const val SEGMENT_MS = 5000f
 fun StoryViewer(
     drop: StoryDrop,
     onAction: (StoryActionType) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onShare: (() -> Unit)? = null
 ) {
     Dialog(
         onDismissRequest = onDismiss,
@@ -135,6 +137,11 @@ fun StoryViewer(
                     modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
                     horizontalArrangement = Arrangement.End
                 ) {
+                    if (onShare != null && drop.kind == SegmentKind.RECAP) {
+                        IconButton(onClick = onShare) {
+                            Icon(Icons.Default.Share, contentDescription = "Share", tint = Color.White)
+                        }
+                    }
                     IconButton(onClick = onDismiss) {
                         Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
                     }
