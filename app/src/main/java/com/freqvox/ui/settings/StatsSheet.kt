@@ -98,6 +98,27 @@ fun StatsSheet(
                 return@Column
             }
 
+            // ── Momentum: streak + weekly goal ─────────────────────────────────
+            Spacer(modifier = Modifier.height(28.dp))
+            SectionLabel("MOMENTUM")
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.padding(top = 8.dp)
+            ) {
+                MetricCard(
+                    big = if (stats.currentStreakDays > 0) "${stats.currentStreakDays} 🔥" else "—",
+                    label = if (stats.currentStreakDays == 1) "day streak" else "day streak",
+                    accent = accent,
+                    modifier = Modifier.weight(1f)
+                )
+                WeeklyGoalCard(
+                    weekMinutes = stats.weekMinutes,
+                    goalMinutes = stats.weeklyGoalMinutes,
+                    accent = accent,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
             // ── Listening by hour ──────────────────────────────────────────────
             Spacer(modifier = Modifier.height(28.dp))
             SectionLabel("BY HOUR OF DAY")
@@ -156,6 +177,47 @@ private fun MetricCard(big: String, label: String, accent: Color, modifier: Modi
         Text(big, color = Fvox.onSurface, fontSize = 26.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Spacer(modifier = Modifier.height(2.dp))
         Text(label, color = Fvox.onSurface.copy(alpha = 0.5f), fontSize = 12.sp)
+    }
+}
+
+@Composable
+private fun WeeklyGoalCard(weekMinutes: Long, goalMinutes: Int, accent: Color, modifier: Modifier = Modifier) {
+    val fraction = if (goalMinutes > 0) (weekMinutes.toFloat() / goalMinutes).coerceIn(0f, 1f) else 0f
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(18.dp))
+            .background(accent.copy(alpha = 0.10f))
+            .padding(16.dp)
+    ) {
+        val wkH = weekMinutes / 60
+        val wkM = weekMinutes % 60
+        Text(
+            if (wkH > 0) "${wkH}h ${wkM}m" else "${wkM}m",
+            color = Fvox.onSurface, fontSize = 26.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        // Version-proof progress bar (avoids M3 LinearProgressIndicator API churn).
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(6.dp)
+                .clip(RoundedCornerShape(3.dp))
+                .background(Fvox.onSurface.copy(alpha = 0.10f))
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(fraction)
+                    .fillMaxHeight()
+                    .clip(RoundedCornerShape(3.dp))
+                    .background(accent)
+            )
+        }
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            "this week · goal ${goalMinutes / 60}h",
+            color = Fvox.onSurface.copy(alpha = 0.5f),
+            fontSize = 12.sp
+        )
     }
 }
 

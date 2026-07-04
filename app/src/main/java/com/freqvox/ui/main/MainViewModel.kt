@@ -387,7 +387,10 @@ class MainViewModel @Inject constructor(
         val peakHour: Int? = null,
         val hourBuckets: List<Int> = List(24) { 0 },
         val topTracks: List<Pair<TrackEntity, Int>> = emptyList(),
-        val mostSkipped: List<Pair<TrackEntity, Int>> = emptyList()
+        val mostSkipped: List<Pair<TrackEntity, Int>> = emptyList(),
+        val currentStreakDays: Int = 0,
+        val weekMinutes: Long = 0,
+        val weeklyGoalMinutes: Int = 300   // gentle default: ~5 hours/week
     )
 
     val listeningStats: StateFlow<ListeningStats> = combine(allTracks, playHistory) { tracks, history ->
@@ -401,6 +404,22 @@ class MainViewModel @Inject constructor(
         }
         val peakHour = if (history.isEmpty()) null
             else hourBuckets.indices.maxByOrNull { hourBuckets[it] }
+
+        // Daily streak: consecutive days (ending today, or yesterday if nothing yet today) that
+        // have at least one play. Uses epoch-day so it's DST/timezone/year-boundary safe.
+        val zone = java.time.ZoneId.systemDefault()
+        val playDays = history.mapTo(HashSet()) {
+            java.time.Instant.ofEpochMilli(it.playedAt).atZone(zone).toLocalDate().toEpochDay()
+        }
+        val today = java.time.LocalDate.now()
+        var streak = 0
+        var cursor = if (today.toEpochDay() in playDays) today.toEpochDay() else today.toEpochDay() - 1
+        while (cursor in playDays) { streak++; cursor-- }
+
+        // Minutes actually listened so far this calendar week (Mon-anchored), from play_history.
+        val monday = today.minusDays((today.dayOfWeek.value - 1).toLong())
+        val weekStartMs = monday.atStartOfDay(zone).toInstant().toEpochMilli()
+        val weekMinutes = history.filter { it.playedAt >= weekStartMs }.sumOf { it.durationPlayed } / 60_000
 
         ListeningStats(
             totalMinutes = tracks.sumOf { it.totalPlayTime } / 60_000,
@@ -416,7 +435,9 @@ class MainViewModel @Inject constructor(
             mostSkipped = tracks.filter { it.skipCount > 0 }
                 .sortedByDescending { it.skipCount }
                 .take(5)
-                .map { it to it.skipCount }
+                .map { it to it.skipCount },
+            currentStreakDays = streak,
+            weekMinutes = weekMinutes
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ListeningStats())
 

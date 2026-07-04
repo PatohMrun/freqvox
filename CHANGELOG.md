@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.42] - 2026-07-04
+### Added
+- **Listening streaks + weekly goal** in the stats sheet: a new "Momentum" section shows your current daily listening streak (consecutive days with a play) and how much you've listened this week against a gentle goal, with a progress bar.
+
 ## [2.41] - 2026-07-04
 ### Added
 - **"On This Day" feed section**: the Home feed can now surface tracks you played on this same calendar date in an earlier month or year, ranked by how often you played them that day — a nostalgic pull from your listening history.
