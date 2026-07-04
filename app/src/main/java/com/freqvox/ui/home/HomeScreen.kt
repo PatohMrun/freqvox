@@ -279,6 +279,22 @@ fun HomeScreen(
             }
         }
 
+        // Daily Mixes — themed sets that stay stable for the whole calendar day (seeded by
+        // date), so they don't reshuffle every time the feed regenerates.
+        item {
+            val epochDay = remember { java.time.LocalDate.now().toEpochDay() }
+            val dailyMixes = remember(activeTracks, taggedTrackIds, epochDay) {
+                generateDailyMixes(activeTracks, taggedTrackIds, epochDay)
+            }
+            if (dailyMixes.isNotEmpty()) {
+                DailyMixesRow(
+                    mixes = dailyMixes,
+                    onPlayMix = { mix -> mix.tracks.firstOrNull()?.let { onTrackClick(it, mix.tracks) } }
+                )
+                Spacer(modifier = Modifier.height(32.dp))
+            }
+        }
+
         // Iterate through the dynamically generated endless feed blocks
         items(
             items = feedItems,

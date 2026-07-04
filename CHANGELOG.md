@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.43] - 2026-07-04
+### Added
+- **Daily Mixes**: a row of themed mixes near the top of the Home feed, built from your tags and most-present artists. They're seeded by the date, so they stay the same all day (instead of reshuffling every time the feed regenerates) and refresh to a new set tomorrow. Tap a mix to play it.
+
 ## [2.42] - 2026-07-04
 ### Added
 - **Listening streaks + weekly goal** in the stats sheet: a new "Momentum" section shows your current daily listening streak (consecutive days with a play) and how much you've listened this week against a gentle goal, with a progress bar.
