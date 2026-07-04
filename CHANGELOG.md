@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.48] - 2026-07-05
+### Changed
+- **Synced lyrics now auto-scroll**: when a track has a timestamped `.lrc`, the lyrics view keeps the current line centered and moving as the song plays, and you can tap any line to jump to that moment.
+
 ## [2.47] - 2026-07-05
 ### Added
 - **Share a track as an image**: the track options menu (long-press a song) now has "Share as image", which renders a poster card — album art over a gradient drawn from the cover, with the title, artist and Freqvox wordmark — and opens the Android share sheet.

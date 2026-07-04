@@ -5,7 +5,11 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -35,7 +39,8 @@ import java.io.InputStreamReader
 fun LyricsSheet(
     track: TrackEntity?,
     currentPosition: Long,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onSeek: ((Long) -> Unit)? = null
 ) {
     val context = LocalContext.current
     var lyrics by remember { mutableStateOf<List<LyricLine>>(emptyList()) }
@@ -121,27 +126,37 @@ fun LyricsSheet(
             } else if (lyrics.isEmpty()) {
                 LyricsInstructions(onPickFile = { launcher.launch(arrayOf("*/*")) })
             } else {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState()),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                // Synced view: the current line is the last one whose timestamp has passed. It's
+                // auto-scrolled toward the middle as playback advances; tap a line to seek to it.
+                val listState = rememberLazyListState()
+                val currentIndex = remember(lyrics, currentPosition) {
+                    lyrics.indexOfLast { currentPosition >= it.timestamp }
+                }
+                LaunchedEffect(currentIndex) {
+                    if (currentIndex >= 0) {
+                        listState.animateScrollToItem(currentIndex, scrollOffset = -400)
+                    }
+                }
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    contentPadding = PaddingValues(vertical = 48.dp)
                 ) {
-                    lyrics.forEach { line ->
-                        val idx = lyrics.indexOf(line)
-                        val nextTs = lyrics.getOrNull(idx + 1)?.timestamp ?: Long.MAX_VALUE
-                        val isCurrent = currentPosition >= line.timestamp && currentPosition < nextTs
-
+                    itemsIndexed(lyrics) { index, line ->
+                        val isCurrent = index == currentIndex
                         Text(
                             text = line.content,
                             color = if (isCurrent) Fvox.onSurface else Fvox.onSurface.copy(alpha = 0.28f),
                             fontSize = if (isCurrent) 24.sp else 18.sp,
                             fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
                             textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(vertical = 10.dp)
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .then(if (onSeek != null) Modifier.clickable { onSeek(line.timestamp) } else Modifier)
+                                .padding(vertical = 10.dp, horizontal = 8.dp)
                         )
                     }
-                    Spacer(modifier = Modifier.height(64.dp))
                 }
             }
         }

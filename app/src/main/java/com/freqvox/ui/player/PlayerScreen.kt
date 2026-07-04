@@ -918,7 +918,8 @@ fun PlayerScreen(
         LyricsSheet(
             track = currentTrack,
             currentPosition = currentPosition,
-            onDismiss = { showLyricsSheet = false }
+            onDismiss = { showLyricsSheet = false },
+            onSeek = { ts -> if (duration > 0) onSeek(ts.toFloat() / duration) }
         )
     }
 
