@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.40] - 2026-07-04
+### Added
+- **Sleep-timer fade-out**: a minute-based sleep timer now fades the volume down gently over the final 20 seconds instead of cutting off abruptly (volume is always restored afterward).
+- **"Stop after this album"**: a new sleep-timer mode that pauses when the current album finishes (at the first track of a different album), alongside the existing "end of current track".
+
 ## [2.39] - 2026-07-04
 ### Added
 - **Fixed accent option** (side panel → Appearance → Accent color): pin the background gradient to a single colour of your choice instead of deriving it from each track's album art. Off by default (album-derived stays the signature look); pick from eight swatches. The static UI accent is unaffected.

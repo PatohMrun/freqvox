@@ -69,6 +69,7 @@ fun MainScreen(
     val sleepTimerActive by playbackController.isTimerRunning.collectAsStateWithLifecycle()
     val sleepTimerTimeLeft by playbackController.timerTimeLeft.collectAsStateWithLifecycle()
     val stopAfterTrack by playbackController.stopAfterCurrentTrack.collectAsStateWithLifecycle()
+    val stopAfterAlbum by playbackController.stopAfterAlbum.collectAsStateWithLifecycle()
     val queue by playbackController.queue.collectAsStateWithLifecycle()
     val currentQueueIndex by playbackController.currentQueueIndex.collectAsStateWithLifecycle()
     val playbackSpeed by playbackController.playbackSpeed.collectAsStateWithLifecycle()
@@ -537,8 +538,10 @@ fun MainScreen(
                     isActive = sleepTimerActive,
                     timeLeftMs = sleepTimerTimeLeft,
                     stopAfterTrack = stopAfterTrack,
+                    stopAfterAlbum = stopAfterAlbum,
                     onSelectMinutes = { playbackController.startSleepTimer(it) },
                     onEndOfTrack = { playbackController.setStopAfterCurrentTrack(true) },
+                    onEndOfAlbum = { playbackController.setStopAfterAlbum(true) },
                     onCancel = { playbackController.stopSleepTimer() },
                     onDismiss = { showSleepSheet = false }
                 )

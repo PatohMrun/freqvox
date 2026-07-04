@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Album
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -26,8 +27,10 @@ fun SleepTimerSheet(
     isActive: Boolean,
     timeLeftMs: Long,
     stopAfterTrack: Boolean,
+    stopAfterAlbum: Boolean,
     onSelectMinutes: (Int) -> Unit,
     onEndOfTrack: () -> Unit,
+    onEndOfAlbum: () -> Unit,
     onCancel: () -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -49,8 +52,9 @@ fun SleepTimerSheet(
             Text("Sleep Timer", color = Fvox.onSurface, fontSize = 18.sp, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(4.dp))
             when {
-                isActive -> Text("Stops in ${formatTimer(timeLeftMs)}", color = accent, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                isActive -> Text("Fades out, then stops in ${formatTimer(timeLeftMs)}", color = accent, fontSize = 13.sp, fontWeight = FontWeight.Medium)
                 stopAfterTrack -> Text("Stops at the end of this track", color = accent, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                stopAfterAlbum -> Text("Stops at the end of this album", color = accent, fontSize = 13.sp, fontWeight = FontWeight.Medium)
             }
             Spacer(modifier = Modifier.height(20.dp))
 
@@ -72,6 +76,28 @@ fun SleepTimerSheet(
                     Icon(Icons.Default.MusicNote, contentDescription = null, tint = if (stopAfterTrack) accent else Fvox.onSurface.copy(alpha = 0.7f), modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("End of current track", color = if (stopAfterTrack) Fvox.onSurface else Fvox.onSurface.copy(alpha = 0.85f), fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                }
+            }
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(if (stopAfterAlbum) accent.copy(alpha = 0.22f) else Fvox.onSurface.copy(alpha = 0.07f))
+                    .border(
+                        1.dp,
+                        if (stopAfterAlbum) accent.copy(alpha = 0.6f) else Fvox.onSurface.copy(alpha = 0.1f),
+                        RoundedCornerShape(12.dp)
+                    )
+                    .clickable { onEndOfAlbum(); onDismiss() }
+                    .padding(vertical = 14.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Album, contentDescription = null, tint = if (stopAfterAlbum) accent else Fvox.onSurface.copy(alpha = 0.7f), modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("End of this album", color = if (stopAfterAlbum) Fvox.onSurface else Fvox.onSurface.copy(alpha = 0.85f), fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
                 }
             }
             Spacer(modifier = Modifier.height(16.dp))
@@ -99,7 +125,7 @@ fun SleepTimerSheet(
                 Spacer(modifier = Modifier.height(10.dp))
             }
 
-            if (isActive || stopAfterTrack) {
+            if (isActive || stopAfterTrack || stopAfterAlbum) {
                 TextButton(onClick = { onCancel(); onDismiss() }, modifier = Modifier.fillMaxWidth()) {
                     Text("Cancel Timer", color = Fvox.accentAlt, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
                 }

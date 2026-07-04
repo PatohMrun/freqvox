@@ -83,6 +83,15 @@ class PlaybackController(
     private val _stopAfterCurrentTrack = MutableStateFlow(false)
     val stopAfterCurrentTrack: StateFlow<Boolean> = _stopAfterCurrentTrack.asStateFlow()
 
+    // "Stop after this album finishes" — pauses at the first track of a different album.
+    private val _stopAfterAlbum = MutableStateFlow(false)
+    val stopAfterAlbum: StateFlow<Boolean> = _stopAfterAlbum.asStateFlow()
+    private var currentAlbumTitle: String? = null
+
+    // Fades playback to silence over the final stretch of a minute-timer, then pauses.
+    private var sleepFadeJob: Job? = null
+    private val sleepFadeMs = 20_000L
+
     private val _queue = MutableStateFlow<List<QueueItem>>(emptyList())
     val queue: StateFlow<List<QueueItem>> = _queue.asStateFlow()
 
@@ -201,6 +210,22 @@ class PlaybackController(
                     }
                     _stopAfterCurrentTrack.value = false
                 }
+
+                // "Stop after this album": when we auto-advance into a track whose album differs
+                // from the one that was playing, the album is over — pause at its start.
+                val newAlbum = mediaItem?.mediaMetadata?.albumTitle?.toString()
+                if (_stopAfterAlbum.value &&
+                    reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO &&
+                    currentAlbumTitle != null &&
+                    !newAlbum.equals(currentAlbumTitle, ignoreCase = true)
+                ) {
+                    mediaController?.let { c ->
+                        c.pause()
+                        c.seekTo(c.currentMediaItemIndex.coerceAtLeast(0), 0L)
+                    }
+                    _stopAfterAlbum.value = false
+                }
+                currentAlbumTitle = newAlbum
 
                 val controller = mediaController
                 if (controller != null) {
@@ -638,21 +663,57 @@ class PlaybackController(
     }
 
     fun startSleepTimer(minutes: Int) {
-        // Minute-timer and end-of-track are mutually exclusive sleep modes.
+        // Minute-timer and the end-of-* modes are mutually exclusive sleep modes.
         _stopAfterCurrentTrack.value = false
+        _stopAfterAlbum.value = false
         sleepTimerManager.startTimer(minutes) {
             mediaController?.pause()
+            mediaController?.volume = 1f   // restore for the next play session
+        }
+        // Fade the last sleepFadeMs down to silence so sleep isn't a hard cut. Deterministic
+        // (based on total duration), fine-grained, and always restored on finish/cancel.
+        sleepFadeJob?.cancel()
+        sleepFadeJob = scope.launch {
+            val totalMs = minutes * 60_000L
+            val preFade = (totalMs - sleepFadeMs).coerceAtLeast(0L)
+            delay(preFade)
+            val rampMs = totalMs - preFade
+            val steps = (rampMs / 100L).coerceAtLeast(1)
+            for (i in 1..steps) {
+                if (!isActive) break
+                mediaController?.volume = (1f - i.toFloat() / steps).coerceIn(0f, 1f)
+                delay(100)
+            }
         }
     }
 
     fun setStopAfterCurrentTrack(enabled: Boolean) {
-        if (enabled) sleepTimerManager.stopTimer()
+        if (enabled) { sleepTimerManager.stopTimer(); cancelSleepFade(); _stopAfterAlbum.value = false }
         _stopAfterCurrentTrack.value = enabled
+    }
+
+    fun setStopAfterAlbum(enabled: Boolean) {
+        if (enabled) {
+            sleepTimerManager.stopTimer()
+            cancelSleepFade()
+            _stopAfterCurrentTrack.value = false
+            currentAlbumTitle = mediaController?.currentMediaItem?.mediaMetadata?.albumTitle?.toString()
+        }
+        _stopAfterAlbum.value = enabled
     }
 
     fun stopSleepTimer() {
         sleepTimerManager.stopTimer()
+        cancelSleepFade()
         _stopAfterCurrentTrack.value = false
+        _stopAfterAlbum.value = false
+    }
+
+    /** Cancel any in-flight sleep fade and restore full volume. */
+    private fun cancelSleepFade() {
+        sleepFadeJob?.cancel()
+        sleepFadeJob = null
+        mediaController?.volume = 1f
     }
 
     fun release() {
