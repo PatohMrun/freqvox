@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.52] - 2026-07-05
+### Changed
+- **Stories, upgraded**: the header ring now opens a full-screen, Instagram-style story viewer — segmented progress bars that auto-advance, tap left/right to move, press-and-hold to pause, drag down to dismiss. The single daily "Moment" is now a one-segment story, and the ring's cadence moved to a curated ~2–3×/week. (Foundation for weekly recaps, milestones and richer graphics landing next.)
+
 ## [2.51] - 2026-07-05
 ### Added
 - **Moments (header story-ring)**: the logo in the Home header now shows a "moment" each day — a tip or a highlight from your stats. A vivid ring means there's something new; tap it to read, and the ring fades once seen. Settings now live solely on the gear icon (the logo no longer duplicates it).

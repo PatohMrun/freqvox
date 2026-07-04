@@ -110,9 +110,9 @@ fun HomeScreen(
 
     val greeting = rememberGreeting()
     val allPlaylists by viewModel.allPlaylists.collectAsStateWithLifecycle()
-    val hasUnseenMoment by viewModel.hasUnseenMoment.collectAsStateWithLifecycle()
-    val moment by viewModel.moment.collectAsStateWithLifecycle()
-    var showMoment by remember { mutableStateOf(false) }
+    val hasUnseenStory by viewModel.hasUnseenStory.collectAsStateWithLifecycle()
+    val activeStory by viewModel.activeStoryDrop.collectAsStateWithLifecycle()
+    var showStory by remember { mutableStateOf(false) }
     val trackActions = rememberTrackActionsState()
     var optionsTrack by remember { mutableStateOf<TrackEntity?>(null) }
     // Long-press now opens a richer options menu (Tag is one entry inside) instead of
@@ -159,9 +159,13 @@ fun HomeScreen(
     }
     TrackActionsDialogs(state = trackActions, viewModel = viewModel, playlists = allPlaylists)
 
-    if (showMoment) {
-        LaunchedEffect(Unit) { viewModel.markMomentSeen() }
-        MomentSheet(moment = moment, onDismiss = { showMoment = false })
+    if (showStory) {
+        LaunchedEffect(Unit) { viewModel.markStorySeen() }
+        com.freqvox.ui.story.StoryViewer(
+            drop = activeStory,
+            onAction = { /* deep-link CTAs wired in a later phase */ },
+            onDismiss = { showStory = false }
+        )
     }
 
     // Endless feed — every page is a fresh remix of the same library with a
@@ -252,8 +256,8 @@ fun HomeScreen(
             themeMode = themeMode,
             onCycleTheme = { viewModel.cycleTheme() },
             onOpenPanel = onOpenPanel,
-            hasUnseenMoment = hasUnseenMoment,
-            onOpenMoments = { showMoment = true },
+            hasUnseenMoment = hasUnseenStory,
+            onOpenMoments = { showStory = true },
             modifier = Modifier.padding(horizontal = 24.dp, vertical = 24.dp)
         )
         LazyColumn(

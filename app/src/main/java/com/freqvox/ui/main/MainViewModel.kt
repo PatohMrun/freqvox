@@ -39,7 +39,7 @@ class MainViewModel @Inject constructor(
     private val sidePanelPrefs: com.freqvox.data.prefs.SidePanelPreferences,
     private val accentPrefs: com.freqvox.data.prefs.AccentPreferences,
     private val tagProfilePrefs: com.freqvox.data.prefs.TagProfilePreferences,
-    private val momentsPrefs: com.freqvox.data.prefs.MomentsPreferences
+    private val storyScheduler: com.freqvox.ui.story.StoryScheduler
 ) : ViewModel() {
 
     // ── Per-tag playback profiles (tag → EQ preset) ────────────────────────────
@@ -516,24 +516,22 @@ class MainViewModel @Inject constructor(
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ListeningStats())
 
-    // ── "Moments" (header DP story-ring) ───────────────────────────────────────
-    private val momentEpochDay: Long = java.time.LocalDate.now().toEpochDay()
-    val moment: StateFlow<com.freqvox.ui.home.Moment> = listeningStats
-        .map { com.freqvox.ui.home.generateMoment(it, momentEpochDay) }
+    // ── Header story-ring ("Stories") ──────────────────────────────────────────
+    private val storyEpochDay: Long = java.time.LocalDate.now().toEpochDay()
+    private val _storySeenBump = MutableStateFlow(0)
+    val activeStoryDrop: StateFlow<com.freqvox.ui.story.StoryDrop> = listeningStats
+        .map { storyScheduler.activeDrop(it, storyEpochDay) }
         .stateIn(
             viewModelScope, SharingStarted.WhileSubscribed(5000),
-            com.freqvox.ui.home.generateMoment(ListeningStats(), momentEpochDay)
+            storyScheduler.activeDrop(ListeningStats(), storyEpochDay)
         )
-    private val _momentSeenDay = MutableStateFlow(momentsPrefs.lastSeenDay)
-    val hasUnseenMoment: StateFlow<Boolean> = _momentSeenDay
-        .map { it != momentEpochDay }
-        .stateIn(
-            viewModelScope, SharingStarted.WhileSubscribed(5000),
-            momentsPrefs.lastSeenDay != momentEpochDay
-        )
-    fun markMomentSeen() {
-        momentsPrefs.lastSeenDay = momentEpochDay
-        _momentSeenDay.value = momentEpochDay
+    val hasUnseenStory: StateFlow<Boolean> = combine(activeStoryDrop, _storySeenBump) { drop, _ ->
+        storyScheduler.isUnseen(drop.id)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    fun markStorySeen() {
+        storyScheduler.markSeen(activeStoryDrop.value.id)
+        _storySeenBump.value++
     }
 
     // ── Hidden folders ─────────────────────────────────────────────────────────
