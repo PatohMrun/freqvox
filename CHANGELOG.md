@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.47] - 2026-07-05
+### Added
+- **Share a track as an image**: the track options menu (long-press a song) now has "Share as image", which renders a poster card — album art over a gradient drawn from the cover, with the title, artist and Freqvox wordmark — and opens the Android share sheet.
+
 ## [2.46] - 2026-07-05
 ### Added
 - **Multi-select in the Library Songs list**: long-press a song to enter selection mode, then tap to select more. A bottom action bar shows the count and lets you bulk **tag**, **add to a playlist**, or **delete** the whole selection at once (deletes go through one system confirmation). Back or the ✕ exits selection.

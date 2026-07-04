@@ -9,6 +9,8 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.PlaylistPlay
 import androidx.compose.material.icons.filled.Sell
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -57,9 +59,13 @@ fun TrackOptionsSheet(
                 Text(track.title, color = Fvox.onSurface, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(track.artist, color = Fvox.onSurface.copy(alpha = 0.5f), fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
+            val context = LocalContext.current
             OptionRow(Icons.Default.Sell, "Tag") { onDismiss(); onTag() }
             OptionRow(Icons.Default.PlaylistAdd, "Add to playlist") { onDismiss(); onAddToPlaylist() }
             OptionRow(Icons.Default.PlaylistPlay, "Play next") { onDismiss(); onPlayNext() }
+            OptionRow(Icons.Default.Share, "Share as image") {
+                onDismiss(); com.freqvox.media.TrackShareCard.shareTrackCard(context, track)
+            }
             OptionRow(Icons.Default.Delete, "Delete from device", danger = true) { onDismiss(); onDelete() }
         }
     }
