@@ -15,7 +15,11 @@ class StoryScheduler @Inject constructor(
     private val prefs: StoryPreferences
 ) {
     fun activeDrop(stats: MainViewModel.ListeningStats, epochDay: Long): StoryDrop {
-        // Milestone branch slots in above this line in a later phase.
+        // Milestones — highest priority: the first achievement not yet celebrated.
+        val celebrated = prefs.celebratedMilestones()
+        StoryContent.metMilestones(stats).firstOrNull { it.key !in celebrated }?.let {
+            return StoryContent.milestoneDrop(it, epochDay)
+        }
 
         // Weekly recap (Monday-anchored): the top-priority drop each week until it's been seen.
         val dow = java.time.LocalDate.ofEpochDay(epochDay).dayOfWeek.value  // 1=Mon … 7=Sun
@@ -34,6 +38,10 @@ class StoryScheduler @Inject constructor(
 
     fun markSeen(dropId: String) {
         prefs.lastSeenDropId = dropId
+        // A viewed milestone is celebrated once and never re-surfaces, even while still true.
+        if (dropId.startsWith("milestone-")) {
+            prefs.markMilestoneCelebrated(dropId.removePrefix("milestone-"))
+        }
     }
 
     companion object {

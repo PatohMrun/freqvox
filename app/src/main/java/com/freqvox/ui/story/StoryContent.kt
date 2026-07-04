@@ -17,6 +17,35 @@ object StoryContent {
         return StoryDrop(id = "tip-$periodIndex", createdDay = epochDay, kind = seg.kind, segments = listOf(seg))
     }
 
+    data class MilestoneDef(val key: String, val emoji: String, val title: String, val body: String)
+
+    /** Achievements the user currently qualifies for, highest first. The scheduler shows the first
+     *  un-celebrated one; viewing it marks it celebrated so it fires only once. */
+    fun metMilestones(stats: MainViewModel.ListeningStats): List<MilestoneDef> {
+        val out = mutableListOf<MilestoneDef>()
+        when {
+            stats.currentStreakDays >= 30 -> out += MilestoneDef("streak30", "🏆", "30-day streak!", "A whole month of daily listening. Legendary.")
+            stats.currentStreakDays >= 7 -> out += MilestoneDef("streak7", "🔥", "7-day streak!", "A full week, every single day. You're on fire.")
+        }
+        when {
+            stats.totalPlays >= 1000 -> out += MilestoneDef("plays1000", "💎", "1,000 plays", "A thousand songs played in Freqvox. That's dedication.")
+            stats.totalPlays >= 500 -> out += MilestoneDef("plays500", "🌟", "500 plays", "Halfway to a thousand — keep the music going.")
+        }
+        stats.topTracks.firstOrNull()?.let { (t, c) ->
+            if (c >= 100) out += MilestoneDef("track100-${t.id}", "💯", "100 plays of one song", "\"${t.title}\" is a certified favourite.")
+        }
+        return out
+    }
+
+    fun milestoneDrop(def: MilestoneDef, epochDay: Long): StoryDrop = StoryDrop(
+        id = "milestone-${def.key}",
+        createdDay = epochDay,
+        kind = SegmentKind.MILESTONE,
+        segments = listOf(
+            StorySegment("m-${def.key}", SegmentKind.MILESTONE, def.title, def.body, SegmentVisual.Emoji(def.emoji))
+        )
+    )
+
     /** A multi-segment "Your week in Freqvox" recap. Segments are included only when they have data. */
     fun weeklyRecap(stats: MainViewModel.ListeningStats, weekKey: Long, epochDay: Long): StoryDrop {
         val segs = mutableListOf<StorySegment>()

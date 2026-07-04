@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.55] - 2026-07-05
+### Added
+- **Milestones**: the ring celebrates achievements as you hit them — a 7- or 30-day streak, 500/1000 total plays, or 100 plays of a single song. Each one appears once and is remembered so it won't nag you again.
+
 ## [2.54] - 2026-07-05
 ### Added
 - **"Your week in Freqvox" recap**: once a week the header ring opens a multi-segment story — minutes listened (day-by-day sparkline), your top artist and most-played track (with art), new additions (cover collage) and your streak. It takes priority over tips until you've seen it.
