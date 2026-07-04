@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.53] - 2026-07-05
+### Added
+- **Story graphics**: story segments can now render real drawn visuals — album art, cover collages, a listening sparkline, bar and hour-of-day charts, a streak calendar, and simple illustrations — ready for the weekly recap and milestones. (Internal groundwork; surfaces in the next updates.)
+
 ## [2.52] - 2026-07-05
 ### Changed
 - **Stories, upgraded**: the header ring now opens a full-screen, Instagram-style story viewer — segmented progress bars that auto-advance, tap left/right to move, press-and-hold to pause, drag down to dismiss. The single daily "Moment" is now a one-segment story, and the ring's cadence moved to a curated ~2–3×/week. (Foundation for weekly recaps, milestones and richer graphics landing next.)
