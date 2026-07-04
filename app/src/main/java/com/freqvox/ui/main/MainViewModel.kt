@@ -785,6 +785,30 @@ class MainViewModel @Inject constructor(
         }
     }
 
+    // ── Bulk (multi-select) actions ────────────────────────────────────────────
+    fun bulkAddTag(tagId: Long, trackIds: Collection<Long>) {
+        viewModelScope.launch { trackIds.forEach { trackRepository.addTagToTrack(it, tagId) } }
+    }
+
+    fun bulkAddToPlaylist(playlistId: Long, trackIds: Collection<Long>) {
+        viewModelScope.launch {
+            var added = 0
+            trackIds.forEach {
+                if (playlistRepository.addTrackToPlaylist(playlistId, it) == AddTrackResult.Added) added++
+            }
+            postSnackbar("Added $added track${if (added == 1) "" else "s"}")
+        }
+    }
+
+    fun bulkCompleteDeletion(trackIds: Collection<Long>) {
+        viewModelScope.launch {
+            trackIds.forEach {
+                trackRepository.purgeTrackFromLibrary(it)
+                playbackController.removeTrackFromLibrary(it)
+            }
+        }
+    }
+
     fun deletePlaylist(playlist: com.freqvox.data.local.entities.PlaylistEntity) {
         viewModelScope.launch {
             playlistRepository.deletePlaylist(playlist)

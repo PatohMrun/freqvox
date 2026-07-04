@@ -26,6 +26,20 @@ object MediaTrackDeleter {
         }
     }
 
+    /** Android 11+ — one system "allow delete?" sheet covering many tracks at once. */
+    fun createDeleteRequest(context: Context, trackIds: List<Long>): IntentSenderRequest? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R || trackIds.isEmpty()) return null
+        return try {
+            val pending = MediaStore.createDeleteRequest(
+                context.contentResolver,
+                trackIds.map { mediaStoreUri(it) }
+            )
+            IntentSenderRequest.Builder(pending.intentSender).build()
+        } catch (_: Exception) {
+            null
+        }
+    }
+
     /** Pre-Android 11 fallback — may fail on scoped storage without legacy write access. */
     fun tryDeleteViaResolver(context: Context, trackId: Long): Boolean =
         try {

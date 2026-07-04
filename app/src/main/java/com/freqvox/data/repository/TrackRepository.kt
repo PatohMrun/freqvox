@@ -418,6 +418,11 @@ class TrackRepository @Inject constructor(
         return trackDao.getSimilarTracks(trackId)
     }
 
+    /** Idempotent add (unlike [toggleTagForTrack]); used for bulk tagging a selection. */
+    suspend fun addTagToTrack(trackId: Long, tagId: Long) {
+        tagDao.insertTrackTagCrossRef(TrackTagCrossRef(trackId, tagId))
+    }
+
     /** Removes all app data for a track after the media file has been deleted (or user chose library-only removal). */
     suspend fun purgeTrackFromLibrary(trackId: Long) = withContext(Dispatchers.IO) {
         val path = trackDao.getTrackById(trackId)?.path

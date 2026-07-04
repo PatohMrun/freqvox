@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.46] - 2026-07-05
+### Added
+- **Multi-select in the Library Songs list**: long-press a song to enter selection mode, then tap to select more. A bottom action bar shows the count and lets you bulk **tag**, **add to a playlist**, or **delete** the whole selection at once (deletes go through one system confirmation). Back or the ✕ exits selection.
+
 ## [2.45] - 2026-07-05
 ### Added
 - **Duplicate finder** (side panel → Library → Find duplicates): groups tracks that share a title and artist (ignoring case/punctuation), shows each copy with its folder, length, album and play count — with the most-played one marked "kept" — so you can delete the extras through the normal delete confirmation.

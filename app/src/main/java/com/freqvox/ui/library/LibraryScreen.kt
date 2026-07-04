@@ -31,6 +31,10 @@ import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.BrightnessAuto
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.RadioButtonUnchecked
+import androidx.compose.material.icons.filled.Sell
+import androidx.compose.material.icons.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Close
@@ -158,9 +162,31 @@ fun LibraryScreen(
     var pendingDeleteTrackId by remember { mutableStateOf<Long?>(null) }
     var showSearchSheet by remember { mutableStateOf(false) }
 
+    // Multi-select (Songs tab). Empty set = normal mode.
+    val selectedIds = remember { mutableStateListOf<Long>() }
+    val selectionMode = selectedIds.isNotEmpty()
+    var showBulkPlaylistDialog by remember { mutableStateOf(false) }
+    var showBulkTagDialog by remember { mutableStateOf(false) }
+    var pendingBulkDeleteIds by remember { mutableStateOf<List<Long>>(emptyList()) }
+
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+    val allPlaylists by viewModel.allPlaylists.collectAsStateWithLifecycle()
+
+    androidx.activity.compose.BackHandler(enabled = selectionMode) { selectedIds.clear() }
+
+    val bulkDeleteLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartIntentSenderForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            viewModel.bulkCompleteDeletion(pendingBulkDeleteIds)
+            val n = pendingBulkDeleteIds.size
+            scope.launch { snackbarHostState.showSnackbar("Deleted $n song${if (n == 1) "" else "s"}") }
+            selectedIds.clear()
+        }
+        pendingBulkDeleteIds = emptyList()
+    }
 
     val deleteLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartIntentSenderForResult()
@@ -355,7 +381,11 @@ fun LibraryScreen(
                             onAddToQueue = {
                                 playbackController.addToQueue(track)
                                 scope.launch { snackbarHostState.showSnackbar("Added to queue") }
-                            }
+                            },
+                            selectionMode = selectionMode,
+                            isSelected = track.id in selectedIds,
+                            onToggleSelect = { if (!selectedIds.remove(track.id)) selectedIds.add(track.id) },
+                            onEnterSelection = { selectedIds.add(track.id) }
                         )
                     }
                 }
@@ -518,7 +548,115 @@ fun LibraryScreen(
             .align(Alignment.BottomCenter)
             .padding(bottom = 100.dp)
     )
+
+    // ── Multi-select action bar ─────────────────────────────────────────────────
+    if (selectionMode) {
+        Row(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 12.dp)
+                .clip(RoundedCornerShape(18.dp))
+                .background(Fvox.surfaceVariant)
+                .border(1.dp, Fvox.onSurface.copy(alpha = 0.08f), RoundedCornerShape(18.dp))
+                .padding(horizontal = 8.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = { selectedIds.clear() }) {
+                Icon(Icons.Default.Close, contentDescription = "Clear selection", tint = Fvox.onSurface)
+            }
+            Text("${selectedIds.size} selected", color = Fvox.onSurface, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+            Spacer(Modifier.weight(1f))
+            IconButton(onClick = { showBulkTagDialog = true }, enabled = allTags.isNotEmpty()) {
+                Icon(Icons.Default.Sell, contentDescription = "Tag", tint = Fvox.accent)
+            }
+            IconButton(onClick = { showBulkPlaylistDialog = true }) {
+                Icon(Icons.Default.PlaylistAdd, contentDescription = "Add to playlist", tint = Fvox.accent)
+            }
+            IconButton(onClick = {
+                val ids = selectedIds.toList()
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    val req = MediaTrackDeleter.createDeleteRequest(context, ids)
+                    if (req != null) { pendingBulkDeleteIds = ids; bulkDeleteLauncher.launch(req) }
+                    else scope.launch { snackbarHostState.showSnackbar("Could not delete") }
+                } else {
+                    scope.launch {
+                        ids.forEach { MediaTrackDeleter.tryDeleteViaResolver(context, it) }
+                        viewModel.bulkCompleteDeletion(ids)
+                        snackbarHostState.showSnackbar("Deleted ${ids.size} songs")
+                        selectedIds.clear()
+                    }
+                }
+            }) {
+                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Fvox.accentAlt)
+            }
+        }
     }
+
+    if (showBulkPlaylistDialog) {
+        SelectPlaylistDialog(
+            playlists = allPlaylists.filter { it.type == "manual" },
+            onSelect = { pl ->
+                viewModel.bulkAddToPlaylist(pl.id, selectedIds.toList())
+                showBulkPlaylistDialog = false
+                selectedIds.clear()
+            },
+            onDismiss = { showBulkPlaylistDialog = false }
+        )
+    }
+
+    if (showBulkTagDialog) {
+        BulkTagDialog(
+            tags = allTags.distinctBy { it.name.lowercase() },
+            onPick = { tag ->
+                val n = selectedIds.size
+                viewModel.bulkAddTag(tag.id, selectedIds.toList())
+                showBulkTagDialog = false
+                selectedIds.clear()
+                scope.launch { snackbarHostState.showSnackbar("Tagged $n song${if (n == 1) "" else "s"}") }
+            },
+            onDismiss = { showBulkTagDialog = false }
+        )
+    }
+    }
+}
+
+/** Compact tag chooser for bulk-tagging a selection. */
+@Composable
+private fun BulkTagDialog(
+    tags: List<TagEntity>,
+    onPick: (TagEntity) -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = Fvox.surfaceVariant,
+        title = { Text("Add a tag", color = Fvox.onSurface) },
+        text = {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                tags.forEach { tag ->
+                    val color = Color(tag.color)
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(50))
+                            .background(color.copy(alpha = 0.2f))
+                            .border(1.dp, color.copy(alpha = 0.6f), RoundedCornerShape(50))
+                            .clickable { onPick(tag) }
+                            .padding(horizontal = 14.dp, vertical = 8.dp)
+                    ) {
+                        Text(formatTagDisplayName(tag.name), color = Fvox.onSurface, fontSize = 13.sp)
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel", color = Fvox.onSurface.copy(alpha = 0.6f)) } }
+    )
 }
 
 // Long-press any pill and drag left/right to reorder tabs. Built on the same
@@ -693,7 +831,11 @@ fun LibraryTrackItem(
     onAddToPlaylist: (() -> Unit)? = null,
     onToggleDislike: (() -> Unit)? = null,
     onPlayNext: (() -> Unit)? = null,
-    onAddToQueue: (() -> Unit)? = null
+    onAddToQueue: (() -> Unit)? = null,
+    selectionMode: Boolean = false,
+    isSelected: Boolean = false,
+    onToggleSelect: (() -> Unit)? = null,
+    onEnterSelection: (() -> Unit)? = null
 ) {
     val accent = Fvox.accent
     var showMenu by remember { mutableStateOf(false) }
@@ -703,27 +845,41 @@ fun LibraryTrackItem(
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
             .background(
-                if (isCurrentTrack) accent.copy(alpha = 0.10f)
-                else Fvox.onSurface.copy(alpha = 0.04f)
+                when {
+                    isSelected     -> accent.copy(alpha = 0.18f)
+                    isCurrentTrack -> accent.copy(alpha = 0.10f)
+                    else           -> Fvox.onSurface.copy(alpha = 0.04f)
+                }
             )
             .then(
-                if (isCurrentTrack)
+                if (isCurrentTrack || isSelected)
                     Modifier.border(1.dp, accent.copy(alpha = 0.6f), RoundedCornerShape(16.dp))
                 else Modifier
             )
-            .pointerInput(Unit) {
-                // Long-press now opens the same "more" menu the trailing icon
-                // shows (Add to Playlist / Delete from device). Jumping straight
-                // into the delete confirmation made the gesture feel destructive
-                // and removed any way to access the other action via long-press.
+            .pointerInput(selectionMode) {
+                // In selection mode a tap toggles the checkbox; otherwise it plays. A long-press
+                // opens the "more" menu, or — when selection is available — enters selection mode.
                 detectTapGestures(
-                    onTap = { onClick() },
-                    onLongPress = { showMenu = true }
+                    onTap = { if (selectionMode) onToggleSelect?.invoke() else onClick() },
+                    onLongPress = {
+                        if (selectionMode) onToggleSelect?.invoke()
+                        else if (onEnterSelection != null) onEnterSelection()
+                        else showMenu = true
+                    }
                 )
             }
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        if (selectionMode) {
+            Icon(
+                imageVector = if (isSelected) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
+                contentDescription = if (isSelected) "Selected" else "Not selected",
+                tint = if (isSelected) accent else Fvox.onSurface.copy(alpha = 0.4f),
+                modifier = Modifier.size(24.dp)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+        }
         Surface(
             modifier = Modifier.size(52.dp),
             shape = RoundedCornerShape(12.dp),
