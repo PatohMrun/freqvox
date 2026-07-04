@@ -17,6 +17,7 @@ import androidx.compose.ui.platform.LocalContext
 import com.freqvox.data.local.entities.PlaylistEntity
 import com.freqvox.data.local.entities.TrackEntity
 import com.freqvox.data.repository.AddTrackResult
+import com.freqvox.media.MediaMetadataWriter
 import com.freqvox.media.MediaTrackDeleter
 import com.freqvox.ui.library.DeleteTrackStepOneDialog
 import com.freqvox.ui.library.DeleteTrackStepTwoDialog
@@ -39,6 +40,7 @@ import kotlinx.coroutines.launch
 class TrackActionsState internal constructor() {
     internal var trackToAdd by mutableStateOf<TrackEntity?>(null)
     internal var trackToDelete by mutableStateOf<TrackEntity?>(null)
+    internal var trackToEdit by mutableStateOf<TrackEntity?>(null)
     internal var deleteStep by mutableIntStateOf(0)
 
     fun openAddToPlaylist(track: TrackEntity) {
@@ -50,6 +52,10 @@ class TrackActionsState internal constructor() {
         deleteStep = 1
     }
 
+    fun openEdit(track: TrackEntity) {
+        trackToEdit = track
+    }
+
     internal fun closeAddDialog() {
         trackToAdd = null
     }
@@ -57,6 +63,10 @@ class TrackActionsState internal constructor() {
     internal fun closeDeleteDialog() {
         trackToDelete = null
         deleteStep = 0
+    }
+
+    internal fun closeEditDialog() {
+        trackToEdit = null
     }
 }
 
@@ -91,6 +101,45 @@ fun TrackActionsDialogs(
             }
         }
         pendingDeleteTrackId = null
+    }
+
+    // Metadata edit — on Android 11+ the write needs consent first, then we apply + update the DB.
+    var pendingEdit by remember { mutableStateOf<Triple<Long, Triple<String, String, String>, Unit>?>(null) }
+    val editLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartIntentSenderForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            pendingEdit?.let { (id, v, _) ->
+                if (MediaMetadataWriter.applyUpdate(context, id, v.first, v.second, v.third)) {
+                    viewModel.updateTrackMetadata(id, v.first, v.second, v.third)
+                    viewModel.postSnackbar("Info updated")
+                } else viewModel.postSnackbar("Couldn't update this file")
+            }
+        }
+        pendingEdit = null
+    }
+
+    state.trackToEdit?.let { track ->
+        EditMetadataDialog(
+            track = track,
+            onSave = { title, artist, album ->
+                val id = track.id
+                state.closeEditDialog()
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    val req = MediaMetadataWriter.createWriteRequest(context, id)
+                    if (req != null) {
+                        pendingEdit = Triple(id, Triple(title, artist, album), Unit)
+                        editLauncher.launch(req)
+                    } else viewModel.postSnackbar("Couldn't request edit permission")
+                } else {
+                    if (MediaMetadataWriter.applyUpdate(context, id, title, artist, album)) {
+                        viewModel.updateTrackMetadata(id, title, artist, album)
+                        viewModel.postSnackbar("Info updated")
+                    } else viewModel.postSnackbar("Couldn't update this file")
+                }
+            },
+            onDismiss = { state.closeEditDialog() }
+        )
     }
 
     state.trackToAdd?.let { track ->

@@ -846,6 +846,10 @@ class MainViewModel @Inject constructor(
         }
     }
 
+    fun updateTrackMetadata(trackId: Long, title: String, artist: String, album: String) {
+        viewModelScope.launch { trackRepository.updateTrackMetadata(trackId, title, artist, album) }
+    }
+
     fun bulkCompleteDeletion(trackIds: Collection<Long>) {
         viewModelScope.launch {
             trackIds.forEach {

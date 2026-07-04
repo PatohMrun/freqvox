@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.50] - 2026-07-05
+### Added
+- **Edit track info**: long-press a song on Home → "Edit info" to fix its title, artist or album. Changes are written to MediaStore (with the system's one-time permission prompt on Android 11+) and reflected across the app. (Updates the library metadata, not the file's embedded tags.)
+
 ## [2.49] - 2026-07-05
 ### Added
 - **Playback profiles (per-tag EQ)** (side panel → Audio → Playback profiles): assign an equalizer preset to any tag, and it's applied automatically whenever a track carrying that tag plays (reverting to your previous preset afterwards). Great for a "podcast" or "bass boost" tag.

@@ -423,6 +423,13 @@ class TrackRepository @Inject constructor(
         tagDao.insertTrackTagCrossRef(TrackTagCrossRef(trackId, tagId))
     }
 
+    /** Update the local DB row after a MediaStore metadata edit has been committed. */
+    suspend fun updateTrackMetadata(trackId: Long, title: String, artist: String, album: String) =
+        withContext(Dispatchers.IO) {
+            val t = trackDao.getTrackById(trackId) ?: return@withContext
+            trackDao.updateTrack(t.copy(title = title.trim(), artist = artist.trim(), album = album.trim()))
+        }
+
     /** Removes all app data for a track after the media file has been deleted (or user chose library-only removal). */
     suspend fun purgeTrackFromLibrary(trackId: Long) = withContext(Dispatchers.IO) {
         val path = trackDao.getTrackById(trackId)?.path

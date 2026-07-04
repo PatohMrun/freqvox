@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.PlaylistPlay
 import androidx.compose.material.icons.filled.Sell
@@ -39,7 +40,8 @@ fun TrackOptionsSheet(
     onAddToPlaylist: () -> Unit,
     onPlayNext: () -> Unit,
     onDelete: () -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onEdit: (() -> Unit)? = null
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -65,6 +67,9 @@ fun TrackOptionsSheet(
             OptionRow(Icons.Default.PlaylistPlay, "Play next") { onDismiss(); onPlayNext() }
             OptionRow(Icons.Default.Share, "Share as image") {
                 onDismiss(); com.freqvox.media.TrackShareCard.shareTrackCard(context, track)
+            }
+            if (onEdit != null) {
+                OptionRow(Icons.Default.Edit, "Edit info") { onDismiss(); onEdit() }
             }
             OptionRow(Icons.Default.Delete, "Delete from device", danger = true) { onDismiss(); onDelete() }
         }

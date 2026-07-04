@@ -150,7 +150,8 @@ fun HomeScreen(
             onAddToPlaylist = { trackActions.openAddToPlaylist(track) },
             onPlayNext = { playbackController.playTrackNext(track) },
             onDelete = { trackActions.openDeleteFlow(track) },
-            onDismiss = { optionsTrack = null }
+            onDismiss = { optionsTrack = null },
+            onEdit = { trackActions.openEdit(track) }
         )
     }
     TrackActionsDialogs(state = trackActions, viewModel = viewModel, playlists = allPlaylists)
