@@ -35,8 +35,15 @@ class MainViewModel @Inject constructor(
     private val vidmateSource: VidmateThumbnailSource,
     private val libraryUiPrefs: LibraryUiPreferences,
     private val crossfadePrefs: CrossfadePreferences,
-    private val themePrefs: com.freqvox.data.prefs.ThemePreferences
+    private val themePrefs: com.freqvox.data.prefs.ThemePreferences,
+    private val sidePanelPrefs: com.freqvox.data.prefs.SidePanelPreferences
 ) : ViewModel() {
+
+    // Side-panel accordion expand/collapse, persisted so it survives drawer close + app restart.
+    fun isPanelSectionExpanded(title: String, default: Boolean) =
+        sidePanelPrefs.isSectionExpanded(title, default)
+    fun setPanelSectionExpanded(title: String, expanded: Boolean) =
+        sidePanelPrefs.setSectionExpanded(title, expanded)
 
     // Theme mode for the in-header toggle. The actual palette selection happens at the
     // composition root (MainActivity), which observes the same singleton StateFlow.
@@ -58,6 +65,14 @@ class MainViewModel @Inject constructor(
     fun setAlbumMode(enabled: Boolean) {
         crossfadePrefs.albumMode = enabled
         _albumMode.value = crossfadePrefs.albumMode
+    }
+
+    // Volume normalization (ReplayGain, attenuate-only). Persisted; read live by CrossfadeController.
+    private val _volumeNormalization = MutableStateFlow(crossfadePrefs.volumeNormalization)
+    val volumeNormalization: StateFlow<Boolean> = _volumeNormalization.asStateFlow()
+    fun setVolumeNormalization(enabled: Boolean) {
+        crossfadePrefs.volumeNormalization = enabled
+        _volumeNormalization.value = crossfadePrefs.volumeNormalization
     }
 
     // ── Library pill state (persisted so it survives navigation + restarts) ────

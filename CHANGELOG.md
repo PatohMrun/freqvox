@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.34] - 2026-07-04
+### Added
+- **Volume normalization (ReplayGain)** — a new toggle in the side panel's Audio group (off by default). When on, each track's `REPLAYGAIN_TRACK_GAIN` tag (read live from Vorbis comments / ID3) turns loud tracks *down* toward a reference level so shuffle stops jumping in loudness. It's attenuate-only, so it can never boost past unity and therefore can never clip; tracks with no tag play unchanged, and the gain composes cleanly with crossfade and audio-focus ducking.
+
+### Changed
+- **Side panel groups** now render as soft cards with a faint fill and a low-contrast "borderless" border instead of flat labels, so each group reads as its own panel.
+- **Side panel accordions remember their expand/collapse state** across the drawer closing and app restarts (persisted per group), instead of springing back to defaults every time.
+
 ## [2.33] - 2026-07-04
 ### Added
 - **Boolean tag filtering** in Browse (Search): tap a tag to *require* it, tap again to *exclude* it, tap a third time to clear. Songs are filtered live to those carrying **all** required tags and **none** of the excluded ones — e.g. "chill AND workout", "hype NOT throwback". A summary line spells out the active expression, with a Clear shortcut. When no filter is set, the colourful browse-by-tag grid stays exactly as before, and plain text search is unchanged.

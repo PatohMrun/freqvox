@@ -5,8 +5,11 @@ import android.os.Handler
 import android.os.Looper
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.Metadata
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.extractor.metadata.id3.TextInformationFrame
+import androidx.media3.extractor.metadata.vorbis.VorbisComment
 
 /**
  * Overlapping crossfade between consecutive tracks, on top of the normal gapless playlist.
@@ -50,6 +53,14 @@ class CrossfadeController(
     private var rampTail = 0f
     @Volatile private var duckFactor = 1f
 
+    // Volume-normalization gain (ReplayGain). A third factor multiplied into player volume
+    // alongside the ramp and duck gains: volume = ramp × duck × norm. normMain tracks the
+    // CURRENT (session) track; normTail is snapshotted from normMain at crossfade start so the
+    // outgoing tail keeps the level it was playing at. Always 1f (no change) when the feature is
+    // off or a track carries no ReplayGain tag — attenuate-only, so it can never clip.
+    @Volatile private var normMain = 1f
+    @Volatile private var normTail = 1f
+
     private val POLL_MS = 20L
     private val RAMP_STEP_MS = 50L
     private val DUCK_LEVEL = 0.25f
@@ -85,6 +96,17 @@ class CrossfadeController(
             if (isPlaying) handler.post(poller)
         }
 
+        override fun onMetadata(metadata: Metadata) {
+            // Read the current track's ReplayGain as it's decoded from the container and turn it
+            // into a per-track gain. Only the MAIN (session) player's listener fires here, so this
+            // always describes the current track. Applied immediately at rest; during a crossfade
+            // applyVolumes() will pick it up as the incoming track ramps in.
+            if (!prefs.volumeNormalization) return
+            val db = parseReplayGainTrackGain(metadata) ?: return
+            normMain = gainFactorFromDb(db)
+            if (!crossfading) mainPlayer.volume = rampMain * duckFactor * normMain
+        }
+
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             // Consume OUR OWN jump's transition whenever it arrives (sync or async). Doing
             // this here — instead of resetting the flag right after seekToNextMediaItem() —
@@ -97,8 +119,13 @@ class CrossfadeController(
             when {
                 // User skipped/changed track mid-ramp — abort cleanly.
                 crossfading -> cancelCrossfade()
-                // Track changed otherwise — any pre-arm is for the old track now, drop it.
-                else -> resetArming()
+                // Track changed otherwise — any pre-arm is for the old track now, drop it, and
+                // reset normalization to unity until the new track's ReplayGain metadata arrives.
+                else -> {
+                    resetArming()
+                    normMain = 1f
+                    mainPlayer.volume = rampMain * duckFactor * normMain
+                }
             }
         }
     }
@@ -114,6 +141,14 @@ class CrossfadeController(
     }
 
     private fun maybeCrossfade(): Long {
+        // If normalization was just turned off, don't leave a track stuck attenuated. The poller
+        // runs continuously (even with crossfade off, every OFF_POLL_MS), so this self-heals.
+        if (!prefs.volumeNormalization && (normMain != 1f || normTail != 1f)) {
+            normMain = 1f
+            normTail = 1f
+            if (!crossfading) mainPlayer.volume = rampMain * duckFactor
+        }
+
         val windowMs = prefs.durationSeconds * 1000L
         if (windowMs <= 0L) { resetArming(); return OFF_POLL_MS } // OFF — coast, near-zero wakeups
         if (crossfading) return 1000L
@@ -187,6 +222,12 @@ class CrossfadeController(
         rampMain = 0f
         rampTail = 1f
 
+        // Carry the outgoing track's normalization onto the tail (it keeps playing that track),
+        // and reset main to unity until the incoming track's ReplayGain metadata is read. The
+        // incoming track is silent at ramp start, so an unknown gain for a moment is inaudible.
+        normTail = normMain
+        normMain = 1f
+
         // Start tailPlayer exactly at the handoff point to maintain perfect beat-sync.
         // While there is a microscopic hardware gap as AudioTrack wakes up, attempting
         // to stagger this causes overlapping echoes because ExoPlayer decoder warmup
@@ -233,7 +274,7 @@ class CrossfadeController(
     private fun finishCrossfade() {
         rampMain = 1f
         rampTail = 0f
-        mainPlayer.volume = rampMain * duckFactor
+        mainPlayer.volume = rampMain * duckFactor * normMain
         stopTail()
         crossfading = false
     }
@@ -243,7 +284,7 @@ class CrossfadeController(
     private fun cancelCrossfade() {
         rampMain = 1f
         rampTail = 0f
-        mainPlayer.volume = rampMain * duckFactor
+        mainPlayer.volume = rampMain * duckFactor * normMain
         stopTail()
         crossfading = false
         preArmed = false
@@ -252,8 +293,8 @@ class CrossfadeController(
     /** Player volume = equal-power ramp gain × audio-focus duck gain. Single writer for both
      *  players' volume during a crossfade so the two concerns compose instead of clobbering. */
     private fun applyVolumes() {
-        mainPlayer.volume = rampMain * duckFactor
-        tailPlayer.volume = rampTail * duckFactor
+        mainPlayer.volume = rampMain * duckFactor * normMain
+        tailPlayer.volume = rampTail * duckFactor * normTail
     }
 
     /**
@@ -283,4 +324,30 @@ class CrossfadeController(
         tailPlayer.clearMediaItems()
         tailPlayer.volume = 1f
     }
+
+    /** Pull REPLAYGAIN_TRACK_GAIN (in dB) out of the track's parsed metadata, if present.
+     *  Handles both Vorbis comments (FLAC/OGG/Opus) and ID3 TXXX frames (MP3). */
+    private fun parseReplayGainTrackGain(metadata: Metadata): Float? {
+        for (i in 0 until metadata.length()) {
+            val db = when (val entry = metadata.get(i)) {
+                is VorbisComment ->
+                    if (entry.key.equals("REPLAYGAIN_TRACK_GAIN", ignoreCase = true)) parseDb(entry.value) else null
+                is TextInformationFrame ->
+                    if (entry.description?.equals("replaygain_track_gain", ignoreCase = true) == true)
+                        parseDb(entry.values.firstOrNull()) else null
+                else -> null
+            }
+            if (db != null) return db
+        }
+        return null
+    }
+
+    /** "-6.48 dB" → -6.48f. Tolerates missing unit / stray whitespace. */
+    private fun parseDb(raw: String?): Float? =
+        raw?.replace("dB", "", ignoreCase = true)?.trim()?.toFloatOrNull()
+
+    /** dB → linear factor, clamped to [0, 1]: attenuate-only, so it can never boost past unity
+     *  and therefore can never clip. Quiet tracks (positive gain) simply stay at unity. */
+    private fun gainFactorFromDb(db: Float): Float =
+        Math.pow(10.0, (db / 20.0)).toFloat().coerceIn(0f, 1f)
 }

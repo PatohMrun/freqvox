@@ -2,6 +2,7 @@ package com.freqvox.ui.components
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -30,12 +31,14 @@ import androidx.compose.material.icons.filled.QueueMusic
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.Sell
+import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -114,6 +117,7 @@ fun AppSidePanel(
     ) { uri -> if (uri != null) viewModel.importBackup(uri) }
 
     val hours = totalDurationMs / (1000 * 60 * 60)
+    val volumeNormalization by viewModel.volumeNormalization.collectAsStateWithLifecycle()
 
     ModalDrawerSheet(
         drawerContainerColor = Fvox.surface,
@@ -151,24 +155,31 @@ fun AppSidePanel(
                 }
             }
 
-            AccordionSection("INSIGHTS") {
+            AccordionSection(viewModel, "INSIGHTS") {
                 PanelRow(Icons.Default.QueryStats, "Listening stats", onOpenStats)
             }
 
-            AccordionSection("AUDIO") {
+            AccordionSection(viewModel, "AUDIO") {
                 PanelRow(Icons.Default.Equalizer, "Equalizer", onOpenEqualizer)
                 PanelRow(Icons.Default.CompareArrows, "Crossfade", onOpenCrossfade)
                 PanelRow(Icons.Default.Bedtime, "Sleep timer", onOpenSleep)
+                PanelToggleRow(
+                    icon = Icons.Default.VolumeUp,
+                    title = "Volume normalization",
+                    subtitle = "Even out loudness between tracks",
+                    checked = volumeNormalization,
+                    onCheckedChange = { viewModel.setVolumeNormalization(it) }
+                )
             }
 
-            AccordionSection("LIBRARY") {
+            AccordionSection(viewModel, "LIBRARY") {
                 PanelRow(Icons.Default.Refresh, "Rescan library", onRescan)
                 PanelRow(Icons.Default.FolderOff, "Hidden folders", onOpenFolders)
                 PanelRow(Icons.Default.Sell, "Manage tags", onOpenTags)
                 PanelRow(Icons.Default.Image, "Album art", onOpenArtwork)
             }
 
-            AccordionSection("BACKUP") {
+            AccordionSection(viewModel, "BACKUP") {
                 PanelRow(Icons.Default.Backup, "Back up library") {
                     val stamp = SimpleDateFormat("yyyyMMdd", Locale.US).format(Date())
                     exportLauncher.launch("freqvox-backup-$stamp.json")
@@ -180,7 +191,7 @@ fun AppSidePanel(
 
             // ── Quick jump: playlists ───────────────────────────────────────────
             if (playlists.isNotEmpty()) {
-                AccordionSection("PLAYLISTS", initiallyExpanded = false) {
+                AccordionSection(viewModel, "PLAYLISTS", initiallyExpanded = false) {
                     playlists.forEach { playlist ->
                         Row(
                             modifier = Modifier
@@ -211,7 +222,7 @@ fun AppSidePanel(
 
             // ── Quick jump: tags ────────────────────────────────────────────────
             if (tags.isNotEmpty()) {
-                AccordionSection("TAGS", initiallyExpanded = false) {
+                AccordionSection(viewModel, "TAGS", initiallyExpanded = false) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -261,54 +272,72 @@ fun AppSidePanel(
 }
 
 /**
- * A foldable section: tappable header (label + rotating chevron) over a vertically
- * expanding/collapsing body. Expanded by default, so the panel looks unchanged until folded.
- * Collapse state is keyed by title and survives recomposition / config changes.
+ * A foldable section rendered as a soft card so groups read as distinct panels rather than a
+ * flat list: a faint tinted fill + a low-contrast "borderless" border (both derived from
+ * onSurface, so they invert with the theme). Tappable header (label + rotating chevron) over a
+ * vertically expanding/collapsing body. Expand/collapse state is persisted per title (via the
+ * ViewModel), so it survives the drawer closing and app restarts.
  */
 @Composable
 private fun AccordionSection(
+    viewModel: MainViewModel,
     title: String,
     initiallyExpanded: Boolean = true,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    var expanded by rememberSaveable(title) { mutableStateOf(initiallyExpanded) }
+    var expanded by remember {
+        mutableStateOf(viewModel.isPanelSectionExpanded(title, initiallyExpanded))
+    }
     val chevronRotation by animateFloatAsState(
         targetValue = if (expanded) 180f else 0f,
         label = "accordionChevron"
     )
 
-    Spacer(modifier = Modifier.height(20.dp))
-    Row(
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .clickable { expanded = !expanded }
-            .padding(start = 8.dp, end = 8.dp, top = 4.dp, bottom = 6.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(top = 12.dp),
+        shape = RoundedCornerShape(14.dp),
+        color = Fvox.onSurface.copy(alpha = 0.03f),
+        border = BorderStroke(1.dp, Fvox.onSurface.copy(alpha = 0.07f))
     ) {
-        Text(
-            title,
-            color = Fvox.onSurface.copy(alpha = 0.4f),
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 1.5.sp,
-            modifier = Modifier.weight(1f)
-        )
-        Icon(
-            Icons.Default.KeyboardArrowDown,
-            contentDescription = if (expanded) "Collapse $title" else "Expand $title",
-            tint = Fvox.onSurface.copy(alpha = 0.4f),
-            modifier = Modifier
-                .size(18.dp)
-                .rotate(chevronRotation)
-        )
-    }
-    AnimatedVisibility(
-        visible = expanded,
-        enter = expandVertically() + fadeIn(),
-        exit = shrinkVertically() + fadeOut()
-    ) {
-        Column(content = content)
+        Column(modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp)) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable {
+                        expanded = !expanded
+                        viewModel.setPanelSectionExpanded(title, expanded)
+                    }
+                    .padding(start = 8.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    title,
+                    color = Fvox.onSurface.copy(alpha = 0.55f),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.5.sp,
+                    modifier = Modifier.weight(1f)
+                )
+                Icon(
+                    Icons.Default.KeyboardArrowDown,
+                    contentDescription = if (expanded) "Collapse $title" else "Expand $title",
+                    tint = Fvox.onSurface.copy(alpha = 0.55f),
+                    modifier = Modifier
+                        .size(18.dp)
+                        .rotate(chevronRotation)
+                )
+            }
+            AnimatedVisibility(
+                visible = expanded,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
+            ) {
+                Column(content = content)
+            }
+        }
     }
 }
 
@@ -325,5 +354,42 @@ private fun PanelRow(icon: ImageVector, title: String, onClick: () -> Unit) {
         Icon(icon, contentDescription = null, tint = Fvox.onSurface.copy(alpha = 0.75f), modifier = Modifier.size(20.dp))
         Spacer(modifier = Modifier.width(14.dp))
         Text(title, color = Fvox.onSurface, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+    }
+}
+
+/** A settings row with an inline Switch instead of a navigation tap. Tapping the row or the
+ *  switch flips the value. Optional subtitle for a one-line explanation. */
+@Composable
+private fun PanelToggleRow(
+    icon: ImageVector,
+    title: String,
+    subtitle: String? = null,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .clickable { onCheckedChange(!checked) }
+            .padding(vertical = 8.dp, horizontal = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(icon, contentDescription = null, tint = Fvox.onSurface.copy(alpha = 0.75f), modifier = Modifier.size(20.dp))
+        Spacer(modifier = Modifier.width(14.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(title, color = Fvox.onSurface, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+            if (subtitle != null) {
+                Text(subtitle, color = Fvox.onSurface.copy(alpha = 0.5f), fontSize = 12.sp)
+            }
+        }
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = Fvox.onAccent,
+                checkedTrackColor = Fvox.accent
+            )
+        )
     }
 }

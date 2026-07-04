@@ -32,11 +32,23 @@ class CrossfadePreferences @Inject constructor(
         get() = prefs.getBoolean(KEY_ALBUM_MODE, true)
         set(value) = prefs.edit().putBoolean(KEY_ALBUM_MODE, value).apply()
 
+    /**
+     * Volume normalization (ReplayGain). When on, [CrossfadeController] reads each track's
+     * REPLAYGAIN_TRACK_GAIN tag (parsed by ExoPlayer from Vorbis comments / ID3 TXXX) and turns
+     * loud tracks *down* toward the reference level so shuffle stops jumping in loudness. It is
+     * attenuate-only (gain clamped to ≤1.0), so it can never boost past unity and therefore can
+     * never clip; a track with no tag plays unchanged. Off by default — opt-in. Read live.
+     */
+    var volumeNormalization: Boolean
+        get() = prefs.getBoolean(KEY_VOLUME_NORM, false)
+        set(value) = prefs.edit().putBoolean(KEY_VOLUME_NORM, value).apply()
+
     companion object {
         const val MAX_SECONDS = 12
         /** Offered choices in the UI (0 = off). */
         val CHOICES = listOf(0, 3, 5, 8, 10, 12)
         private const val KEY_CROSSFADE_SECONDS = "crossfade_seconds"
         private const val KEY_ALBUM_MODE = "crossfade_album_mode"
+        private const val KEY_VOLUME_NORM = "volume_normalization"
     }
 }
