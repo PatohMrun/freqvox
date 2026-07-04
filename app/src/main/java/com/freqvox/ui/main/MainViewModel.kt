@@ -51,6 +51,15 @@ class MainViewModel @Inject constructor(
         _crossfadeSeconds.value = crossfadePrefs.durationSeconds
     }
 
+    // Album mode: skip crossfade between consecutive same-album tracks (only meaningful when
+    // crossfade is on). Persisted; read live by the CrossfadeController on the next transition.
+    private val _albumMode = MutableStateFlow(crossfadePrefs.albumMode)
+    val albumMode: StateFlow<Boolean> = _albumMode.asStateFlow()
+    fun setAlbumMode(enabled: Boolean) {
+        crossfadePrefs.albumMode = enabled
+        _albumMode.value = crossfadePrefs.albumMode
+    }
+
     // ── Library pill state (persisted so it survives navigation + restarts) ────
     /** Last-opened Library tab name, or null if never set. */
     val libraryLastTab: String? get() = libraryUiPrefs.lastTab

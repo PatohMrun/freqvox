@@ -310,6 +310,7 @@ class FreqvoxPlaybackService : MediaLibraryService() {
         val meta = MediaMetadata.Builder()
             .setTitle(title)
             .setArtist(artist)
+            .setAlbumTitle(album)
             .setIsPlayable(true)
             .apply { artworkPath?.let { setArtworkUri(android.net.Uri.parse("file://$it")) } }
             .build()

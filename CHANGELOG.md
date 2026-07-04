@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.32] - 2026-07-04
+### Added
+- **Album mode** (in the Crossfade sheet, on by default): when crossfade is on, consecutive tracks from the *same album* now butt-join gaplessly instead of fading into each other — so albums mastered to segue track-to-track (live sets, DJ mixes, concept records) stay seamless. Transitions between *different* albums still crossfade normally. It's a no-op (and shown disabled) when crossfade is Off.
+
 ## [2.31] - 2026-07-04
 ### Fixed
 - Crossfade click/scratch: the session player is now muted *before* the internal jump to the next track, not after. That jump forces the audio pipeline to flush and reconfigure the output — previously it did so at full volume, producing an audible pop at the start of every crossfade. Muting first makes the flush silent. (If a faint artifact remains, the next suspect is a sample-rate mismatch between the two tracks forcing a resample — noted for follow-up.)

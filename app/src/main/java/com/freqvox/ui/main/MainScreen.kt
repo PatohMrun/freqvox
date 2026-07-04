@@ -508,9 +508,12 @@ fun MainScreen(
             }
             if (showCrossfadeSheet) {
                 val crossfadeSeconds by viewModel.crossfadeSeconds.collectAsStateWithLifecycle()
+                val albumMode by viewModel.albumMode.collectAsStateWithLifecycle()
                 com.freqvox.ui.settings.CrossfadeSheet(
                     selectedSeconds = crossfadeSeconds,
                     onSelect = { viewModel.setCrossfadeSeconds(it) },
+                    albumMode = albumMode,
+                    onAlbumModeChange = { viewModel.setAlbumMode(it) },
                     onDismiss = { showCrossfadeSheet = false }
                 )
             }

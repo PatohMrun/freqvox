@@ -27,6 +27,8 @@ import com.freqvox.playback.CrossfadePreferences
 fun CrossfadeSheet(
     selectedSeconds: Int,
     onSelect: (Int) -> Unit,
+    albumMode: Boolean,
+    onAlbumModeChange: (Boolean) -> Unit,
     onDismiss: () -> Unit
 ) {
     ModalBottomSheet(
@@ -89,6 +91,45 @@ fun CrossfadeSheet(
                         )
                     }
                 }
+            }
+
+            // Album mode toggle — only meaningful while crossfade is on, so dim + disable it
+            // when Off. Rows above already carry their own bottom padding; add a small gap.
+            val albumModeEnabled = selectedSeconds > 0
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(Fvox.onSurface.copy(alpha = 0.04f))
+                    .clickable(enabled = albumModeEnabled) { onAlbumModeChange(!albumMode) }
+                    .padding(start = 16.dp, end = 12.dp, top = 12.dp, bottom = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                val contentAlpha = if (albumModeEnabled) 1f else 0.4f
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Album mode",
+                        color = Fvox.onSurface.copy(alpha = contentAlpha),
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = "Skip the fade between songs from the same album, so segues stay seamless.",
+                        color = Fvox.onSurface.copy(alpha = contentAlpha * 0.5f),
+                        fontSize = 12.sp,
+                        modifier = Modifier.padding(top = 2.dp, end = 8.dp)
+                    )
+                }
+                Switch(
+                    checked = albumMode,
+                    onCheckedChange = onAlbumModeChange,
+                    enabled = albumModeEnabled,
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Fvox.onAccent,
+                        checkedTrackColor = Fvox.accent
+                    )
+                )
             }
         }
     }

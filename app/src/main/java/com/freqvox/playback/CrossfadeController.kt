@@ -128,6 +128,15 @@ class CrossfadeController(
 
         val remaining = duration - mainPlayer.currentPosition
 
+        // Album mode — don't fade between two tracks of the same album; let them butt-join
+        // gaplessly so an album that segues track-to-track plays as one continuous piece.
+        // Checked only once we're near the window (cheap metadata reads, not every poll), and
+        // we drop any pre-arm so the tail doesn't linger warmed for a transition we'll skip.
+        if (prefs.albumMode && remaining <= windowMs + PREARM_LEAD_MS && nextIsSameAlbum()) {
+            resetArming()
+            return 1000L
+        }
+
         // Phase 1 — pre-arm the tail a bit before the window opens.
         if (!preArmed && remaining <= windowMs + PREARM_LEAD_MS) {
             preArm(tailStartPos = duration - windowMs)
@@ -145,6 +154,17 @@ class CrossfadeController(
             timeUntilPrearm > 0L -> 100L     // Getting closer: check 10 times a second
             else -> POLL_MS                  // Inside critical window: check 50 times a second
         }
+    }
+
+    /** True when the next queue item shares a (non-blank) album title with the current one.
+     *  Uses the albumTitle metadata carried on each MediaItem — see PlaybackController. */
+    private fun nextIsSameAlbum(): Boolean {
+        val nextIndex = mainPlayer.nextMediaItemIndex
+        if (nextIndex == C.INDEX_UNSET) return false
+        val current = mainPlayer.currentMediaItem?.mediaMetadata?.albumTitle?.toString()?.trim()
+        if (current.isNullOrEmpty()) return false
+        val next = mainPlayer.getMediaItemAt(nextIndex).mediaMetadata.albumTitle?.toString()?.trim()
+        return current.equals(next, ignoreCase = true)
     }
 
     /** Warm the tail decoder and seek it (paused) to where the crossfade will start. */

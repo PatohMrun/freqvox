@@ -307,6 +307,7 @@ class PlaybackController(
                                 val meta = MediaMetadata.Builder()
                                     .setTitle(track.title)
                                     .setArtist(track.artist)
+                                    .setAlbumTitle(track.album)
                                     .setExtras(extras)
                                 track.artworkPath?.let { meta.setArtworkUri(Uri.parse("file://$it")) }
                                 MediaItem.Builder()
@@ -578,6 +579,7 @@ class PlaybackController(
         this.sourcePool = sourcePool
         val mediaItems = tracks.map { track ->
             val meta = MediaMetadata.Builder().setTitle(track.title).setArtist(track.artist)
+                .setAlbumTitle(track.album)
             track.artworkPath?.let { meta.setArtworkUri(Uri.parse("file://$it")) }
             MediaItem.Builder()
                 .setMediaId(track.id.toString())
@@ -598,6 +600,7 @@ class PlaybackController(
 
     private fun buildMediaItem(track: TrackEntity): MediaItem {
         val meta = MediaMetadata.Builder().setTitle(track.title).setArtist(track.artist)
+            .setAlbumTitle(track.album)
         track.artworkPath?.let { meta.setArtworkUri(Uri.parse("file://$it")) }
         return MediaItem.Builder()
             .setMediaId(track.id.toString())
@@ -709,6 +712,7 @@ class PlaybackController(
                     val meta = MediaMetadata.Builder()
                         .setTitle(track.title)
                         .setArtist(track.artist)
+                        .setAlbumTitle(track.album)
                         .setExtras(extras)
                     track.artworkPath?.let { meta.setArtworkUri(Uri.parse("file://$it")) }
                     MediaItem.Builder()
