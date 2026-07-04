@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.Equalizer
 import androidx.compose.material.icons.filled.FolderOff
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.QueryStats
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.QueueMusic
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Restore
@@ -105,6 +106,7 @@ fun AppSidePanel(
     onOpenFolders: () -> Unit,
     onOpenTags: () -> Unit,
     onOpenArtwork: () -> Unit,
+    onOpenAccent: () -> Unit,
     onRescan: () -> Unit,
     onPlaylistClick: (PlaylistEntity) -> Unit,
     onTagClick: (TagEntity) -> Unit
@@ -170,6 +172,10 @@ fun AppSidePanel(
                     checked = volumeNormalization,
                     onCheckedChange = { viewModel.setVolumeNormalization(it) }
                 )
+            }
+
+            AccordionSection(viewModel, "APPEARANCE") {
+                PanelRow(Icons.Default.Palette, "Accent color", onOpenAccent)
             }
 
             AccordionSection(viewModel, "LIBRARY") {

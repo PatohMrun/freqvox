@@ -165,6 +165,7 @@ fun DynamicTheme(
     artworkPath: String?,
     trackTitle: String,
     isLight: Boolean = false,
+    fixedAccent: Color? = null,
     content: @Composable () -> Unit
 ) {
     val context = LocalContext.current
@@ -177,7 +178,7 @@ fun DynamicTheme(
     var secondaryColor by remember { mutableStateOf(idle) }
     var tertiaryColor  by remember { mutableStateOf(idle) }
 
-    LaunchedEffect(artworkPath, trackTitle, isLight) {
+    LaunchedEffect(artworkPath, trackTitle, isLight, fixedAccent) {
         if (trackTitle.isBlank() || trackTitle == "No track selected") {
             seedColor      = idle
             secondaryColor = idle
@@ -188,8 +189,11 @@ fun DynamicTheme(
         // Coalesce rapid track changes so we don't restart 800–1100ms color tweens mid-flight.
         delay(120)
 
-        // Try album art first; fall back to title-derived colour
-        val primary = if (artworkPath != null && File(artworkPath).exists()) {
+        // Fixed-accent pins the whole palette to one colour; otherwise try album art, then
+        // fall back to a title-derived colour.
+        val primary = if (fixedAccent != null) {
+            fixedAccent
+        } else if (artworkPath != null && File(artworkPath).exists()) {
             withContext(Dispatchers.IO) {
                 runCatching {
                     val bmp = BitmapFactory.decodeFile(artworkPath)
@@ -205,9 +209,11 @@ fun DynamicTheme(
             generatePrimaryFromTitle(trackTitle)
         }
 
+        // Derive the harmony from a constant seed when fixed, so it stays identical track to track.
+        val harmonySeed = if (fixedAccent != null) "fixed-accent" else trackTitle
         seedColor      = primary
-        secondaryColor = generateSecondaryColor(primary, trackTitle)
-        tertiaryColor  = generateTertiaryColor(primary, trackTitle)
+        secondaryColor = generateSecondaryColor(primary, harmonySeed)
+        tertiaryColor  = generateTertiaryColor(primary, harmonySeed)
     }
 
     // Animate all three independently with slightly staggered speeds. Accents are mode-adjusted

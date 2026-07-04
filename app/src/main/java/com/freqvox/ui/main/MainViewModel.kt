@@ -36,7 +36,8 @@ class MainViewModel @Inject constructor(
     private val libraryUiPrefs: LibraryUiPreferences,
     private val crossfadePrefs: CrossfadePreferences,
     private val themePrefs: com.freqvox.data.prefs.ThemePreferences,
-    private val sidePanelPrefs: com.freqvox.data.prefs.SidePanelPreferences
+    private val sidePanelPrefs: com.freqvox.data.prefs.SidePanelPreferences,
+    private val accentPrefs: com.freqvox.data.prefs.AccentPreferences
 ) : ViewModel() {
 
     // Side-panel accordion expand/collapse, persisted so it survives drawer close + app restart.
@@ -44,6 +45,20 @@ class MainViewModel @Inject constructor(
         sidePanelPrefs.isSectionExpanded(title, default)
     fun setPanelSectionExpanded(title: String, expanded: Boolean) =
         sidePanelPrefs.setSectionExpanded(title, expanded)
+
+    // Fixed-accent (pin the gradient palette to one colour instead of album-derived).
+    private val _fixedAccentEnabled = MutableStateFlow(accentPrefs.enabled)
+    val fixedAccentEnabled: StateFlow<Boolean> = _fixedAccentEnabled.asStateFlow()
+    private val _fixedAccentColor = MutableStateFlow(accentPrefs.color)
+    val fixedAccentColor: StateFlow<Int> = _fixedAccentColor.asStateFlow()
+    fun setFixedAccentEnabled(enabled: Boolean) {
+        accentPrefs.enabled = enabled
+        _fixedAccentEnabled.value = enabled
+    }
+    fun setFixedAccentColor(color: Int) {
+        accentPrefs.color = color
+        _fixedAccentColor.value = color
+    }
 
     // Theme mode for the in-header toggle. The actual palette selection happens at the
     // composition root (MainActivity), which observes the same singleton StateFlow.

@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.39] - 2026-07-04
+### Added
+- **Fixed accent option** (side panel → Appearance → Accent color): pin the background gradient to a single colour of your choice instead of deriving it from each track's album art. Off by default (album-derived stays the signature look); pick from eight swatches. The static UI accent is unaffected.
+
 ## [2.38] - 2026-07-04
 ### Added
 - **Backup now includes your equalizer (backup format v4)**: the EQ on/off state, selected preset, and custom band levels are exported alongside the other settings, so a restore brings your sound tuning back too. Applied live if playback is already running, otherwise picked up when the equalizer next initializes. Still fully compatible with older backup files.

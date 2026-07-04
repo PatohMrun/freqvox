@@ -110,6 +110,7 @@ fun MainScreen(
     var showCrossfadeSheet by remember { mutableStateOf(false) }
     var showSleepSheet by remember { mutableStateOf(false) }
     var showArtworkSheet by remember { mutableStateOf(false) }
+    var showAccentSheet by remember { mutableStateOf(false) }
     val openPanel: () -> Unit = { scope.launch { drawerState.open() } }
 
     // Sync current track to ViewModel using the exposed ID for reliability
@@ -170,7 +171,11 @@ fun MainScreen(
         label = "snackbarBottomPadding"
     )
 
-    DynamicTheme(artworkPath = currentArtworkUri?.path, trackTitle = currentTrackTitle, isLight = isLight) {
+    val fixedAccentEnabled by viewModel.fixedAccentEnabled.collectAsStateWithLifecycle()
+    val fixedAccentColor by viewModel.fixedAccentColor.collectAsStateWithLifecycle()
+    val fixedAccent = if (fixedAccentEnabled) androidx.compose.ui.graphics.Color(fixedAccentColor) else null
+
+    DynamicTheme(artworkPath = currentArtworkUri?.path, trackTitle = currentTrackTitle, isLight = isLight, fixedAccent = fixedAccent) {
         Box(modifier = Modifier.fillMaxSize()) {
             // Gradient background is its own composable so MainScreen scope doesn't
             // recompose when DynamicTheme animates colors mid-track-change.
@@ -195,6 +200,7 @@ fun MainScreen(
                         onOpenFolders = { scope.launch { drawerState.close() }; showFoldersSheet = true },
                         onOpenTags = { scope.launch { drawerState.close() }; showTagManagerSheet = true },
                         onOpenArtwork = { scope.launch { drawerState.close() }; showArtworkSheet = true },
+                        onOpenAccent = { scope.launch { drawerState.close() }; showAccentSheet = true },
                         onRescan = {
                             scope.launch { drawerState.close() }
                             viewModel.scanLibrary()
@@ -515,6 +521,15 @@ fun MainScreen(
                     albumMode = albumMode,
                     onAlbumModeChange = { viewModel.setAlbumMode(it) },
                     onDismiss = { showCrossfadeSheet = false }
+                )
+            }
+            if (showAccentSheet) {
+                com.freqvox.ui.settings.AccentSheet(
+                    enabled = fixedAccentEnabled,
+                    selectedColor = fixedAccentColor,
+                    onToggle = { viewModel.setFixedAccentEnabled(it) },
+                    onSelectColor = { viewModel.setFixedAccentColor(it) },
+                    onDismiss = { showAccentSheet = false }
                 )
             }
             if (showSleepSheet) {
