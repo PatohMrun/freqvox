@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.35] - 2026-07-04
+### Changed
+- **Tag sheet**: the "New custom tag" button is now pinned to the top of the sheet (full-width and accent-styled) instead of being the last cell in the grid, so it stays reachable as your tag list grows rather than getting buried at the bottom.
+
 ## [2.34] - 2026-07-04
 ### Added
 - **Volume normalization (ReplayGain)** — a new toggle in the side panel's Audio group (off by default). When on, each track's `REPLAYGAIN_TRACK_GAIN` tag (read live from Vorbis comments / ID3) turns loud tracks *down* toward a reference level so shuffle stops jumping in loudness. It's attenuate-only, so it can never boost past unity and therefore can never clip; tracks with no tag play unchanged, and the gain composes cleanly with crossfade and audio-focus ducking.

@@ -131,6 +131,40 @@ fun TagOverlay(
                 Spacer(modifier = Modifier.height(14.dp))
             }
 
+            // Create-custom-tag: pinned ABOVE the (scrolling) grid and accent-styled, so it
+            // stays reachable as the tag list grows instead of being buried at the bottom.
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp)
+                    .clip(RoundedCornerShape(26.dp))
+                    .background(Fvox.accent.copy(alpha = 0.12f))
+                    .border(1.dp, Fvox.accent.copy(alpha = 0.4f), RoundedCornerShape(26.dp))
+                    .clickable { showNewTagDialog = true },
+                contentAlignment = Alignment.Center
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = "Add Custom Tag",
+                        tint = Fvox.accent,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        "New custom tag",
+                        color = Fvox.accent,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 14.sp
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
             val distinctTags = remember(visibleTags) { visibleTags.distinctBy { it.name.lowercase() } }
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
@@ -144,36 +178,6 @@ fun TagOverlay(
                         icon = iconForTag(tag.name),
                         onClick = { onTagClick(tag) }
                     )
-                }
-                item {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(52.dp)
-                            .clip(RoundedCornerShape(26.dp))
-                            .background(Fvox.onSurface.copy(alpha = 0.05f))
-                            .border(1.dp, Fvox.onSurface.copy(alpha = 0.08f), RoundedCornerShape(26.dp))
-                            .clickable { showNewTagDialog = true },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            Icon(
-                                Icons.Default.Add,
-                                contentDescription = "Add Custom Tag",
-                                tint = Fvox.onSurface.copy(alpha = 0.6f),
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                "Custom Tag",
-                                color = Fvox.onSurface.copy(alpha = 0.6f),
-                                fontSize = 14.sp
-                            )
-                        }
-                    }
                 }
             }
         }
