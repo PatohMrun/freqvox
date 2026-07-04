@@ -13,4 +13,8 @@ interface PlayHistoryDao {
 
     @Query("SELECT * FROM play_history WHERE playedAt > :since ORDER BY playedAt DESC")
     fun getHistorySinceFlow(since: Long): Flow<List<PlayHistoryEntity>>
+
+    // Backup export: every row, so timestamped listening history survives a device move.
+    @Query("SELECT * FROM play_history")
+    suspend fun getAll(): List<PlayHistoryEntity>
 }

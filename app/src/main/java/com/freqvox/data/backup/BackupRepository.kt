@@ -2,12 +2,19 @@ package com.freqvox.data.backup
 
 import android.content.Context
 import android.net.Uri
+import com.freqvox.data.local.dao.PlayHistoryDao
 import com.freqvox.data.local.dao.PlaylistDao
 import com.freqvox.data.local.dao.TagDao
 import com.freqvox.data.local.dao.TrackDao
 import com.freqvox.data.repository.TrackRepository
+import com.freqvox.data.artwork.ArtworkPreferences
+import com.freqvox.data.prefs.ThemeMode
+import com.freqvox.data.prefs.ThemePreferences
+import com.freqvox.playback.CrossfadePreferences
+import com.freqvox.data.local.entities.PlayHistoryEntity
 import com.freqvox.data.local.entities.PlaylistEntity
 import com.freqvox.data.local.entities.PlaylistTrackCrossRef
+import com.freqvox.data.local.entities.SkipHistoryEntity
 import com.freqvox.data.local.entities.TagEntity
 import com.freqvox.data.local.entities.TrackTagCrossRef
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -21,7 +28,9 @@ import javax.inject.Singleton
 
 /**
  * Exports / restores everything the user *curates* — tags, per-track tag
- * assignments, listening stats, and playlists — to a single JSON file the user
+ * assignments, listening stats (aggregates + timestamped play/skip history),
+ * playlists, hidden folders, and app settings (crossfade / album mode / volume
+ * normalization / theme / album-art policy) — to a single JSON file the user
  * picks via the Storage Access Framework (no storage permission required).
  *
  * Design notes:
@@ -41,7 +50,11 @@ class BackupRepository @Inject constructor(
     private val trackDao: TrackDao,
     private val tagDao: TagDao,
     private val playlistDao: PlaylistDao,
-    private val trackRepository: TrackRepository
+    private val playHistoryDao: PlayHistoryDao,
+    private val trackRepository: TrackRepository,
+    private val crossfadePrefs: CrossfadePreferences,
+    private val themePrefs: ThemePreferences,
+    private val artworkPrefs: ArtworkPreferences
 ) {
     sealed class Result {
         data class Success(val message: String) : Result()
@@ -134,6 +147,42 @@ class BackupRepository @Inject constructor(
         val foldersArr = JSONArray()
         trackRepository.getExcludedFolders().forEach { foldersArr.put(it) }
         root.put("excludedFolders", foldersArr)
+
+        // Timestamped play + skip history — the raw events behind the listening-stats graphs
+        // (peak hour, hourly buckets). Aggregates already ride on each track above; this keeps
+        // the detail too. Keyed by track PATH so it survives a reinstall / new device.
+        val historyObj = JSONObject()
+        val playArr = JSONArray()
+        playHistoryDao.getAll().forEach { h ->
+            val path = idToPath[h.trackId] ?: return@forEach
+            playArr.put(
+                JSONObject()
+                    .put("path", path)
+                    .put("playedAt", h.playedAt)
+                    .put("durationPlayed", h.durationPlayed)
+                    .put("completed", h.completed)
+            )
+        }
+        historyObj.put("plays", playArr)
+        val skipArr = JSONArray()
+        trackDao.getAllSkipHistory().forEach { s ->
+            val path = idToPath[s.trackId] ?: return@forEach
+            skipArr.put(JSONObject().put("path", path).put("skippedAt", s.skippedAt))
+        }
+        historyObj.put("skips", skipArr)
+        root.put("history", historyObj)
+
+        // App settings — so a fresh install / new device comes back configured. Consent flags
+        // are intentionally NOT exported: the user should re-acknowledge network use per device.
+        val settings = JSONObject()
+            .put("crossfadeSeconds", crossfadePrefs.durationSeconds)
+            .put("albumMode", crossfadePrefs.albumMode)
+            .put("volumeNormalization", crossfadePrefs.volumeNormalization)
+            .put("themeMode", themePrefs.mode.value.name)
+            .put("artOnlineEnabled", artworkPrefs.onlineEnabled)
+            .put("artAllowCellular", artworkPrefs.allowCellular)
+            .put("artAllowMeteredWifi", artworkPrefs.allowMeteredWifi)
+        root.put("settings", settings)
 
         return root.toString(2)
     }
@@ -266,6 +315,51 @@ class BackupRepository @Inject constructor(
             trackRepository.setExcludedFolders(merged)
         }
 
+        // 5) Timestamped history — insert play/skip events for tracks that resolve by path,
+        //    skipping any that already exist (dedupe by trackId + timestamp) so re-importing on
+        //    the same device never double-counts. (v3+; older backups lack the key.)
+        val historyObj = root.optJSONObject("history")
+        if (historyObj != null) {
+            val existingPlays = playHistoryDao.getAll().mapTo(HashSet()) { it.trackId to it.playedAt }
+            val playArr = historyObj.optJSONArray("plays") ?: JSONArray()
+            for (i in 0 until playArr.length()) {
+                val o = playArr.getJSONObject(i)
+                val track = tracksByPath[o.optString("path")] ?: continue
+                val playedAt = o.optLong("playedAt")
+                if ((track.id to playedAt) in existingPlays) continue
+                playHistoryDao.insert(
+                    PlayHistoryEntity(
+                        trackId = track.id,
+                        playedAt = playedAt,
+                        durationPlayed = o.optLong("durationPlayed", 0L),
+                        completed = o.optBoolean("completed", false)
+                    )
+                )
+            }
+            val existingSkips = trackDao.getAllSkipHistory().mapTo(HashSet()) { it.trackId to it.skippedAt }
+            val skipArr = historyObj.optJSONArray("skips") ?: JSONArray()
+            for (i in 0 until skipArr.length()) {
+                val o = skipArr.getJSONObject(i)
+                val track = tracksByPath[o.optString("path")] ?: continue
+                val skippedAt = o.optLong("skippedAt")
+                if ((track.id to skippedAt) in existingSkips) continue
+                trackDao.insertSkipEvent(SkipHistoryEntity(trackId = track.id, skippedAt = skippedAt))
+            }
+        }
+
+        // 6) App settings — apply if present. Older backups simply won't have this key.
+        root.optJSONObject("settings")?.let { s ->
+            if (s.has("crossfadeSeconds")) crossfadePrefs.durationSeconds = s.optInt("crossfadeSeconds")
+            if (s.has("albumMode")) crossfadePrefs.albumMode = s.optBoolean("albumMode", true)
+            if (s.has("volumeNormalization")) crossfadePrefs.volumeNormalization = s.optBoolean("volumeNormalization", false)
+            if (s.has("themeMode")) {
+                runCatching { ThemeMode.valueOf(s.getString("themeMode")) }.getOrNull()?.let { themePrefs.setMode(it) }
+            }
+            if (s.has("artOnlineEnabled")) artworkPrefs.onlineEnabled = s.optBoolean("artOnlineEnabled")
+            if (s.has("artAllowCellular")) artworkPrefs.allowCellular = s.optBoolean("artAllowCellular")
+            if (s.has("artAllowMeteredWifi")) artworkPrefs.allowMeteredWifi = s.optBoolean("artAllowMeteredWifi", true)
+        }
+
         return Result.Success(
             "Restored: $tagsApplied tag(s) on $tracksMatched track(s), $playlistsRestored playlist(s)"
         )
@@ -287,8 +381,10 @@ class BackupRepository @Inject constructor(
     }
 
     companion object {
-        // v2 adds "excludedFolders". v1 files simply lack the key and restore fine
-        // (the importer treats a missing array as "nothing to merge").
-        private const val BACKUP_VERSION = 2
+        // v2 adds "excludedFolders". v3 adds "history" (timestamped play/skip events) and
+        // "settings" (crossfade / album mode / volume normalization / theme / art policy).
+        // Older files simply lack the newer keys and restore fine — every added block is
+        // guarded by a presence check, so v1/v2 backups remain fully compatible.
+        private const val BACKUP_VERSION = 3
     }
 }

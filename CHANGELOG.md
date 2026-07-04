@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.37] - 2026-07-04
+### Added
+- **Backup now covers history + settings (backup format v3)**: exports also include your timestamped **play & skip history** (the raw events behind the listening-stats graphs — peak hour, hourly buckets) and your **app settings** (crossfade length, album mode, volume normalization, theme, album-art network policy). So a restore onto a reinstall or a new device brings back the detailed stats and your configuration, not just tags/playlists. History is de-duplicated on import (re-importing on the same device never double-counts), settings apply only when present, and older v1/v2 backup files still restore fine. Network-consent flags are intentionally not exported — you re-acknowledge those per device.
+
 ## [2.36] - 2026-07-04
 ### Fixed
 - **Hidden folders wording**: the sheet said folders are excluded "on the next scan", which was misleading — hiding actually takes effect immediately and non-destructively. Reworded to "disappear from your library right away. Nothing is deleted — un-hide any time."

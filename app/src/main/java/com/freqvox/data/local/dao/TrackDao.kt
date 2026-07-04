@@ -139,6 +139,10 @@ interface TrackDao {
     @Insert
     suspend fun insertSkipEvent(skip: SkipHistoryEntity)
 
+    // Backup export: every skip event, keyed to tracks by path on restore.
+    @Query("SELECT * FROM skip_history")
+    suspend fun getAllSkipHistory(): List<SkipHistoryEntity>
+
     @Query("""
         SELECT t.* FROM tracks t
         JOIN track_tags tt ON t.id = tt.trackId
