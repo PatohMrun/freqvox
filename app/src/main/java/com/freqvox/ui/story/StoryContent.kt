@@ -74,36 +74,41 @@ object StoryContent {
     private fun segments(stats: MainViewModel.ListeningStats): List<StorySegment> {
         val list = mutableListOf<StorySegment>()
 
-        // ── Highlights from the user's own listening ──────────────────────────
-        if (stats.currentStreakDays >= 2)
-            list += seg("stat-streak", SegmentKind.STAT, "🔥", "${stats.currentStreakDays}-day streak",
-                "You've pressed play ${stats.currentStreakDays} days running. Keep the fire lit.")
-        if (stats.weekMinutes > 0)
-            list += seg("stat-week", SegmentKind.STAT, "⏱️", "${stats.weekMinutes} minutes this week",
-                "That's your listening so far this week — track it in Stats.", StoryCta("See stats", StoryActionType.OPEN_STATS))
-        stats.topArtists.firstOrNull()?.let {
-            list += seg("stat-artist", SegmentKind.STAT, "🎤", "Top artist: ${it.first}",
-                "${it.second} play${if (it.second == 1) "" else "s"} and counting.")
+        // ── Highlights from the user's own listening (real graphics) ──────────
+        if (stats.currentStreakDays >= 2 && stats.activeDays14.isNotEmpty())
+            list += StorySegment("stat-streak", SegmentKind.STAT, "${stats.currentStreakDays}-day streak",
+                "You've pressed play ${stats.currentStreakDays} days running. Keep the fire lit.",
+                SegmentVisual.StreakCalendar(stats.activeDays14))
+        if (stats.weekMinutes > 0 && stats.weekDailyMinutes.isNotEmpty())
+            list += StorySegment("stat-week", SegmentKind.STAT, "${stats.weekMinutes} minutes this week",
+                "Your listening, day by day.", SegmentVisual.Sparkline(stats.weekDailyMinutes, "last 7 days"),
+                cta = StoryCta("See stats", StoryActionType.OPEN_STATS))
+        stats.topArtistTrack?.let { t ->
+            list += StorySegment("stat-artist", SegmentKind.STAT, "Top artist: ${t.artist}",
+                "On heavy rotation.", SegmentVisual.AlbumArt(t))
         }
-        if (stats.totalPlays >= 20)
-            list += seg("stat-plays", SegmentKind.STAT, "📈", "${stats.totalPlays} plays",
-                "Across ${stats.uniqueTracks} tracks in your library.")
+        if (stats.totalPlays >= 20 && stats.topArtists.isNotEmpty())
+            list += StorySegment("stat-plays", SegmentKind.STAT, "${stats.totalPlays} plays",
+                "Your most-played artists.", SegmentVisual.Bars(stats.topArtists))
 
         // ── Algorithm explainers — make the feed's intelligence visible ───────
-        list += seg("algo-alive", SegmentKind.ALGORITHM, "♾️", "Your feed is alive",
-            "Home isn't a fixed list. Every scroll and refresh re-mixes your library into new sections — it never runs out.")
-        list += seg("algo-why", SegmentKind.ALGORITHM, "🧠", "Why this song?",
-            "Play counts, skips, when you listen, and how far you get all quietly shape what surfaces — and what's held back.")
-        list += seg("algo-tags", SegmentKind.ALGORITHM, "🏷️", "Tags do the heavy lifting",
+        list += StorySegment("algo-alive", SegmentKind.ALGORITHM, "Your feed is alive",
+            "Home isn't a fixed list. Every scroll and refresh re-mixes your library into new sections — it never runs out.",
+            SegmentVisual.Illustration(IllustrationKind.FEED_FLOW))
+        list += StorySegment("algo-why", SegmentKind.ALGORITHM, "Why this song?",
+            "Play counts, skips, when you listen, and how far you get all quietly shape what surfaces — and what's held back.",
+            SegmentVisual.Illustration(IllustrationKind.SHUFFLE))
+        list += StorySegment("algo-tags", SegmentKind.ALGORITHM, "Tags do the heavy lifting",
             "Tag a few songs and whole new sections appear — mood mixes, smart playlists, per-tag EQ. The more you tag, the smarter it gets.",
-            StoryCta("Browse tags", StoryActionType.OPEN_SEARCH))
-        list += seg("algo-time", SegmentKind.ALGORITHM, "🌗", "It reads the room",
-            "Morning, late night, commute, weekend — the feed leans into the time of day using your own listening patterns.")
+            SegmentVisual.Illustration(IllustrationKind.TAGS), cta = StoryCta("Browse tags", StoryActionType.OPEN_SEARCH))
+        list += StorySegment("algo-time", SegmentKind.ALGORITHM, "It reads the room",
+            "Morning, late night, commute, weekend — the feed leans into the time of day using your own listening patterns.",
+            SegmentVisual.Illustration(IllustrationKind.GENERIC))
 
         // ── Feature tips with deep-link CTAs ──────────────────────────────────
-        list += seg("tip-crossfade", SegmentKind.TIP, "🎚️", "Seamless transitions",
+        list += StorySegment("tip-crossfade", SegmentKind.TIP, "Seamless transitions",
             "Turn on Crossfade for overlapping songs — Album mode keeps mastered segues intact.",
-            StoryCta("Open Crossfade", StoryActionType.OPEN_CROSSFADE))
+            SegmentVisual.Illustration(IllustrationKind.CROSSFADE), cta = StoryCta("Open Crossfade", StoryActionType.OPEN_CROSSFADE))
         list += seg("tip-profiles", SegmentKind.TIP, "🎛️", "EQ per tag",
             "Give a tag its own equalizer preset — it applies automatically when a matching song plays.",
             StoryCta("Playback profiles", StoryActionType.OPEN_PROFILES))

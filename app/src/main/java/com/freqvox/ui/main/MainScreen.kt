@@ -329,6 +329,18 @@ fun MainScreen(
                                                 launchSingleTop = true
                                                 restoreState = true
                                             }
+                                        },
+                                        onStoryAction = { action ->
+                                            when (action) {
+                                                com.freqvox.ui.story.StoryActionType.OPEN_CROSSFADE -> showCrossfadeSheet = true
+                                                com.freqvox.ui.story.StoryActionType.OPEN_PROFILES -> showProfilesSheet = true
+                                                com.freqvox.ui.story.StoryActionType.OPEN_ACCENT -> showAccentSheet = true
+                                                com.freqvox.ui.story.StoryActionType.OPEN_STATS -> showStatsSheet = true
+                                                com.freqvox.ui.story.StoryActionType.OPEN_ARTWORK -> showArtworkSheet = true
+                                                com.freqvox.ui.story.StoryActionType.OPEN_TAGS -> showTagManagerSheet = true
+                                                com.freqvox.ui.story.StoryActionType.OPEN_DUPLICATES -> showDuplicatesSheet = true
+                                                else -> {}
+                                            }
                                         }
                                     )
                                 }

@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.56] - 2026-07-05
+### Added
+- **Explainer stories + working tips**: the ring now teaches — illustrated cards explain how your feed stays endlessly fresh from your tags and habits ("your feed is alive", "why this song?", "tags do the heavy lifting"). Stat cards use real charts (streak calendar, weekly sparkline, top-artist art, top-artist bars). Tip cards' buttons now deep-link straight to the feature — Crossfade, Playback profiles, Appearance, Stats, Browse, duplicates, or play a Daily Mix.
+
 ## [2.55] - 2026-07-05
 ### Added
 - **Milestones**: the ring celebrates achievements as you hit them — a 7- or 30-day streak, 500/1000 total plays, or 100 plays of a single song. Each one appears once and is remembered so it won't nag you again.

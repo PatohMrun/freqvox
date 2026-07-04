@@ -91,6 +91,7 @@ fun HomeScreen(
     onTrackClick: (TrackEntity, List<TrackEntity>) -> Unit,
     onSearchClick: () -> Unit,
     onOpenPanel: () -> Unit = {},
+    onStoryAction: (com.freqvox.ui.story.StoryActionType) -> Unit = {},
     viewModel: MainViewModel = hiltViewModel()
 ) {
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
@@ -163,7 +164,18 @@ fun HomeScreen(
         LaunchedEffect(Unit) { viewModel.markStorySeen() }
         com.freqvox.ui.story.StoryViewer(
             drop = activeStory,
-            onAction = { /* deep-link CTAs wired in a later phase */ },
+            onAction = { action ->
+                when (action) {
+                    com.freqvox.ui.story.StoryActionType.PLAY_DAILY_MIX -> {
+                        val ed = java.time.LocalDate.now().toEpochDay()
+                        generateDailyMixes(activeTracks, taggedTrackIds, ed).firstOrNull()?.let { mix ->
+                            mix.tracks.firstOrNull()?.let { onTrackClick(it, mix.tracks) }
+                        }
+                    }
+                    com.freqvox.ui.story.StoryActionType.OPEN_SEARCH -> onSearchClick()
+                    else -> onStoryAction(action)
+                }
+            },
             onDismiss = { showStory = false }
         )
     }
