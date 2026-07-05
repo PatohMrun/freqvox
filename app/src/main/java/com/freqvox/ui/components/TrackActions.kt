@@ -104,12 +104,13 @@ fun TrackActionsDialogs(
     }
 
     // Metadata edit — on Android 11+ the write needs consent first, then we apply + update the DB.
-    var pendingEdit by remember { mutableStateOf<Triple<Long, Triple<String, String, String>, Unit>?>(null) }
+    // Saveable so a config change during the system consent sheet doesn't strand the pending edit.
+    var pendingEdit by rememberSaveable { mutableStateOf<Pair<Long, Triple<String, String, String>>?>(null) }
     val editLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartIntentSenderForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
-            pendingEdit?.let { (id, v, _) ->
+            pendingEdit?.let { (id, v) ->
                 if (MediaMetadataWriter.applyUpdate(context, id, v.first, v.second, v.third)) {
                     viewModel.updateTrackMetadata(id, v.first, v.second, v.third)
                     viewModel.postSnackbar("Info updated")
@@ -128,7 +129,7 @@ fun TrackActionsDialogs(
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                     val req = MediaMetadataWriter.createWriteRequest(context, id)
                     if (req != null) {
-                        pendingEdit = Triple(id, Triple(title, artist, album), Unit)
+                        pendingEdit = id to Triple(title, artist, album)
                         editLauncher.launch(req)
                     } else viewModel.postSnackbar("Couldn't request edit permission")
                 } else {

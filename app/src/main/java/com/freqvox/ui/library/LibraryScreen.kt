@@ -55,6 +55,7 @@ import androidx.compose.material.icons.filled.ThumbDown
 import androidx.compose.material.icons.outlined.ThumbDownOffAlt
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -159,7 +160,7 @@ fun LibraryScreen(
     var trackToAdd by remember { mutableStateOf<TrackEntity?>(null) }
     var trackToDelete by remember { mutableStateOf<TrackEntity?>(null) }
     var deleteDialogStep by remember { mutableIntStateOf(0) }
-    var pendingDeleteTrackId by remember { mutableStateOf<Long?>(null) }
+    var pendingDeleteTrackId by rememberSaveable { mutableStateOf<Long?>(null) }
     var showSearchSheet by remember { mutableStateOf(false) }
 
     // Multi-select (Songs tab). Empty set = normal mode.
@@ -167,7 +168,7 @@ fun LibraryScreen(
     val selectionMode = selectedIds.isNotEmpty()
     var showBulkPlaylistDialog by remember { mutableStateOf(false) }
     var showBulkTagDialog by remember { mutableStateOf(false) }
-    var pendingBulkDeleteIds by remember { mutableStateOf<List<Long>>(emptyList()) }
+    var pendingBulkDeleteIds by rememberSaveable { mutableStateOf<List<Long>>(emptyList()) }
 
     val context = LocalContext.current
     val scope = rememberCoroutineScope()

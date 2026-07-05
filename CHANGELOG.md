@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.59] - 2026-07-05
+### Fixed
+- Deleting/editing a song (which pops the system permission sheet) no longer loses track of what it was doing if the screen rotates mid-prompt — the pending delete/edit now survives configuration changes, so the library stays in sync with the file.
+
 ## [2.58] - 2026-07-05
 ### Performance
 - Moved the heavy library aggregations (all-tracks/active-tracks filtering, listening stats, duplicate detection, story selection) off the main thread onto a background dispatcher, so they no longer risk stutter on the UI thread each time a play is logged — especially on large libraries.
