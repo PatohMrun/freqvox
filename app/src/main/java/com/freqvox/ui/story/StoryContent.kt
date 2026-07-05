@@ -87,12 +87,49 @@ object StoryContent {
         emj("how-addqueue", T, "Line it up", "Add to queue drops a song at the end of what's already playing.", "➕")
     )
 
-    val tipIds: List<String> get() = educationalPool.map { it.id }
+    /** A snapshot of the user's live state, used to generate contextual (personalized) tips that
+     *  only appear while their condition holds — making the teaching pool effectively unbounded. */
+    data class StoryState(
+        val crossfadeOff: Boolean = false,
+        val eqUnused: Boolean = false,
+        val untaggedCount: Int = 0,
+        val hasCustomTags: Boolean = true,
+        val duplicateGroups: Int = 0,
+        val mostSkippedTitle: String? = null,
+        val mostSkippedCount: Int = 0,
+        val fixedAccentDefault: Boolean = false,
+        val hasProfiles: Boolean = true
+    )
 
-    /** Build a single-segment drop for a chosen educational card, stable for its period. */
-    fun tipDropById(id: String, period: Long, epochDay: Long): StoryDrop {
-        val seg = educationalPool.firstOrNull { it.id == id } ?: educationalPool.first()
-        return StoryDrop(id = "tip-$period", createdDay = epochDay, kind = seg.kind, segments = listOf(seg))
+    /** Contextual tips eligible for the current state. Each has a stable id (so the anti-repeat
+     *  window applies) and drops out of the rotation the moment its condition is resolved. */
+    fun contextualTips(s: StoryState): List<StorySegment> {
+        val out = mutableListOf<StorySegment>()
+        if (s.crossfadeOff)
+            out += ill("ctx-crossfade", T, "Smooth out your shuffle",
+                "You haven't turned on Crossfade yet — it overlaps songs so there's no hard cut between them.", IllustrationKind.CROSSFADE, StoryCta("Turn it on", StoryActionType.OPEN_CROSSFADE))
+        if (s.eqUnused)
+            out += ill("ctx-eq", T, "Untapped: the equalizer",
+                "You haven't shaped your sound yet — the equalizer can add warmth or bite in seconds.", IllustrationKind.STATS)
+        if (s.untaggedCount >= 10)
+            out += ill("ctx-untagged", T, "${s.untaggedCount} songs, no tags",
+                "Tagging even a few unlocks mood mixes and smart playlists tailored to you.", IllustrationKind.TAGS, StoryCta("Start tagging", StoryActionType.OPEN_SEARCH))
+        if (!s.hasCustomTags)
+            out += ill("ctx-firsttag", T, "Make it yours with tags",
+                "You haven't created a custom tag yet — try 'gym', 'focus', or 'late night'.", IllustrationKind.TAGS, StoryCta("Browse tags", StoryActionType.OPEN_SEARCH))
+        if (s.duplicateGroups > 0)
+            out += emj("ctx-dupes", T, "${s.duplicateGroups} possible duplicate${if (s.duplicateGroups == 1) "" else "s"}",
+                "Freqvox spotted songs that share a title and artist — clean them up in a tap.", "🧹", StoryCta("Review", StoryActionType.OPEN_DUPLICATES))
+        if (s.mostSkippedTitle != null && s.mostSkippedCount >= 3)
+            out += emj("ctx-skip", T, "Always skipping this?",
+                "\"${s.mostSkippedTitle}\" gets skipped a lot (${s.mostSkippedCount}×). Dislike it to keep it out of your feed.", "⏭️")
+        if (s.fixedAccentDefault)
+            out += emj("ctx-accent", T, "Lock in a look",
+                "Your gradient follows each cover right now — pin a fixed accent if you'd rather it stayed constant.", "🎨", StoryCta("Appearance", StoryActionType.OPEN_ACCENT))
+        if (!s.hasProfiles && s.hasCustomTags)
+            out += emj("ctx-profiles", T, "Auto-EQ per tag",
+                "Give a tag its own EQ preset — perfect for a 'podcast' or 'bass' tag.", "🎛️", StoryCta("Playback profiles", StoryActionType.OPEN_PROFILES))
+        return out
     }
 
     /** QA-only: a single drop containing one of every card + visual type (synthetic data where the
@@ -103,6 +140,12 @@ object StoryContent {
             "Every card type, for design QA — this only appears via long-press.", SegmentVisual.Illustration(IllustrationKind.STATS))
 
         segs += educationalPool
+        // Contextual tips, forced-eligible so QA can see them all.
+        segs += contextualTips(StoryState(
+            crossfadeOff = true, eqUnused = true, untaggedCount = 42, hasCustomTags = true,
+            duplicateGroups = 3, mostSkippedTitle = "Example Song", mostSkippedCount = 7,
+            fixedAccentDefault = true, hasProfiles = false
+        ))
 
         val spark = stats.weekDailyMinutes.ifEmpty { listOf(0.2f, 0.6f, 0.4f, 0.9f, 0.5f, 0.75f, 0.35f) }
         val days = stats.activeDays14.ifEmpty { List(14) { it % 3 != 0 } }

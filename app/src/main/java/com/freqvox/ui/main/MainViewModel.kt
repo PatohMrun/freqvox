@@ -546,11 +546,25 @@ class MainViewModel @Inject constructor(
     private val storyEpochDay: Long = java.time.LocalDate.now().toEpochDay()
     private val _storySeenBump = MutableStateFlow(0)
     val activeStoryDrop: StateFlow<com.freqvox.ui.story.StoryDrop> = listeningStats
-        .map { storyScheduler.activeDrop(it, storyEpochDay) }
+        .map { stats ->
+            val tagged = taggedTrackIds.value.values.flatten().toHashSet()
+            val ctx = com.freqvox.ui.story.StoryContent.StoryState(
+                crossfadeOff = crossfadePrefs.durationSeconds == 0,
+                eqUnused = !playbackController.equalizerManager.isEnabled.value,
+                untaggedCount = allTracks.value.count { it.id !in tagged },
+                hasCustomTags = allTags.value.any { it.name.lowercase() !in setOf("liked", "disliked") },
+                duplicateGroups = duplicateGroups.value.size,
+                mostSkippedTitle = stats.mostSkipped.firstOrNull()?.first?.title,
+                mostSkippedCount = stats.mostSkipped.firstOrNull()?.second ?: 0,
+                fixedAccentDefault = !accentPrefs.enabled,
+                hasProfiles = tagProfilePrefs.all().isNotEmpty()
+            )
+            storyScheduler.activeDrop(stats, com.freqvox.ui.story.StoryContent.contextualTips(ctx), storyEpochDay)
+        }
         .flowOn(Dispatchers.Default)
         .stateIn(
             viewModelScope, SharingStarted.WhileSubscribed(5000),
-            storyScheduler.activeDrop(ListeningStats(), storyEpochDay)
+            storyScheduler.activeDrop(ListeningStats(), emptyList(), storyEpochDay)
         )
     val hasUnseenStory: StateFlow<Boolean> = combine(activeStoryDrop, _storySeenBump) { drop, _ ->
         storyScheduler.isUnseen(drop.id)

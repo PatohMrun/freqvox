@@ -14,7 +14,11 @@ import javax.inject.Singleton
 class StoryScheduler @Inject constructor(
     private val prefs: StoryPreferences
 ) {
-    fun activeDrop(stats: MainViewModel.ListeningStats, epochDay: Long): StoryDrop {
+    fun activeDrop(
+        stats: MainViewModel.ListeningStats,
+        contextualTips: List<StorySegment>,
+        epochDay: Long
+    ): StoryDrop {
         // Milestones — highest priority: the first achievement not yet celebrated.
         val celebrated = prefs.celebratedMilestones()
         StoryContent.metMilestones(stats).firstOrNull { it.key !in celebrated }?.let {
@@ -29,20 +33,27 @@ class StoryScheduler @Inject constructor(
             return StoryContent.weeklyRecap(stats, mondayKey, epochDay)
         }
 
-        // Otherwise a tip/explainer: chosen at RANDOM per period, avoiding recently-shown ones,
-        // then persisted so it's stable for the whole period (and different per install).
+        // Otherwise a tip: the evergreen pool PLUS any contextual (data-aware) tips that currently
+        // apply. Chosen at RANDOM per period, avoiding recently-shown ones, then persisted so it's
+        // stable for the whole period and different per install.
         val period = Math.floorDiv(epochDay, TIP_INTERVAL_DAYS)
-        if (prefs.currentTipPeriod != period || prefs.currentTipId == null) {
-            val ids = StoryContent.tipIds
+        val pool = StoryContent.educationalPool + contextualTips
+        val byId = pool.associateBy { it.id }
+        fun drop(seg: StorySegment) = StoryDrop("tip-$period", epochDay, seg.kind, listOf(seg))
+
+        // Reassign when the period rolls over, on first run, or when the persisted pick is a
+        // contextual tip that no longer applies.
+        val needNew = prefs.currentTipPeriod != period || prefs.currentTipId == null || prefs.currentTipId !in byId
+        if (needNew) {
             val recent = prefs.recentTips().toSet()
-            val pick = ids.filter { it !in recent }.ifEmpty { ids }.random()
+            val pick = pool.map { it.id }.filter { it !in recent }.ifEmpty { pool.map { it.id } }.random()
             prefs.currentTipId = pick
             prefs.currentTipPeriod = period
-            // Don't repeat until roughly half the pool has been seen.
-            prefs.pushRecentTip(pick, cap = (ids.size / 2).coerceAtLeast(1))
-            return StoryContent.tipDropById(pick, period, epochDay)
+            // Don't repeat until roughly half the evergreen pool has been seen.
+            prefs.pushRecentTip(pick, cap = (StoryContent.educationalPool.size / 2).coerceAtLeast(1))
+            return drop(byId.getValue(pick))
         }
-        return StoryContent.tipDropById(prefs.currentTipId!!, period, epochDay)
+        return drop(byId.getValue(prefs.currentTipId!!))
     }
 
     fun isUnseen(dropId: String): Boolean = prefs.lastSeenDropId != dropId
