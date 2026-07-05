@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.67] - 2026-07-05
+### Fixed
+- Listening-time stats no longer over-count: pausing a song and later skipping while still paused could log the same stretch twice — including the entire paused duration — inflating total listen time. Segments now open and close strictly with actual playback.
+
 ## [2.66] - 2026-07-05
 ### Fixed
 - The "possible duplicates" story nudge now actually detects duplicates — it was reading a value that's only computed while the Duplicates screen is open, so it essentially never fired.

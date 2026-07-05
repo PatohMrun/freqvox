@@ -183,6 +183,10 @@ class PlaybackController(
                         historySegmentStart = 0L
                     }
                     logPlayTime()
+                    // Clear the segment start so a later call (e.g. a track change while still
+                    // paused) can't re-log the same span — previously that double-counted the
+                    // segment AND silently added the entire paused duration to totalPlayTime.
+                    playStartTime = 0L
                     // Delay the UI state update so seek-buffering blips (< ~200ms) never reach the UI
                     seekDebounceJob?.cancel()
                     seekDebounceJob = scope.launch {
@@ -371,7 +375,9 @@ class PlaybackController(
         if (newId != lastTrackId) {
             lastTrackId = newId
             _currentTrackId.value = newId   // drives like/tag state in ViewModel
-            playStartTime = System.currentTimeMillis()
+            // Open a segment only if we're actually playing; a track change while paused must
+            // not start a phantom segment (onIsPlayingChanged(true) opens it on resume).
+            playStartTime = if (mediaController?.isPlaying == true) System.currentTimeMillis() else 0L
             playCounted = false             // new track → eligible to be counted once
             // Reset history accumulation for the new track
             historyTrackId = newId
@@ -382,6 +388,8 @@ class PlaybackController(
 
     private fun logPlayTime() {
         val id = lastTrackId ?: return
+        // 0 = no open segment (paused / already logged) — nothing to record.
+        if (playStartTime <= 0L) return
         val durationPlayed = System.currentTimeMillis() - playStartTime
         if (durationPlayed <= 0L) return
         // Count the play exactly once (first segment past the 5s threshold); every
