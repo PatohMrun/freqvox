@@ -260,6 +260,10 @@ class RadioViewModel @Inject constructor(
                     val obj = arr.getJSONObject(i)
                     val resolvedUrl = obj.optString("url_resolved").ifBlank { obj.optString("url") }
                     if (resolvedUrl.isBlank()) continue
+                    // HTTPS-only: the network policy blocks cleartext (except the curated radiojar
+                    // host), so an http:// station from the API would just be a dead play button.
+                    // Filter them out rather than list stations that can't play.
+                    if (!resolvedUrl.startsWith("https://", ignoreCase = true)) continue
                     val name = obj.optString("name").trim()
                     if (name.isBlank()) continue
                     val stationId = obj.optString("stationuuid").ifBlank { name }
@@ -292,5 +296,12 @@ class RadioViewModel @Inject constructor(
             val p = entry.split("\t")
             if (p.size >= 6) RadioStation(p[0], p[1], p[2], p[3], p[4], p[5].toLongOrNull() ?: 0xFF7C3AED)
             else null
-        }
+        }.filter { playableUnderNetworkPolicy(it.url) }
+
+    /** True when the stream survives the HTTPS-only network policy (cleartext is allowed solely
+     *  for the curated radiojar host). Drops previously-favorited http stations that can no
+     *  longer play, instead of showing dead buttons. */
+    private fun playableUnderNetworkPolicy(url: String): Boolean =
+        url.startsWith("https://", ignoreCase = true) ||
+            (url.startsWith("http://", ignoreCase = true) && url.contains("radiojar.com", ignoreCase = true))
 }

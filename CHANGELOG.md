@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.69] - 2026-07-05
+### Fixed
+- Radio search results now only list stations whose streams can actually play under the app's HTTPS-only network policy — no more dead play buttons from insecure (http) streams. Previously-favorited insecure stations are hidden too (the curated station that's explicitly allowed is unaffected).
+
 ## [2.68] - 2026-07-05
 ### Fixed
 - The sleep timer's fade-out now composes cleanly with crossfade, ducking and volume normalization instead of the two systems overwriting each other's volume — a crossfade landing in the final 20 seconds no longer snaps the volume back up mid-fade.
