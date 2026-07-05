@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.63] - 2026-07-05
+### Changed
+- **Stories teach a lot more, and feel fresh.** The educational card pool grew from 9 to **37** — algorithm/feed explainers, feature tips, and how-tos covering hidden menus, gestures (long-press, multi-select, drag-to-reorder, tap-a-lyric-to-seek, boolean tag filtering, pull-to-refresh) and nearly every feature. Cards are now picked **at random** for each drop (different per person) and won't repeat until most of the pool has cycled, so it never reads like a fixed script. Six new illustrations (gesture, timer, lyrics, playlist, share, search) render these with real graphics.
+
 ## [2.62] - 2026-07-05
 ### Internal
 - Added a developer-only story preview surface for design QA (not user-facing).

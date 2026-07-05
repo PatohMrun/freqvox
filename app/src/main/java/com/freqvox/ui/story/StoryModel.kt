@@ -20,7 +20,10 @@ sealed interface SegmentVisual {
     data class Illustration(val kind: IllustrationKind) : SegmentVisual
 }
 
-enum class IllustrationKind { FEED_FLOW, TAGS, CROSSFADE, SHUFFLE, STATS, GENERIC }
+enum class IllustrationKind {
+    FEED_FLOW, TAGS, CROSSFADE, SHUFFLE, STATS, GENERIC,
+    GESTURE, TIMER, LYRICS, PLAYLIST, SHARE, SEARCH
+}
 
 /** A deep-link the viewer surfaces as a CTA; resolved up in MainScreen. */
 enum class StoryActionType {

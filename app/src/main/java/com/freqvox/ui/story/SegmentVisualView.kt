@@ -192,5 +192,58 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawIllustration(
             drawCircle(accent.copy(alpha = 0.3f), radius = w * 0.28f, center = Offset(w / 2, h / 2))
             drawCircle(onDark, radius = w * 0.06f, center = Offset(w / 2, h / 2))
         }
+        IllustrationKind.GESTURE -> {
+            // A long-press: ripple rings around a finger dot.
+            val c = Offset(w * 0.5f, h * 0.5f)
+            drawCircle(onDark.copy(alpha = 0.10f), radius = w * 0.34f, center = c)
+            drawCircle(accent.copy(alpha = 0.30f), radius = w * 0.24f, center = c, style = Stroke(width = 5f))
+            drawCircle(accent.copy(alpha = 0.55f), radius = w * 0.15f, center = c, style = Stroke(width = 5f))
+            drawCircle(accent, radius = w * 0.07f, center = c)
+        }
+        IllustrationKind.TIMER -> {
+            val c = Offset(w / 2, h * 0.55f)
+            drawCircle(onDark.copy(alpha = 0.12f), radius = w * 0.30f, center = c)
+            drawCircle(accent, radius = w * 0.30f, center = c, style = Stroke(width = 6f))
+            drawLine(onDark, c, Offset(c.x, c.y - w * 0.18f), strokeWidth = 6f) // minute hand
+            drawLine(onDark, c, Offset(c.x + w * 0.12f, c.y), strokeWidth = 6f)   // hour hand
+            drawLine(accent, Offset(c.x, h * 0.18f), Offset(c.x, h * 0.24f), strokeWidth = 6f) // top nub
+        }
+        IllustrationKind.LYRICS -> {
+            val widths = listOf(0.5f, 0.7f, 0.55f, 0.65f)
+            widths.forEachIndexed { i, wf ->
+                val highlighted = i == 1
+                drawRoundRect(
+                    color = if (highlighted) accent else onDark.copy(alpha = 0.28f),
+                    topLeft = Offset(w * 0.5f - (w * wf) / 2, h * (0.28f + i * 0.14f)),
+                    size = Size(w * wf, h * 0.06f),
+                    cornerRadius = CornerRadius(20f, 20f)
+                )
+            }
+        }
+        IllustrationKind.PLAYLIST -> {
+            repeat(3) { i ->
+                drawRoundRect(onDark.copy(alpha = 0.4f), Offset(w * 0.2f, h * (0.3f + i * 0.13f)), Size(w * 0.4f, h * 0.06f), CornerRadius(12f, 12f))
+            }
+            // play triangle
+            val path = Path().apply {
+                moveTo(w * 0.68f, h * 0.32f); lineTo(w * 0.68f, h * 0.56f); lineTo(w * 0.84f, h * 0.44f); close()
+            }
+            drawPath(path, accent)
+        }
+        IllustrationKind.SHARE -> {
+            val a = Offset(w * 0.68f, h * 0.28f)
+            val b = Offset(w * 0.68f, h * 0.72f)
+            val src = Offset(w * 0.32f, h * 0.5f)
+            drawLine(onDark.copy(alpha = 0.5f), src, a, strokeWidth = 5f)
+            drawLine(onDark.copy(alpha = 0.5f), src, b, strokeWidth = 5f)
+            drawCircle(accent, radius = w * 0.07f, center = a)
+            drawCircle(accent, radius = w * 0.07f, center = b)
+            drawCircle(onDark, radius = w * 0.08f, center = src)
+        }
+        IllustrationKind.SEARCH -> {
+            val c = Offset(w * 0.44f, h * 0.44f)
+            drawCircle(accent, radius = w * 0.20f, center = c, style = Stroke(width = 7f))
+            drawLine(onDark, Offset(c.x + w * 0.15f, c.y + h * 0.15f), Offset(w * 0.72f, h * 0.72f), strokeWidth = 9f)
+        }
     }
 }

@@ -3,18 +3,96 @@ package com.freqvox.ui.story
 import com.freqvox.ui.main.MainViewModel
 
 /**
- * The library of "curated" segments — feature tips (with deep-link CTAs), algorithm explainers
- * that make the dynamic, tag- and habit-driven feed legible, and highlights drawn from the user's
- * own stats. A single one is chosen per drop period so it stays stable for a couple of days.
+ * The library of story content: the evergreen [educationalPool] (algorithm explainers, feature
+ * tips, and how-tos covering menus, gestures and hidden functions), plus data-driven weekly
+ * recaps and milestones. The scheduler picks one pool entry at random per drop period and spaces
+ * repeats out, so it never feels like a fixed script.
  */
 object StoryContent {
 
-    /** A tip/explainer/stat drop for the given period (changes every few days via [periodIndex]). */
-    fun tipDrop(stats: MainViewModel.ListeningStats, periodIndex: Long, epochDay: Long): StoryDrop {
-        val pool = segments(stats)
-        val i = ((periodIndex % pool.size).toInt() + pool.size) % pool.size
-        val seg = pool[i]
-        return StoryDrop(id = "tip-$periodIndex", createdDay = epochDay, kind = seg.kind, segments = listOf(seg))
+    private fun ill(id: String, kind: SegmentKind, title: String, body: String, k: IllustrationKind, cta: StoryCta? = null) =
+        StorySegment(id, kind, title, body, SegmentVisual.Illustration(k), cta = cta)
+
+    private fun emj(id: String, kind: SegmentKind, title: String, body: String, emoji: String, cta: StoryCta? = null) =
+        StorySegment(id, kind, title, body, SegmentVisual.Emoji(emoji), cta = cta)
+
+    private val A = SegmentKind.ALGORITHM
+    private val T = SegmentKind.TIP
+
+    /** Evergreen, stats-independent teaching cards — the rotation the ring draws from. */
+    val educationalPool: List<StorySegment> = listOf(
+        // ── How the feed thinks ───────────────────────────────────────────────
+        ill("algo-alive", A, "Your feed is alive",
+            "Home isn't a fixed list. Every scroll and refresh re-mixes your library into new sections — it never runs out.", IllustrationKind.FEED_FLOW),
+        ill("algo-why", A, "Why this song?",
+            "Play counts, skips, when you listen and how far you get all quietly shape what surfaces — and what's held back.", IllustrationKind.SHUFFLE),
+        ill("algo-tags", A, "Tags do the heavy lifting",
+            "Tag a few songs and whole new sections appear — mood mixes, smart playlists, per-tag EQ. The more you tag, the smarter it gets.", IllustrationKind.TAGS, StoryCta("Browse tags", StoryActionType.OPEN_SEARCH)),
+        ill("algo-time", A, "It reads the room",
+            "Morning, late night, commute, weekend — the feed leans into the time of day from your own patterns.", IllustrationKind.GENERIC),
+        ill("algo-spotlight", A, "Spotlight keeps you guessing",
+            "The Spotlight rotates among your top 15 most-played, so it isn't locked to a single song.", IllustrationKind.STATS),
+        ill("algo-dailymix", A, "Daily Mixes, once a day",
+            "Daily Mixes are seeded by the date — they stay put all day, then refresh to a new set tomorrow.", IllustrationKind.GENERIC),
+        ill("algo-onthisday", A, "On This Day",
+            "The feed occasionally resurfaces tracks you played on this same date in an earlier month or year.", IllustrationKind.GENERIC),
+
+        // ── Feature tips (deep-linked where it helps) ─────────────────────────
+        ill("tip-crossfade", T, "Seamless transitions",
+            "Turn on Crossfade to overlap songs. Album mode keeps mastered segues intact.", IllustrationKind.CROSSFADE, StoryCta("Open Crossfade", StoryActionType.OPEN_CROSSFADE)),
+        ill("tip-albummode", T, "Albums, as intended",
+            "With Album mode on, consecutive tracks from the same album butt-join gaplessly instead of crossfading.", IllustrationKind.CROSSFADE, StoryCta("Open Crossfade", StoryActionType.OPEN_CROSSFADE)),
+        emj("tip-profiles", T, "EQ per tag", "Give a tag its own equalizer preset — it's applied automatically when a matching song plays.", "🎛️", StoryCta("Playback profiles", StoryActionType.OPEN_PROFILES)),
+        emj("tip-volnorm", T, "Even it out", "Volume normalization tames loudness jumps between tracks on shuffle.", "🔊", StoryCta("Open Crossfade", StoryActionType.OPEN_CROSSFADE)),
+        emj("tip-accent", T, "Make it yours", "Pin a fixed accent colour, or let the gradient follow each album's art.", "🎨", StoryCta("Appearance", StoryActionType.OPEN_ACCENT)),
+        emj("tip-theme", T, "Light or dark", "Tap the sun/moon in the header to cycle System, Light and Dark.", "🌗"),
+        ill("tip-sleep", T, "Drift off", "The sleep timer fades out gently before it stops — or you can stop at the end of the current album.", IllustrationKind.TIMER),
+        ill("tip-eq", T, "Shape the sound", "A full equalizer lives in the side panel's Audio section.", IllustrationKind.STATS),
+        emj("tip-dupes", T, "Tidy up", "The duplicate finder groups songs that share a title and artist so you can clear the extras.", "🧹", StoryCta("Find duplicates", StoryActionType.OPEN_DUPLICATES)),
+        emj("tip-backup", T, "Never lose your work", "Back up tags, playlists, stats, settings and your EQ to one file — and restore it anytime.", "💾"),
+        emj("tip-hiddenfolders", T, "Hide the noise", "Hide folders like ringtones or voice notes instantly — nothing is deleted, and you can un-hide any time.", "📁"),
+        emj("tip-art", T, "Cover art, filled in", "Missing covers are fetched online, or recovered from your VidMate downloads.", "🖼️", StoryCta("Album art", StoryActionType.OPEN_ARTWORK)),
+        emj("tip-radio", T, "Go live", "The Radio tab streams live stations when you want something outside your library.", "📻"),
+
+        // ── How-tos, hidden menus & gestures ──────────────────────────────────
+        ill("how-longpress", T, "Long-press a song",
+            "Long-press any track for the full menu: tag, add to playlist, play next, share, edit info, or delete.", IllustrationKind.GESTURE),
+        ill("how-multiselect", T, "Select many at once",
+            "Long-press a song in your Library to enter select mode, then bulk-tag, add to a playlist, or delete the lot.", IllustrationKind.GESTURE),
+        ill("how-reorderpills", T, "Reorder your tabs",
+            "Drag the Library tabs left or right to reorder them — the arrangement sticks.", IllustrationKind.GESTURE),
+        ill("how-queue-reorder", T, "Reshape the queue",
+            "Drag items in the play queue to change what comes next.", IllustrationKind.GESTURE),
+        ill("how-lyrics-seek", T, "Tap a lyric to jump",
+            "With synced .lrc lyrics, the current line is highlighted — tap any line to jump straight to that moment.", IllustrationKind.LYRICS),
+        ill("how-boolean-tags", T, "Filter with logic",
+            "In Browse, tap a tag to require it, tap again to exclude it: \"chill AND workout, NOT throwback\".", IllustrationKind.TAGS, StoryCta("Try it", StoryActionType.OPEN_SEARCH)),
+        ill("how-pull-refresh", T, "Pull for more",
+            "Pull down on Home for a completely fresh remix of your library.", IllustrationKind.GENERIC),
+        emj("how-edit-info", T, "Fix the details", "Wrong title, artist or album? Long-press the song → Edit info.", "✏️"),
+        ill("how-share-card", T, "Share a track",
+            "Long-press → Share as image turns any song into a poster card you can send anywhere.", IllustrationKind.SHARE),
+        ill("how-custom-tag", T, "Make your own tags",
+            "Create custom tags — the '+ New custom tag' button is pinned to the top of the tag sheet.", IllustrationKind.TAGS),
+        ill("how-smart-playlist", T, "Playlists that update themselves",
+            "Tag songs, then create a smart playlist from those tags — it stays in sync as you tag more.", IllustrationKind.PLAYLIST),
+        ill("how-playlist-edit", T, "Edit inside a playlist",
+            "Open a playlist to rename it, reorder tracks, and add or remove songs on the fly.", IllustrationKind.PLAYLIST),
+        emj("how-play-next", T, "Jump the queue", "Use Play next to slot a song in right after the one that's playing.", "⏭️"),
+        ill("how-stats", T, "Dig into your stats",
+            "In Stats, tap any top artist or tag to open its own breakdown — time, plays and top tracks.", IllustrationKind.STATS, StoryCta("Open stats", StoryActionType.OPEN_STATS)),
+        emj("how-settings", T, "One place for everything", "The gear opens it all: audio, library tools, backup and tag management.", "⚙️"),
+        ill("how-search", T, "Find anything",
+            "Search by title, artist or album — or browse your whole library by tag.", IllustrationKind.SEARCH, StoryCta("Search", StoryActionType.OPEN_SEARCH)),
+        emj("how-addqueue", T, "Line it up", "Add to queue drops a song at the end of what's already playing.", "➕")
+    )
+
+    val tipIds: List<String> get() = educationalPool.map { it.id }
+
+    /** Build a single-segment drop for a chosen educational card, stable for its period. */
+    fun tipDropById(id: String, period: Long, epochDay: Long): StoryDrop {
+        val seg = educationalPool.firstOrNull { it.id == id } ?: educationalPool.first()
+        return StoryDrop(id = "tip-$period", createdDay = epochDay, kind = seg.kind, segments = listOf(seg))
     }
 
     /** QA-only: a single drop containing one of every card + visual type (synthetic data where the
@@ -24,10 +102,8 @@ object StoryContent {
         segs += StorySegment("pv-intro", SegmentKind.RECAP, "Story preview",
             "Every card type, for design QA — this only appears via long-press.", SegmentVisual.Illustration(IllustrationKind.STATS))
 
-        // All evergreen tips/explainers + whatever stat cards the real data supports.
-        segs += segments(stats)
+        segs += educationalPool
 
-        // Force-cover the data visuals with real values or synthetic samples.
         val spark = stats.weekDailyMinutes.ifEmpty { listOf(0.2f, 0.6f, 0.4f, 0.9f, 0.5f, 0.75f, 0.35f) }
         val days = stats.activeDays14.ifEmpty { List(14) { it % 3 != 0 } }
         val bars = stats.topArtists.ifEmpty { listOf("Artist A" to 12, "Artist B" to 9, "Artist C" to 5) }
@@ -38,12 +114,10 @@ object StoryContent {
         stats.topArtistTrack?.let { segs += StorySegment("pv-art", SegmentKind.STAT, "Album art", it.title, SegmentVisual.AlbumArt(it)) }
         if (stats.newThisWeek.isNotEmpty()) segs += StorySegment("pv-collage", SegmentKind.STAT, "Collage", "New this week.", SegmentVisual.ArtCollage(stats.newThisWeek))
 
-        // Every illustration kind.
         IllustrationKind.values().forEach { k ->
             segs += StorySegment("pv-ill-$k", SegmentKind.ALGORITHM, "Illustration · $k", "Illustration sample.", SegmentVisual.Illustration(k))
         }
 
-        // The full recap + a milestone sample.
         segs += weeklyRecap(stats, 0, epochDay).segments
         val ms = metMilestones(stats).firstOrNull() ?: MilestoneDef("streak7-sample", "🔥", "7-day streak!", "Sample milestone card.")
         segs += milestoneDrop(ms, epochDay).segments
@@ -104,61 +178,4 @@ object StoryContent {
                 "Consistency pays off.", SegmentVisual.StreakCalendar(stats.activeDays14))
         return StoryDrop("recap-$weekKey", epochDay, SegmentKind.RECAP, segs)
     }
-
-    private fun segments(stats: MainViewModel.ListeningStats): List<StorySegment> {
-        val list = mutableListOf<StorySegment>()
-
-        // ── Highlights from the user's own listening (real graphics) ──────────
-        if (stats.currentStreakDays >= 2 && stats.activeDays14.isNotEmpty())
-            list += StorySegment("stat-streak", SegmentKind.STAT, "${stats.currentStreakDays}-day streak",
-                "You've pressed play ${stats.currentStreakDays} days running. Keep the fire lit.",
-                SegmentVisual.StreakCalendar(stats.activeDays14))
-        if (stats.weekMinutes > 0 && stats.weekDailyMinutes.isNotEmpty())
-            list += StorySegment("stat-week", SegmentKind.STAT, "${stats.weekMinutes} minutes this week",
-                "Your listening, day by day.", SegmentVisual.Sparkline(stats.weekDailyMinutes, "last 7 days"),
-                cta = StoryCta("See stats", StoryActionType.OPEN_STATS))
-        stats.topArtistTrack?.let { t ->
-            list += StorySegment("stat-artist", SegmentKind.STAT, "Top artist: ${t.artist}",
-                "On heavy rotation.", SegmentVisual.AlbumArt(t))
-        }
-        if (stats.totalPlays >= 20 && stats.topArtists.isNotEmpty())
-            list += StorySegment("stat-plays", SegmentKind.STAT, "${stats.totalPlays} plays",
-                "Your most-played artists.", SegmentVisual.Bars(stats.topArtists))
-
-        // ── Algorithm explainers — make the feed's intelligence visible ───────
-        list += StorySegment("algo-alive", SegmentKind.ALGORITHM, "Your feed is alive",
-            "Home isn't a fixed list. Every scroll and refresh re-mixes your library into new sections — it never runs out.",
-            SegmentVisual.Illustration(IllustrationKind.FEED_FLOW))
-        list += StorySegment("algo-why", SegmentKind.ALGORITHM, "Why this song?",
-            "Play counts, skips, when you listen, and how far you get all quietly shape what surfaces — and what's held back.",
-            SegmentVisual.Illustration(IllustrationKind.SHUFFLE))
-        list += StorySegment("algo-tags", SegmentKind.ALGORITHM, "Tags do the heavy lifting",
-            "Tag a few songs and whole new sections appear — mood mixes, smart playlists, per-tag EQ. The more you tag, the smarter it gets.",
-            SegmentVisual.Illustration(IllustrationKind.TAGS), cta = StoryCta("Browse tags", StoryActionType.OPEN_SEARCH))
-        list += StorySegment("algo-time", SegmentKind.ALGORITHM, "It reads the room",
-            "Morning, late night, commute, weekend — the feed leans into the time of day using your own listening patterns.",
-            SegmentVisual.Illustration(IllustrationKind.GENERIC))
-
-        // ── Feature tips with deep-link CTAs ──────────────────────────────────
-        list += StorySegment("tip-crossfade", SegmentKind.TIP, "Seamless transitions",
-            "Turn on Crossfade for overlapping songs — Album mode keeps mastered segues intact.",
-            SegmentVisual.Illustration(IllustrationKind.CROSSFADE), cta = StoryCta("Open Crossfade", StoryActionType.OPEN_CROSSFADE))
-        list += seg("tip-profiles", SegmentKind.TIP, "🎛️", "EQ per tag",
-            "Give a tag its own equalizer preset — it applies automatically when a matching song plays.",
-            StoryCta("Playback profiles", StoryActionType.OPEN_PROFILES))
-        list += seg("tip-accent", SegmentKind.TIP, "🎨", "Make it yours",
-            "Pin a fixed accent colour, or let the gradient follow each album's art.",
-            StoryCta("Appearance", StoryActionType.OPEN_ACCENT))
-        list += seg("tip-mix", SegmentKind.TIP, "🎧", "Daily Mixes",
-            "Fresh themed mixes wait at the top of Home each day, built from your tags and most-played artists.",
-            StoryCta("Play a mix", StoryActionType.PLAY_DAILY_MIX))
-        list += seg("tip-dupes", SegmentKind.TIP, "🧹", "Tidy up",
-            "The duplicate finder groups songs that share a title and artist so you can clear the extras.",
-            StoryCta("Find duplicates", StoryActionType.OPEN_DUPLICATES))
-
-        return list
-    }
-
-    private fun seg(id: String, kind: SegmentKind, emoji: String, title: String, body: String, cta: StoryCta? = null) =
-        StorySegment(id = id, kind = kind, title = title, body = body, visual = SegmentVisual.Emoji(emoji), cta = cta)
 }

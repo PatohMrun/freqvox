@@ -29,9 +29,20 @@ class StoryScheduler @Inject constructor(
             return StoryContent.weeklyRecap(stats, mondayKey, epochDay)
         }
 
-        // Otherwise a throttled tip/explainer that changes every few days.
+        // Otherwise a tip/explainer: chosen at RANDOM per period, avoiding recently-shown ones,
+        // then persisted so it's stable for the whole period (and different per install).
         val period = Math.floorDiv(epochDay, TIP_INTERVAL_DAYS)
-        return StoryContent.tipDrop(stats, period, epochDay)
+        if (prefs.currentTipPeriod != period || prefs.currentTipId == null) {
+            val ids = StoryContent.tipIds
+            val recent = prefs.recentTips().toSet()
+            val pick = ids.filter { it !in recent }.ifEmpty { ids }.random()
+            prefs.currentTipId = pick
+            prefs.currentTipPeriod = period
+            // Don't repeat until roughly half the pool has been seen.
+            prefs.pushRecentTip(pick, cap = (ids.size / 2).coerceAtLeast(1))
+            return StoryContent.tipDropById(pick, period, epochDay)
+        }
+        return StoryContent.tipDropById(prefs.currentTipId!!, period, epochDay)
     }
 
     fun isUnseen(dropId: String): Boolean = prefs.lastSeenDropId != dropId
