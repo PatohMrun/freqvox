@@ -548,12 +548,18 @@ class MainViewModel @Inject constructor(
     val activeStoryDrop: StateFlow<com.freqvox.ui.story.StoryDrop> = listeningStats
         .map { stats ->
             val tagged = taggedTrackIds.value.values.flatten().toHashSet()
+            // Computed inline: duplicateGroups is WhileSubscribed and only collected while the
+            // Duplicates sheet is open, so its .value here would almost always be the stale
+            // initial emptyList and the "N duplicates" tip would never fire.
+            val dupCount = allTracks.value
+                .groupBy { (it.title + "|" + it.artist).replace(Regex("[^A-Za-z0-9]"), "").lowercase() }
+                .values.count { it.size > 1 }
             val ctx = com.freqvox.ui.story.StoryContent.StoryState(
                 crossfadeOff = crossfadePrefs.durationSeconds == 0,
                 eqUnused = !playbackController.equalizerManager.isEnabled.value,
                 untaggedCount = allTracks.value.count { it.id !in tagged },
                 hasCustomTags = allTags.value.any { it.name.lowercase() !in setOf("liked", "disliked") },
-                duplicateGroups = duplicateGroups.value.size,
+                duplicateGroups = dupCount,
                 mostSkippedTitle = stats.mostSkipped.firstOrNull()?.first?.title,
                 mostSkippedCount = stats.mostSkipped.firstOrNull()?.second ?: 0,
                 fixedAccentDefault = !accentPrefs.enabled,

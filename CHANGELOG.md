@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.66] - 2026-07-05
+### Fixed
+- The "possible duplicates" story nudge now actually detects duplicates — it was reading a value that's only computed while the Duplicates screen is open, so it essentially never fired.
+
 ## [2.65] - 2026-07-05
 ### Fixed
 - The weekly recap story now stays dismissed for the whole week once you've watched it. Previously it could come back (and relight the ring) after you viewed a later tip, bouncing between the two all week.
