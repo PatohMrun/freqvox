@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.61] - 2026-07-05
+### Security
+- Tightened the network policy to HTTPS-only, with a narrow exception only for the HTTP radio-stream host that doesn't offer TLS. Previously cleartext traffic was permitted for any domain; now album-art lookups and everything else are TLS-only.
+
 ## [2.60] - 2026-07-05
 ### Performance
 - The dynamic colour theming now extracts each cover's palette from a small downscaled copy and frees it immediately, instead of decoding and holding a full-resolution bitmap on every track change — less memory churn and GC pressure during playback.

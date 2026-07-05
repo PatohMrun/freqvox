@@ -1,8 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
-    <base-config cleartextTrafficPermitted="true">
+    <!-- HTTPS-only by default: album-art lookups (iTunes/Deezer/MusicBrainz/Cover Art Archive)
+         and everything else must use TLS. -->
+    <base-config cleartextTrafficPermitted="false">
         <trust-anchors>
             <certificates src="system" />
         </trust-anchors>
     </base-config>
+    <!-- Cleartext is permitted only for the HTTP radio-stream host(s) that don't offer TLS. -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">radiojar.com</domain>
+    </domain-config>
 </network-security-config>
