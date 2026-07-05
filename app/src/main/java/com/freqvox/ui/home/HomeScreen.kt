@@ -122,6 +122,7 @@ fun HomeScreen(
     val storyStats by viewModel.listeningStats.collectAsStateWithLifecycle()
     val storyContext = androidx.compose.ui.platform.LocalContext.current
     var showStory by remember { mutableStateOf(false) }
+    var previewStory by remember { mutableStateOf<com.freqvox.ui.story.StoryDrop?>(null) }
     val trackActions = rememberTrackActionsState()
     var optionsTrack by remember { mutableStateOf<TrackEntity?>(null) }
     // Long-press now opens a richer options menu (Tag is one entry inside) instead of
@@ -196,6 +197,15 @@ fun HomeScreen(
                     artPath = storyStats.topArtistTrack?.artworkPath
                 )
             }
+        )
+    }
+
+    // QA-only: long-press the ring opens a preview of every card type (not marked seen).
+    previewStory?.let { drop ->
+        com.freqvox.ui.story.StoryViewer(
+            drop = drop,
+            onAction = { },
+            onDismiss = { previewStory = null }
         )
     }
 
@@ -289,6 +299,11 @@ fun HomeScreen(
             onOpenPanel = onOpenPanel,
             hasUnseenMoment = hasUnseenStory,
             onOpenMoments = { showStory = true },
+            onLongPressMoments = {
+                previewStory = com.freqvox.ui.story.StoryContent.previewDrop(
+                    storyStats, java.time.LocalDate.now().toEpochDay()
+                )
+            },
             modifier = Modifier.padding(horizontal = 24.dp, vertical = 24.dp)
         )
         LazyColumn(
@@ -679,7 +694,7 @@ fun SpotlightFeedBlock(
 }
 
 @Composable
-fun Header(greeting: String, totalSongs: Int, totalDurationMs: Long, onSearchClick: () -> Unit, themeMode: ThemeMode = ThemeMode.SYSTEM, onCycleTheme: () -> Unit = {}, onOpenPanel: () -> Unit = {}, hasUnseenMoment: Boolean = false, onOpenMoments: () -> Unit = {}, modifier: Modifier = Modifier) {
+fun Header(greeting: String, totalSongs: Int, totalDurationMs: Long, onSearchClick: () -> Unit, themeMode: ThemeMode = ThemeMode.SYSTEM, onCycleTheme: () -> Unit = {}, onOpenPanel: () -> Unit = {}, hasUnseenMoment: Boolean = false, onOpenMoments: () -> Unit = {}, onLongPressMoments: () -> Unit = {}, modifier: Modifier = Modifier) {
     val hours = totalDurationMs / (1000 * 60 * 60)
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -774,7 +789,7 @@ fun Header(greeting: String, totalSongs: Int, totalDurationMs: Long, onSearchCli
                             Modifier.border(1.5.dp, Fvox.onSurface.copy(alpha = 0.18f), CircleShape)
                     )
                     .padding(3.dp)
-                    .clickable { onOpenMoments() },
+                    .combinedClickable(onClick = onOpenMoments, onLongClick = onLongPressMoments),
                 contentAlignment = Alignment.Center
             ) {
                 Surface(

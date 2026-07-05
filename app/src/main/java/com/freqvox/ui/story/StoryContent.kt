@@ -17,6 +17,40 @@ object StoryContent {
         return StoryDrop(id = "tip-$periodIndex", createdDay = epochDay, kind = seg.kind, segments = listOf(seg))
     }
 
+    /** QA-only: a single drop containing one of every card + visual type (synthetic data where the
+     *  library is sparse), for eyeballing designs on demand without waiting on the scheduler. */
+    fun previewDrop(stats: MainViewModel.ListeningStats, epochDay: Long): StoryDrop {
+        val segs = mutableListOf<StorySegment>()
+        segs += StorySegment("pv-intro", SegmentKind.RECAP, "Story preview",
+            "Every card type, for design QA — this only appears via long-press.", SegmentVisual.Illustration(IllustrationKind.STATS))
+
+        // All evergreen tips/explainers + whatever stat cards the real data supports.
+        segs += segments(stats)
+
+        // Force-cover the data visuals with real values or synthetic samples.
+        val spark = stats.weekDailyMinutes.ifEmpty { listOf(0.2f, 0.6f, 0.4f, 0.9f, 0.5f, 0.75f, 0.35f) }
+        val days = stats.activeDays14.ifEmpty { List(14) { it % 3 != 0 } }
+        val bars = stats.topArtists.ifEmpty { listOf("Artist A" to 12, "Artist B" to 9, "Artist C" to 5) }
+        segs += StorySegment("pv-spark", SegmentKind.STAT, "Sparkline", "Weekly minutes.", SegmentVisual.Sparkline(spark, "sample"))
+        segs += StorySegment("pv-streak", SegmentKind.STAT, "Streak calendar", "Active-day dots.", SegmentVisual.StreakCalendar(days))
+        segs += StorySegment("pv-hist", SegmentKind.STAT, "Hour histogram", "Listening by hour.", SegmentVisual.Histogram(List(24) { (it * 7) % 13 }))
+        segs += StorySegment("pv-bars", SegmentKind.STAT, "Bars", "Top artists.", SegmentVisual.Bars(bars))
+        stats.topArtistTrack?.let { segs += StorySegment("pv-art", SegmentKind.STAT, "Album art", it.title, SegmentVisual.AlbumArt(it)) }
+        if (stats.newThisWeek.isNotEmpty()) segs += StorySegment("pv-collage", SegmentKind.STAT, "Collage", "New this week.", SegmentVisual.ArtCollage(stats.newThisWeek))
+
+        // Every illustration kind.
+        IllustrationKind.values().forEach { k ->
+            segs += StorySegment("pv-ill-$k", SegmentKind.ALGORITHM, "Illustration · $k", "Illustration sample.", SegmentVisual.Illustration(k))
+        }
+
+        // The full recap + a milestone sample.
+        segs += weeklyRecap(stats, 0, epochDay).segments
+        val ms = metMilestones(stats).firstOrNull() ?: MilestoneDef("streak7-sample", "🔥", "7-day streak!", "Sample milestone card.")
+        segs += milestoneDrop(ms, epochDay).segments
+
+        return StoryDrop("preview-$epochDay", epochDay, SegmentKind.TIP, segs)
+    }
+
     data class MilestoneDef(val key: String, val emoji: String, val title: String, val body: String)
 
     /** Achievements the user currently qualifies for, highest first. The scheduler shows the first

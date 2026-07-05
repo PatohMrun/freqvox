@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.62] - 2026-07-05
+### Internal
+- Added a developer-only story preview surface for design QA (not user-facing).
+
 ## [2.61] - 2026-07-05
 ### Security
 - Tightened the network policy to HTTPS-only, with a narrow exception only for the HTTP radio-stream host that doesn't offer TLS. Previously cleartext traffic was permitted for any domain; now album-art lookups and everything else are TLS-only.
