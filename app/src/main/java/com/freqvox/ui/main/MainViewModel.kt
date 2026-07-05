@@ -17,6 +17,7 @@ import com.freqvox.data.local.entities.PlaylistEntity
 import com.freqvox.data.local.entities.TagEntity
 import com.freqvox.data.local.entities.TrackEntity
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
@@ -162,7 +163,7 @@ class MainViewModel @Inject constructor(
         trackRepository.allTracks, _excludedFolders
     ) { tracks, excluded ->
         if (excluded.isEmpty()) tracks else tracks.filter { it.folderPath !in excluded }
-    }.stateIn(
+    }.flowOn(Dispatchers.Default).stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = emptyList()
@@ -208,7 +209,7 @@ class MainViewModel @Inject constructor(
     ) { tracks, tags, excluded ->
         val disliked = tags["disliked"] ?: emptySet()
         tracks.filter { it.id !in disliked && it.folderPath !in excluded }
-    }.stateIn(
+    }.flowOn(Dispatchers.Default).stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = emptyList()
@@ -417,6 +418,7 @@ class MainViewModel @Inject constructor(
                 .map { grp -> grp.sortedByDescending { it.playCount } }
                 .sortedByDescending { it.size }
         }
+        .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val recentlyAdded: StateFlow<List<TrackEntity>> = activeTracks
@@ -538,13 +540,14 @@ class MainViewModel @Inject constructor(
             newThisWeek = newThisWeek,
             topArtistTrack = topArtistTrack
         )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ListeningStats())
+    }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ListeningStats())
 
     // ── Header story-ring ("Stories") ──────────────────────────────────────────
     private val storyEpochDay: Long = java.time.LocalDate.now().toEpochDay()
     private val _storySeenBump = MutableStateFlow(0)
     val activeStoryDrop: StateFlow<com.freqvox.ui.story.StoryDrop> = listeningStats
         .map { storyScheduler.activeDrop(it, storyEpochDay) }
+        .flowOn(Dispatchers.Default)
         .stateIn(
             viewModelScope, SharingStarted.WhileSubscribed(5000),
             storyScheduler.activeDrop(ListeningStats(), storyEpochDay)

@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.58] - 2026-07-05
+### Performance
+- Moved the heavy library aggregations (all-tracks/active-tracks filtering, listening stats, duplicate detection, story selection) off the main thread onto a background dispatcher, so they no longer risk stutter on the UI thread each time a play is logged — especially on large libraries.
+
 ## [2.57] - 2026-07-05
 ### Added
 - **Share your week**: the weekly recap story has a share button that exports a poster image — minutes, a sparkline of your week, top artist, most-played track and streak — to the Android share sheet.
