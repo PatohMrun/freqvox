@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.70] - 2026-07-05
+### Fixed
+- Repaired three compile errors that earlier automated build checks failed to catch (a masked exit code hid them): a duplicate `allPlaylists` declaration in the Library screen, and missing imports in the Accent sheet and the artist/tag stats sheet. Both Debug and Release variants now verified building clean.
+
 ## [2.69] - 2026-07-05
 ### Fixed
 - Radio search results now only list stations whose streams can actually play under the app's HTTPS-only network policy — no more dead play buttons from insecure (http) streams. Previously-favorited insecure stations are hidden too (the curated station that's explicitly allowed is unaffected).

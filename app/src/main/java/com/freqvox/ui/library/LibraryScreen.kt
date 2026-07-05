@@ -173,7 +173,8 @@ fun LibraryScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
-    val allPlaylists by viewModel.allPlaylists.collectAsStateWithLifecycle()
+    // NOTE: allPlaylists is already collected at the top of this composable (used by the
+    // bulk-playlist dialog below too) — do not redeclare it here.
 
     androidx.activity.compose.BackHandler(enabled = selectionMode) { selectedIds.clear() }
 
