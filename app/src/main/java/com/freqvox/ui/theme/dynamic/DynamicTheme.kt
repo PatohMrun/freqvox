@@ -1,6 +1,7 @@
 package com.freqvox.ui.theme.dynamic
 
 import android.app.Activity
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
@@ -158,6 +159,17 @@ private fun adjustAccentForMode(color: Color, isLight: Boolean): Color {
     return Color(android.graphics.Color.HSVToColor(hsv))
 }
 
+/** Decodes [path] downsampled so its largest side is ≈[targetPx], for cheap palette extraction. */
+private fun decodeDownsampled(path: String, targetPx: Int): Bitmap? {
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    BitmapFactory.decodeFile(path, bounds)
+    if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+    var sample = 1
+    val maxSide = maxOf(bounds.outWidth, bounds.outHeight)
+    while (maxSide / (sample * 2) >= targetPx) sample *= 2
+    return BitmapFactory.decodeFile(path, BitmapFactory.Options().apply { inSampleSize = sample })
+}
+
 // ── Composable ────────────────────────────────────────────────────────────────
 
 @Composable
@@ -196,12 +208,15 @@ fun DynamicTheme(
         } else if (artworkPath != null && File(artworkPath).exists()) {
             withContext(Dispatchers.IO) {
                 runCatching {
-                    val bmp = BitmapFactory.decodeFile(artworkPath)
+                    // Decode a small (~128px) copy just for the palette, then recycle it — no need
+                    // to hold a full-resolution cover in memory on every track change.
+                    val bmp = decodeDownsampled(artworkPath, 128)
                     if (bmp != null) {
                         val palette = Palette.from(bmp).generate()
                         val vibrant = palette.getVibrantColor(0)
-                        if (vibrant != 0) Color(vibrant)
-                        else Color(palette.getDominantColor(0))
+                        val c = if (vibrant != 0) Color(vibrant) else Color(palette.getDominantColor(0))
+                        bmp.recycle()
+                        c
                     } else null
                 }.getOrNull()
             } ?: generatePrimaryFromTitle(trackTitle)

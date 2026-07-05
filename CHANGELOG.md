@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.60] - 2026-07-05
+### Performance
+- The dynamic colour theming now extracts each cover's palette from a small downscaled copy and frees it immediately, instead of decoding and holding a full-resolution bitmap on every track change — less memory churn and GC pressure during playback.
+
 ## [2.59] - 2026-07-05
 ### Fixed
 - Deleting/editing a song (which pops the system permission sheet) no longer loses track of what it was doing if the screen rotates mid-prompt — the pending delete/edit now survives configuration changes, so the library stays in sync with the file.
