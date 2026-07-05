@@ -26,10 +26,12 @@ class StoryScheduler @Inject constructor(
         }
 
         // Weekly recap (Monday-anchored): the top-priority drop each week until it's been seen.
+        // Gated on lastRecapWeek — NOT lastSeenDropId, which is a single slot that a later tip
+        // view overwrites (that made the already-seen recap come back and relight the ring,
+        // ping-ponging with the tip all week).
         val dow = java.time.LocalDate.ofEpochDay(epochDay).dayOfWeek.value  // 1=Mon … 7=Sun
         val mondayKey = epochDay - (dow - 1)
-        val recapId = "recap-$mondayKey"
-        if (stats.totalPlays > 0 && prefs.lastSeenDropId != recapId) {
+        if (stats.totalPlays > 0 && prefs.lastRecapWeek != mondayKey) {
             return StoryContent.weeklyRecap(stats, mondayKey, epochDay)
         }
 
@@ -63,6 +65,10 @@ class StoryScheduler @Inject constructor(
         // A viewed milestone is celebrated once and never re-surfaces, even while still true.
         if (dropId.startsWith("milestone-")) {
             prefs.markMilestoneCelebrated(dropId.removePrefix("milestone-"))
+        }
+        // A viewed recap retires for its whole week (its id embeds the Monday key).
+        if (dropId.startsWith("recap-")) {
+            dropId.removePrefix("recap-").toLongOrNull()?.let { prefs.lastRecapWeek = it }
         }
     }
 

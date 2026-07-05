@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.65] - 2026-07-05
+### Fixed
+- The weekly recap story now stays dismissed for the whole week once you've watched it. Previously it could come back (and relight the ring) after you viewed a later tip, bouncing between the two all week.
+
 ## [2.64] - 2026-07-05
 ### Added
 - **Stories now react to how you actually use the app.** On top of the fixed teaching cards, the ring can surface contextual nudges based on your current state — e.g. "you haven't turned on Crossfade", "42 songs have no tags", "N possible duplicates", "you keep skipping this song". They only appear while relevant and disappear once you act on them, so the guidance stays personal and keeps evolving with your library.
