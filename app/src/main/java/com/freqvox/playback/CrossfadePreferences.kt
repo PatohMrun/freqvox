@@ -43,6 +43,15 @@ class CrossfadePreferences @Inject constructor(
         get() = prefs.getBoolean(KEY_VOLUME_NORM, false)
         set(value) = prefs.edit().putBoolean(KEY_VOLUME_NORM, value).apply()
 
+    /**
+     * Transient (in-memory, NOT persisted) sleep-timer fade gain, 1f at rest. Written by
+     * PlaybackController's fade loop and multiplied into every volume the CrossfadeController
+     * writes — this singleton is the same-process bridge between the two, so the sleep fade and
+     * the crossfade/duck/normalization gains compose instead of clobbering each other.
+     */
+    @Volatile
+    var sleepGain: Float = 1f
+
     companion object {
         const val MAX_SECONDS = 12
         /** Offered choices in the UI (0 = off). */

@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.68] - 2026-07-05
+### Fixed
+- The sleep timer's fade-out now composes cleanly with crossfade, ducking and volume normalization instead of the two systems overwriting each other's volume — a crossfade landing in the final 20 seconds no longer snaps the volume back up mid-fade.
+
 ## [2.67] - 2026-07-05
 ### Fixed
 - Listening-time stats no longer over-count: pausing a song and later skipping while still paused could log the same stretch twice — including the entire paused duration — inflating total listen time. Segments now open and close strictly with actual playback.

@@ -38,7 +38,8 @@ class PlaybackController(
     private val tagDao: TagDao,
     private val playHistoryDao: PlayHistoryDao,
     private val sleepTimerManager: SleepTimerManager,
-    val equalizerManager: FreqvoxEqualizerManager
+    val equalizerManager: FreqvoxEqualizerManager,
+    private val crossfadePrefs: CrossfadePreferences
 ) {
     private var controllerFuture: ListenableFuture<MediaController>? = null
     private var mediaController: MediaController? = null
@@ -676,10 +677,13 @@ class PlaybackController(
         _stopAfterAlbum.value = false
         sleepTimerManager.startTimer(minutes) {
             mediaController?.pause()
+            crossfadePrefs.sleepGain = 1f
             mediaController?.volume = 1f   // restore for the next play session
         }
-        // Fade the last sleepFadeMs down to silence so sleep isn't a hard cut. Deterministic
-        // (based on total duration), fine-grained, and always restored on finish/cancel.
+        // Fade the last sleepFadeMs down to silence so sleep isn't a hard cut. The gain is
+        // published via crossfadePrefs.sleepGain so the CrossfadeController multiplies it into
+        // its own volume writes (ramp × duck × norm × sleepGain) instead of clobbering the fade;
+        // the direct controller write below covers the common no-crossfade case at 100ms grain.
         sleepFadeJob?.cancel()
         sleepFadeJob = scope.launch {
             val totalMs = minutes * 60_000L
@@ -689,7 +693,9 @@ class PlaybackController(
             val steps = (rampMs / 100L).coerceAtLeast(1)
             for (i in 1..steps) {
                 if (!isActive) break
-                mediaController?.volume = (1f - i.toFloat() / steps).coerceIn(0f, 1f)
+                val f = (1f - i.toFloat() / steps).coerceIn(0f, 1f)
+                crossfadePrefs.sleepGain = f
+                mediaController?.volume = f
                 delay(100)
             }
         }
@@ -721,6 +727,7 @@ class PlaybackController(
     private fun cancelSleepFade() {
         sleepFadeJob?.cancel()
         sleepFadeJob = null
+        crossfadePrefs.sleepGain = 1f
         mediaController?.volume = 1f
     }
 

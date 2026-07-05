@@ -4,6 +4,7 @@ import android.content.Context
 import com.freqvox.data.local.dao.PlayHistoryDao
 import com.freqvox.data.local.dao.TagDao
 import com.freqvox.data.local.dao.TrackDao
+import com.freqvox.playback.CrossfadePreferences
 import com.freqvox.playback.FreqvoxEqualizerManager
 import com.freqvox.playback.PlaybackController
 import com.freqvox.playback.SleepTimerManager
@@ -32,9 +33,10 @@ object PlaybackModule {
         tagDao: TagDao,
         playHistoryDao: PlayHistoryDao,
         sleepTimerManager: SleepTimerManager,
-        equalizerManager: FreqvoxEqualizerManager
+        equalizerManager: FreqvoxEqualizerManager,
+        crossfadePrefs: CrossfadePreferences
     ): PlaybackController {
-        return PlaybackController(context, trackDao, tagDao, playHistoryDao, sleepTimerManager, equalizerManager).apply {
+        return PlaybackController(context, trackDao, tagDao, playHistoryDao, sleepTimerManager, equalizerManager, crossfadePrefs).apply {
             initializeController()
         }
     }

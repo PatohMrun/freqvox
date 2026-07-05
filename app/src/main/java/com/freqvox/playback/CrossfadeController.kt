@@ -46,7 +46,7 @@ class CrossfadeController(
 
     // The equal-power ramp gain (what the crossfade wants each player at) is kept separate
     // from the duck gain (audio-focus ducking). The actual player volume is always
-    // rampX * duckFactor — see applyVolumes() — so a duck landing mid-crossfade lowers both
+    // rampX * duckFactor * prefs.sleepGain — see applyVolumes() — so a duck landing mid-crossfade lowers both
     // tracks instead of fighting the ramp, and un-ducking returns to the ramp's live gain
     // (1f at rest) rather than a stale captured value that used to strand playback quiet.
     private var rampMain = 1f
@@ -104,7 +104,7 @@ class CrossfadeController(
             if (!prefs.volumeNormalization) return
             val db = parseReplayGainTrackGain(metadata) ?: return
             normMain = gainFactorFromDb(db)
-            if (!crossfading) mainPlayer.volume = rampMain * duckFactor * normMain
+            if (!crossfading) mainPlayer.volume = rampMain * duckFactor * prefs.sleepGain * normMain
         }
 
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
@@ -124,7 +124,7 @@ class CrossfadeController(
                 else -> {
                     resetArming()
                     normMain = 1f
-                    mainPlayer.volume = rampMain * duckFactor * normMain
+                    mainPlayer.volume = rampMain * duckFactor * prefs.sleepGain * normMain
                 }
             }
         }
@@ -146,7 +146,7 @@ class CrossfadeController(
         if (!prefs.volumeNormalization && (normMain != 1f || normTail != 1f)) {
             normMain = 1f
             normTail = 1f
-            if (!crossfading) mainPlayer.volume = rampMain * duckFactor
+            if (!crossfading) mainPlayer.volume = rampMain * duckFactor * prefs.sleepGain
         }
 
         val windowMs = prefs.durationSeconds * 1000L
@@ -232,7 +232,7 @@ class CrossfadeController(
         // While there is a microscopic hardware gap as AudioTrack wakes up, attempting
         // to stagger this causes overlapping echoes because ExoPlayer decoder warmup
         // times are unpredictable across devices.
-        tailPlayer.volume = rampTail * duckFactor
+        tailPlayer.volume = rampTail * duckFactor * prefs.sleepGain
         tailPlayer.play()
 
         // Incoming track: jump the session player forward NOW.
@@ -241,7 +241,7 @@ class CrossfadeController(
         // source of the audible crossfade click. Setting volume to 0 first (rampMain is 0f
         // at fade start anyway) makes the flush silent instead of popping at full gain.
         selfTriggeredJump = true
-        mainPlayer.volume = rampMain * duckFactor
+        mainPlayer.volume = rampMain * duckFactor * prefs.sleepGain
         mainPlayer.seekToNextMediaItem()
         mainPlayer.play()
 
@@ -274,7 +274,7 @@ class CrossfadeController(
     private fun finishCrossfade() {
         rampMain = 1f
         rampTail = 0f
-        mainPlayer.volume = rampMain * duckFactor * normMain
+        mainPlayer.volume = rampMain * duckFactor * prefs.sleepGain * normMain
         stopTail()
         crossfading = false
     }
@@ -284,7 +284,7 @@ class CrossfadeController(
     private fun cancelCrossfade() {
         rampMain = 1f
         rampTail = 0f
-        mainPlayer.volume = rampMain * duckFactor * normMain
+        mainPlayer.volume = rampMain * duckFactor * prefs.sleepGain * normMain
         stopTail()
         crossfading = false
         preArmed = false
@@ -293,8 +293,8 @@ class CrossfadeController(
     /** Player volume = equal-power ramp gain × audio-focus duck gain. Single writer for both
      *  players' volume during a crossfade so the two concerns compose instead of clobbering. */
     private fun applyVolumes() {
-        mainPlayer.volume = rampMain * duckFactor * normMain
-        tailPlayer.volume = rampTail * duckFactor * normTail
+        mainPlayer.volume = rampMain * duckFactor * prefs.sleepGain * normMain
+        tailPlayer.volume = rampTail * duckFactor * prefs.sleepGain * normTail
     }
 
     /**
