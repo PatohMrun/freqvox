@@ -5,9 +5,14 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -47,6 +52,7 @@ import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.QueueMusic
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlaylistAdd
@@ -60,6 +66,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import com.freqvox.ui.theme.Fvox
 import androidx.compose.ui.graphics.graphicsLayer
@@ -116,6 +124,8 @@ fun LibraryScreen(
     onTrackClick: (TrackEntity) -> Unit,
     onSearchClick: () -> Unit,
     onOpenPanel: () -> Unit = {},
+    hasUnseenStory: Boolean = false,
+    onOpenStory: () -> Unit = {},
     viewModel: MainViewModel = hiltViewModel()
 ) {
     val tracks by viewModel.allTracks.collectAsStateWithLifecycle()
@@ -270,18 +280,50 @@ fun LibraryScreen(
                     )
                 }
                 Spacer(modifier = Modifier.width(8.dp))
-                Surface(
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clickable { onOpenPanel() },
-                    shape = CircleShape,
-                    color = Fvox.onSurface.copy(alpha = 0.1f)
-                ) {
-                    Image(
-                        painter = painterResource(id = com.freqvox.R.drawable.brand_icon),
-                        contentDescription = "Menu",
-                        modifier = Modifier.fillMaxSize()
+                IconButton(onClick = onOpenPanel) {
+                    Icon(
+                        imageVector = Icons.Default.Settings,
+                        contentDescription = "Settings",
+                        tint = Fvox.onSurface
                     )
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                // Logo DP → the current story, same ring language as Home: vivid pulsing ring =
+                // unseen, faint static ring = seen. (Settings moved to the gear above.)
+                val ringPulse = rememberInfiniteTransition(label = "ring")
+                val pulse by ringPulse.animateFloat(
+                    initialValue = 1f, targetValue = 1.06f,
+                    animationSpec = infiniteRepeatable(tween(1100), RepeatMode.Reverse), label = "ringScale"
+                )
+                Box(
+                    modifier = Modifier
+                        .size(46.dp)
+                        .scale(if (hasUnseenStory) pulse else 1f)
+                        .then(
+                            if (hasUnseenStory)
+                                Modifier.border(
+                                    2.5.dp,
+                                    Brush.sweepGradient(listOf(Fvox.accent, Fvox.accentAlt, Fvox.accent)),
+                                    CircleShape
+                                )
+                            else
+                                Modifier.border(1.5.dp, Fvox.onSurface.copy(alpha = 0.18f), CircleShape)
+                        )
+                        .padding(3.dp)
+                        .clickable { onOpenStory() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Surface(
+                        modifier = Modifier.fillMaxSize(),
+                        shape = CircleShape,
+                        color = Fvox.onSurface.copy(alpha = 0.1f)
+                    ) {
+                        Image(
+                            painter = painterResource(id = com.freqvox.R.drawable.brand_icon),
+                            contentDescription = "Moments",
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
                 }
             }
         }

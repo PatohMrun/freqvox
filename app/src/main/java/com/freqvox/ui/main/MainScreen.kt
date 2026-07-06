@@ -85,6 +85,13 @@ fun MainScreen(
     val totalDuration by viewModel.totalDuration.collectAsStateWithLifecycle()
     val allPlaylists by viewModel.allPlaylists.collectAsStateWithLifecycle()
     val listeningStats by viewModel.listeningStats.collectAsStateWithLifecycle()
+
+    // Header stories — hosted here (not in HomeScreen) so the ring works from every tab and
+    // seen-state stays on ONE MainViewModel instance (each nav destination gets its own).
+    val hasUnseenStory by viewModel.hasUnseenStory.collectAsStateWithLifecycle()
+    val activeStoryDrop by viewModel.activeStoryDrop.collectAsStateWithLifecycle()
+    val activeTracks by viewModel.activeTracks.collectAsStateWithLifecycle()
+    val taggedTrackIds by viewModel.taggedTrackIds.collectAsStateWithLifecycle()
     val availableFolders by viewModel.availableFolders.collectAsStateWithLifecycle()
     val excludedFolders by viewModel.excludedFolders.collectAsStateWithLifecycle()
 
@@ -118,6 +125,36 @@ fun MainScreen(
     var showDuplicatesSheet by remember { mutableStateOf(false) }
     var showProfilesSheet by remember { mutableStateOf(false) }
     val openPanel: () -> Unit = { scope.launch { drawerState.open() } }
+
+    var showStory by remember { mutableStateOf(false) }
+    var previewStory by remember { mutableStateOf<com.freqvox.ui.story.StoryDrop?>(null) }
+    val storyContext = androidx.compose.ui.platform.LocalContext.current
+    // One handler for every story CTA, shared by the real viewer and the QA preview.
+    val handleStoryAction: (com.freqvox.ui.story.StoryActionType) -> Unit = { action ->
+        when (action) {
+            com.freqvox.ui.story.StoryActionType.OPEN_CROSSFADE -> showCrossfadeSheet = true
+            com.freqvox.ui.story.StoryActionType.OPEN_PROFILES -> showProfilesSheet = true
+            com.freqvox.ui.story.StoryActionType.OPEN_ACCENT -> showAccentSheet = true
+            com.freqvox.ui.story.StoryActionType.OPEN_STATS -> showStatsSheet = true
+            com.freqvox.ui.story.StoryActionType.OPEN_ARTWORK -> showArtworkSheet = true
+            com.freqvox.ui.story.StoryActionType.OPEN_TAGS -> showTagManagerSheet = true
+            com.freqvox.ui.story.StoryActionType.OPEN_DUPLICATES -> showDuplicatesSheet = true
+            com.freqvox.ui.story.StoryActionType.PLAY_DAILY_MIX -> {
+                val ed = java.time.LocalDate.now().toEpochDay()
+                com.freqvox.ui.home.generateDailyMixes(activeTracks, taggedTrackIds, ed)
+                    .firstOrNull()?.takeIf { it.tracks.isNotEmpty() }
+                    ?.let { playbackController.playQueue(it.tracks, 0) }
+            }
+            com.freqvox.ui.story.StoryActionType.OPEN_SEARCH -> {
+                navController.navigate(Screen.Search.route) {
+                    popUpTo(navController.graph.startDestinationId) { saveState = true }
+                    launchSingleTop = true
+                    restoreState = true
+                }
+            }
+            com.freqvox.ui.story.StoryActionType.NONE -> {}
+        }
+    }
 
     // Sync current track to ViewModel using the exposed ID for reliability
     LaunchedEffect(currentTrackId) {
@@ -323,24 +360,12 @@ fun MainScreen(
                                                 playbackController.playQueue(contextTracks, startIndex)
                                             }
                                         },
-                                        onSearchClick = {
-                                            navController.navigate(Screen.Search.route) {
-                                                popUpTo(navController.graph.startDestinationId) { saveState = true }
-                                                launchSingleTop = true
-                                                restoreState = true
-                                            }
-                                        },
-                                        onStoryAction = { action ->
-                                            when (action) {
-                                                com.freqvox.ui.story.StoryActionType.OPEN_CROSSFADE -> showCrossfadeSheet = true
-                                                com.freqvox.ui.story.StoryActionType.OPEN_PROFILES -> showProfilesSheet = true
-                                                com.freqvox.ui.story.StoryActionType.OPEN_ACCENT -> showAccentSheet = true
-                                                com.freqvox.ui.story.StoryActionType.OPEN_STATS -> showStatsSheet = true
-                                                com.freqvox.ui.story.StoryActionType.OPEN_ARTWORK -> showArtworkSheet = true
-                                                com.freqvox.ui.story.StoryActionType.OPEN_TAGS -> showTagManagerSheet = true
-                                                com.freqvox.ui.story.StoryActionType.OPEN_DUPLICATES -> showDuplicatesSheet = true
-                                                else -> {}
-                                            }
+                                        hasUnseenStory = hasUnseenStory,
+                                        onOpenStory = { showStory = true },
+                                        onLongPressStory = {
+                                            previewStory = com.freqvox.ui.story.StoryContent.previewDrop(
+                                                listeningStats, java.time.LocalDate.now().toEpochDay()
+                                            )
                                         }
                                     )
                                 }
@@ -355,6 +380,8 @@ fun MainScreen(
                                     LibraryScreen(
                                         playbackController = playbackController,
                                         onOpenPanel = openPanel,
+                                        hasUnseenStory = hasUnseenStory,
+                                        onOpenStory = { showStory = true },
                                         onTrackClick = { track ->
                                             val currentTitle = playbackController.currentTrackTitle.value
                                             if (currentTitle == track.title) {
@@ -502,6 +529,35 @@ fun MainScreen(
                     .navigationBarsPadding()
                     .padding(bottom = snackbarBottomPadding)
             )
+
+            // ── Story viewer (hosted at root so the ring works from Home AND Library) ──
+            if (showStory) {
+                LaunchedEffect(Unit) { viewModel.markStorySeen() }
+                com.freqvox.ui.story.StoryViewer(
+                    drop = activeStoryDrop,
+                    onAction = handleStoryAction,
+                    onDismiss = { showStory = false },
+                    onShare = {
+                        com.freqvox.media.StoryShareCard.shareRecap(
+                            context = storyContext,
+                            weekMinutes = listeningStats.weekMinutes,
+                            dailyMinutes = listeningStats.weekDailyMinutes,
+                            topArtist = listeningStats.topArtistTrack?.artist,
+                            topTrack = listeningStats.topTracks.firstOrNull()?.first?.title,
+                            streakDays = listeningStats.currentStreakDays,
+                            artPath = listeningStats.topArtistTrack?.artworkPath
+                        )
+                    }
+                )
+            }
+            // QA-only preview gallery (long-press the Home ring); CTAs are live here too.
+            previewStory?.let { drop ->
+                com.freqvox.ui.story.StoryViewer(
+                    drop = drop,
+                    onAction = handleStoryAction,
+                    onDismiss = { previewStory = null }
+                )
+            }
 
             // ── Panel-launched sheets (hosted at root so they overlay everything) ──
             if (showStatsSheet) {

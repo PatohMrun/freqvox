@@ -1,5 +1,6 @@
 package com.freqvox.ui.story
 
+import androidx.compose.ui.graphics.Color
 import com.freqvox.ui.main.MainViewModel
 
 /**
@@ -10,11 +11,28 @@ import com.freqvox.ui.main.MainViewModel
  */
 object StoryContent {
 
+    /** Curated hues that read well over the viewer's dark gradient. Each card picks one
+     *  deterministically from its id, so every tip gets its own colour world instead of the
+     *  whole pool falling back to the theme accent and looking like one repeated card. */
+    private val accentPalette = listOf(
+        Color(0xFF7C4DFF), // violet
+        Color(0xFF00BCD4), // cyan
+        Color(0xFFFF6E40), // coral
+        Color(0xFF66BB6A), // green
+        Color(0xFFEC407A), // pink
+        Color(0xFF29B6F6), // sky
+        Color(0xFFFFCA28), // amber
+        Color(0xFF26A69A)  // teal
+    )
+
+    private fun accentFor(id: String): Color =
+        accentPalette[((id.hashCode() % accentPalette.size) + accentPalette.size) % accentPalette.size]
+
     private fun ill(id: String, kind: SegmentKind, title: String, body: String, k: IllustrationKind, cta: StoryCta? = null) =
-        StorySegment(id, kind, title, body, SegmentVisual.Illustration(k), cta = cta)
+        StorySegment(id, kind, title, body, SegmentVisual.Illustration(k), accent = accentFor(id), cta = cta)
 
     private fun emj(id: String, kind: SegmentKind, title: String, body: String, emoji: String, cta: StoryCta? = null) =
-        StorySegment(id, kind, title, body, SegmentVisual.Emoji(emoji), cta = cta)
+        StorySegment(id, kind, title, body, SegmentVisual.Emoji(emoji), accent = accentFor(id), cta = cta)
 
     private val A = SegmentKind.ALGORITHM
     private val T = SegmentKind.TIP
@@ -193,7 +211,10 @@ object StoryContent {
         createdDay = epochDay,
         kind = SegmentKind.MILESTONE,
         segments = listOf(
-            StorySegment("m-${def.key}", SegmentKind.MILESTONE, def.title, def.body, SegmentVisual.Emoji(def.emoji))
+            StorySegment(
+                "m-${def.key}", SegmentKind.MILESTONE, def.title, def.body,
+                SegmentVisual.Emoji(def.emoji), accent = accentFor(def.key)
+            )
         )
     )
 

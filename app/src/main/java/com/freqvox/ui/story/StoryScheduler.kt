@@ -58,9 +58,23 @@ class StoryScheduler @Inject constructor(
         return drop(byId.getValue(prefs.currentTipId!!))
     }
 
-    fun isUnseen(dropId: String): Boolean = prefs.lastSeenDropId != dropId
+    /**
+     * A drop lights the ring only if it hasn't been seen AND the global cooldown has expired.
+     * Without the cooldown, a backlog (several met milestones + an unseen recap + a tip) chains
+     * back-to-back: each markSeen instantly promotes the next candidate and relights the ring
+     * seconds later. The randomized gap makes drops land sometimes daily, sometimes ~3×/week.
+     */
+    fun isUnseen(dropId: String): Boolean =
+        prefs.lastSeenDropId != dropId &&
+            java.time.LocalDate.now().toEpochDay() >= prefs.nextDropEarliestDay
 
     fun markSeen(dropId: String) {
+        // Only consuming a NEW drop starts a cooldown — re-viewing the current one (tapping the
+        // faded ring) must not keep pushing the next drop further out.
+        if (prefs.lastSeenDropId != dropId) {
+            prefs.nextDropEarliestDay =
+                java.time.LocalDate.now().toEpochDay() + (1..MAX_GAP_DAYS).random()
+        }
         prefs.lastSeenDropId = dropId
         // A viewed milestone is celebrated once and never re-surfaces, even while still true.
         if (dropId.startsWith("milestone-")) {
@@ -74,5 +88,7 @@ class StoryScheduler @Inject constructor(
 
     companion object {
         private const val TIP_INTERVAL_DAYS = 3L
+        /** Upper bound of the random post-drop gap: 1–3 days between consecutive drops. */
+        private const val MAX_GAP_DAYS = 3
     }
 }

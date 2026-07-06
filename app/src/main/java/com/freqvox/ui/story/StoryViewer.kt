@@ -45,7 +45,14 @@ fun StoryViewer(
 ) {
     Dialog(
         onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false, dismissOnClickOutside = false)
+        // decorFitsSystemWindows = false: without it the dialog window is laid out edge-to-edge
+        // (always, on Android 15) but reports ZERO system-bar insets to Compose, so the
+        // windowInsetsPadding below was a no-op and the CTA button rendered under the nav bar.
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            dismissOnClickOutside = false,
+            decorFitsSystemWindows = false
+        )
     ) {
         val segments = drop.segments
         var index by remember { mutableIntStateOf(0) }

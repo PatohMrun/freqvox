@@ -33,6 +33,12 @@ class StoryPreferences @Inject constructor(
         get() = prefs.getLong(KEY_RECAP_WEEK, -1L)
         set(value) = prefs.edit().putLong(KEY_RECAP_WEEK, value).apply()
 
+    /** Earliest epochDay the ring may light for a NEW drop — the randomized global cooldown
+     *  set whenever a fresh drop is consumed, so drops never chain back-to-back. */
+    var nextDropEarliestDay: Long
+        get() = prefs.getLong(KEY_NEXT_DROP_DAY, 0L)
+        set(value) = prefs.edit().putLong(KEY_NEXT_DROP_DAY, value).apply()
+
     // Randomly-chosen tip, fixed for its drop period so the ring is stable until it rolls over.
     var currentTipId: String?
         get() = prefs.getString(KEY_TIP_ID, null)
@@ -55,6 +61,7 @@ class StoryPreferences @Inject constructor(
         private const val KEY_LAST_SEEN = "last_seen_drop"
         private const val KEY_MILESTONES = "celebrated_milestones"
         private const val KEY_RECAP_WEEK = "last_recap_week"
+        private const val KEY_NEXT_DROP_DAY = "next_drop_earliest_day"
         private const val KEY_TIP_ID = "current_tip_id"
         private const val KEY_TIP_PERIOD = "current_tip_period"
         private const val KEY_RECENT = "recent_tips"

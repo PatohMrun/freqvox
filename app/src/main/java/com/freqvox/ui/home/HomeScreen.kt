@@ -95,9 +95,10 @@ import kotlin.random.Random
 fun HomeScreen(
     playbackController: PlaybackController,
     onTrackClick: (TrackEntity, List<TrackEntity>) -> Unit,
-    onSearchClick: () -> Unit,
     onOpenPanel: () -> Unit = {},
-    onStoryAction: (com.freqvox.ui.story.StoryActionType) -> Unit = {},
+    hasUnseenStory: Boolean = false,
+    onOpenStory: () -> Unit = {},
+    onLongPressStory: () -> Unit = {},
     viewModel: MainViewModel = hiltViewModel()
 ) {
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
@@ -117,12 +118,6 @@ fun HomeScreen(
 
     val greeting = rememberGreeting()
     val allPlaylists by viewModel.allPlaylists.collectAsStateWithLifecycle()
-    val hasUnseenStory by viewModel.hasUnseenStory.collectAsStateWithLifecycle()
-    val activeStory by viewModel.activeStoryDrop.collectAsStateWithLifecycle()
-    val storyStats by viewModel.listeningStats.collectAsStateWithLifecycle()
-    val storyContext = androidx.compose.ui.platform.LocalContext.current
-    var showStory by remember { mutableStateOf(false) }
-    var previewStory by remember { mutableStateOf<com.freqvox.ui.story.StoryDrop?>(null) }
     val trackActions = rememberTrackActionsState()
     var optionsTrack by remember { mutableStateOf<TrackEntity?>(null) }
     // Long-press now opens a richer options menu (Tag is one entry inside) instead of
@@ -169,45 +164,8 @@ fun HomeScreen(
     }
     TrackActionsDialogs(state = trackActions, viewModel = viewModel, playlists = allPlaylists)
 
-    if (showStory) {
-        LaunchedEffect(Unit) { viewModel.markStorySeen() }
-        com.freqvox.ui.story.StoryViewer(
-            drop = activeStory,
-            onAction = { action ->
-                when (action) {
-                    com.freqvox.ui.story.StoryActionType.PLAY_DAILY_MIX -> {
-                        val ed = java.time.LocalDate.now().toEpochDay()
-                        generateDailyMixes(activeTracks, taggedTrackIds, ed).firstOrNull()?.let { mix ->
-                            mix.tracks.firstOrNull()?.let { onTrackClick(it, mix.tracks) }
-                        }
-                    }
-                    com.freqvox.ui.story.StoryActionType.OPEN_SEARCH -> onSearchClick()
-                    else -> onStoryAction(action)
-                }
-            },
-            onDismiss = { showStory = false },
-            onShare = {
-                com.freqvox.media.StoryShareCard.shareRecap(
-                    context = storyContext,
-                    weekMinutes = storyStats.weekMinutes,
-                    dailyMinutes = storyStats.weekDailyMinutes,
-                    topArtist = storyStats.topArtistTrack?.artist,
-                    topTrack = storyStats.topTracks.firstOrNull()?.first?.title,
-                    streakDays = storyStats.currentStreakDays,
-                    artPath = storyStats.topArtistTrack?.artworkPath
-                )
-            }
-        )
-    }
-
-    // QA-only: long-press the ring opens a preview of every card type (not marked seen).
-    previewStory?.let { drop ->
-        com.freqvox.ui.story.StoryViewer(
-            drop = drop,
-            onAction = { },
-            onDismiss = { previewStory = null }
-        )
-    }
+    // The story viewer itself lives in MainScreen (so the ring works from every tab);
+    // Home only reports ring taps upward via onOpenStory / onLongPressStory.
 
     // Endless feed — every page is a fresh remix of the same library with a
     // different per-page seed. Pulling to refresh resets back to page 1 AND
@@ -298,12 +256,8 @@ fun HomeScreen(
             onCycleTheme = { viewModel.cycleTheme() },
             onOpenPanel = onOpenPanel,
             hasUnseenMoment = hasUnseenStory,
-            onOpenMoments = { showStory = true },
-            onLongPressMoments = {
-                previewStory = com.freqvox.ui.story.StoryContent.previewDrop(
-                    storyStats, java.time.LocalDate.now().toEpochDay()
-                )
-            },
+            onOpenMoments = onOpenStory,
+            onLongPressMoments = onLongPressStory,
             modifier = Modifier.padding(horizontal = 24.dp, vertical = 24.dp)
         )
         LazyColumn(
