@@ -293,77 +293,38 @@ class MainViewModel @Inject constructor(
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
-    // Set to a tag name when the user taps a tag chip in Search, null otherwise.
-    // Lets `searchResults` distinguish "user tapped the Disliked chip" (= strict
-    // tag-only view of what they hid) from "user happened to type the word
-    // disliked" (= normal keyword pipeline, so a track legitimately named
-    // "Disliked Mix" can still be found). Cleared on any direct text edit
-    // because the user is now expressing a free-form search, not a chip click.
-    private val _searchTagFilter = MutableStateFlow<String?>(null)
-    val searchTagFilter: StateFlow<String?> = _searchTagFilter.asStateFlow()
-
-    // Bumped on every chip tap so re-tapping the same tag (e.g. Disliked) still
-    // re-runs searchResults even when query/tagFilter values are unchanged.
-    private val _tagFilterGeneration = MutableStateFlow(0L)
-
-    // Pair filter + generation — kotlinx combine only has typed overloads for ≤5 flows.
-    private val searchTagSelection: Flow<Pair<String?, Long>> = combine(
-        _searchTagFilter,
-        _tagFilterGeneration
-    ) { filter, generation -> filter to generation }
-
+    // Keyword pipeline only. Tag-driven views (including "show me what I disliked")
+    // live entirely in the boolean tag filter below — one tag model, not two. The old
+    // strict "chip mode" (_searchTagFilter + generation counter) is gone with the
+    // results-mode chip row that drove it.
     @OptIn(FlowPreview::class)
     val searchResults: StateFlow<List<TrackEntity>> = combine(
-        allTracks,
         activeTracks,
         _searchQuery.debounce(180),
-        taggedTrackIds,
-        searchTagSelection
-    ) { all, active, query, tags, tagSelection ->
-        val tagFilter = tagSelection.first
+        taggedTrackIds
+    ) { active, query, tags ->
         if (query.isBlank()) {
             emptyList()
         } else {
             val normalizedQuery = query.replace(Regex("[^A-Za-z0-9]"), "").lowercase()
 
-            // ── Strict "Disliked" chip path ──────────────────────────────────
-            // Triggered ONLY when the user tapped the Disliked chip (tagFilter
-            // is set), not when they typed the word "disliked". Two reasons we
-            // need a dedicated branch here:
-            //   1. activeTracks excludes disliked tracks by design, so the
-            //      normal pipeline would always return zero results for the
-            //      Disliked chip — making it look broken. Source from
-            //      allTracks here so the user can actually see what they hid.
-            //   2. The generic query path ORs in title/artist/album keyword
-            //      matches, which would let a song *titled* "Disliked Mix"
-            //      pollute this view. The chip should mean "show me what I
-            //      hid", nothing else.
-            //
-            // Typing "disliked" still goes through the normal pipeline below,
-            // so a track legitimately named "Disliked …" remains findable by
-            // typing — it just won't surface from the chip tap.
-            if (tagFilter == "disliked") {
-                val dislikedIds = tags["disliked"] ?: emptySet()
-                return@combine all.filter { it.id in dislikedIds }
-            }
-
             // Allow exact matches on tag names first
-            val matchingIds = tags.filterKeys { 
+            val matchingIds = tags.filterKeys {
                 it.replace(Regex("[^A-Za-z0-9]"), "").lowercase().contains(normalizedQuery)
             }.values.flatten().toSet()
-            
+
             active.filter { track ->
                 val normTitle = track.title.replace(Regex("[^A-Za-z0-9]"), "").lowercase()
                 val normArtist = track.artist.replace(Regex("[^A-Za-z0-9]"), "").lowercase()
                 val normAlbum = track.album.replace(Regex("[^A-Za-z0-9]"), "").lowercase()
-                
+
                 normTitle.contains(normalizedQuery) ||
                 normArtist.contains(normalizedQuery) ||
                 normAlbum.contains(normalizedQuery) ||
                 matchingIds.contains(track.id)
             }
         }
-    }.stateIn(
+    }.flowOn(Dispatchers.Default).stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = emptyList()
@@ -398,14 +359,20 @@ class MainViewModel @Inject constructor(
     }
 
     val tagFilterResults: StateFlow<List<TrackEntity>> = combine(
-        activeTracks, taggedTrackIds, _includeTagNames, _excludeTagNames
-    ) { tracks, tagMap, include, exclude ->
+        allTracks, activeTracks, taggedTrackIds, _includeTagNames, _excludeTagNames
+    ) { all, active, tagMap, include, exclude ->
         if (include.isEmpty() && exclude.isEmpty()) emptyList()
-        else tracks.filter { track ->
-            include.all { tag -> tagMap[tag]?.contains(track.id) == true } &&
-                exclude.none { tag -> tagMap[tag]?.contains(track.id) == true }
+        else {
+            // Requiring "disliked" means "show me what I hid" — it must search the FULL
+            // library, because activeTracks excludes disliked tracks by design (which made
+            // that chip a guaranteed zero-result dead end).
+            val source = if ("disliked" in include) all else active
+            source.filter { track ->
+                include.all { tag -> tagMap[tag]?.contains(track.id) == true } &&
+                    exclude.none { tag -> tagMap[tag]?.contains(track.id) == true }
+            }
         }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // Likely-duplicate groups: tracks sharing a normalized title+artist (case/punctuation
     // insensitive). Each group is sorted most-played first so the user keeps the "primary".
@@ -830,32 +797,12 @@ class MainViewModel @Inject constructor(
     }
 
     fun onSearchQueryChange(query: String) {
-        // Leave chip-tap mode only when the text no longer matches the active
-        // tag name (e.g. user edits "disliked" → "dislike"). Re-tapping the
-        // chip always restores strict mode via applyTagFilter.
-        val activeTag = _searchTagFilter.value
-        if (activeTag != null && normalizeSearchToken(query) != normalizeSearchToken(activeTag)) {
-            _searchTagFilter.value = null
-        }
         _searchQuery.value = query
     }
 
     fun clearSearch() {
-        _searchTagFilter.value = null
         _searchQuery.value = ""
     }
-
-    /** Called from the Search tab's tag chips. Sets both the visible query
-     *  text and the strict tag-filter marker so `searchResults` can
-     *  distinguish this from someone typing the tag's name by hand. */
-    fun applyTagFilter(tagName: String) {
-        _searchTagFilter.value = tagName.lowercase()
-        _searchQuery.value = tagName
-        _tagFilterGeneration.value += 1
-    }
-
-    private fun normalizeSearchToken(text: String): String =
-        text.replace(Regex("[^A-Za-z0-9]"), "").lowercase()
 
     fun toggleTagForCurrentTrack(tagId: Long) {
         val track = currentTrack.value ?: return

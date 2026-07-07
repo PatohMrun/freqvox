@@ -125,6 +125,17 @@ fun MainScreen(
     var showDuplicatesSheet by remember { mutableStateOf(false) }
     var showProfilesSheet by remember { mutableStateOf(false) }
     val openPanel: () -> Unit = { scope.launch { drawerState.open() } }
+    // The ONE way into search: switch to the Search tab with the field focused. Home and
+    // Library magnifiers and the story CTA all funnel here — the separate SearchSheet overlay
+    // (a second, chip-less search UI with its own private query) is gone.
+    val openSearch: () -> Unit = {
+        searchFocusTrigger = System.currentTimeMillis()
+        navController.navigate(Screen.Search.route) {
+            popUpTo(navController.graph.startDestinationId) { saveState = true }
+            launchSingleTop = true
+            restoreState = true
+        }
+    }
 
     var showStory by remember { mutableStateOf(false) }
     var previewStory by remember { mutableStateOf<com.freqvox.ui.story.StoryDrop?>(null) }
@@ -145,13 +156,7 @@ fun MainScreen(
                     .firstOrNull()?.takeIf { it.tracks.isNotEmpty() }
                     ?.let { playbackController.playQueue(it.tracks, 0) }
             }
-            com.freqvox.ui.story.StoryActionType.OPEN_SEARCH -> {
-                navController.navigate(Screen.Search.route) {
-                    popUpTo(navController.graph.startDestinationId) { saveState = true }
-                    launchSingleTop = true
-                    restoreState = true
-                }
-            }
+            com.freqvox.ui.story.StoryActionType.OPEN_SEARCH -> openSearch()
             com.freqvox.ui.story.StoryActionType.NONE -> {}
         }
     }
@@ -360,6 +365,7 @@ fun MainScreen(
                                         playbackController = playbackController,
                                         viewModel = viewModel,
                                         onOpenPanel = openPanel,
+                                        onSearchClick = openSearch,
                                         onTrackClick = { track, contextTracks ->
                                             val currentTitle = playbackController.currentTrackTitle.value
                                             if (currentTitle == track.title) {
@@ -393,21 +399,7 @@ fun MainScreen(
                                         onOpenPanel = openPanel,
                                         hasUnseenStory = hasUnseenStory,
                                         onOpenStory = { showStory = true },
-                                        onTrackClick = { track ->
-                                            val currentTitle = playbackController.currentTrackTitle.value
-                                            if (currentTitle == track.title) {
-                                                playbackController.togglePlayPause()
-                                            } else {
-                                                playbackController.playMediaUri(track.path, track.title, track.artist, track.id.toString(), track.artworkPath, track.album)
-                                            }
-                                        },
-                                        onSearchClick = {
-                                            navController.navigate(Screen.Search.route) {
-                                                popUpTo(navController.graph.startDestinationId) { saveState = true }
-                                                launchSingleTop = true
-                                                restoreState = true
-                                            }
-                                        }
+                                        onSearchClick = openSearch
                                     )
                                 }
                                 composable(Screen.Radio.route) {

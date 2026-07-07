@@ -96,7 +96,6 @@ import com.freqvox.playback.PlaybackController
 import com.freqvox.ui.tag.formatTagDisplayName
 import com.freqvox.ui.home.TrackArtwork
 import com.freqvox.ui.main.MainViewModel
-import com.freqvox.ui.search.SearchSheet
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -121,7 +120,6 @@ enum class SortOrder(val label: String) {
 @Composable
 fun LibraryScreen(
     playbackController: PlaybackController,
-    onTrackClick: (TrackEntity) -> Unit,
     onSearchClick: () -> Unit,
     onOpenPanel: () -> Unit = {},
     hasUnseenStory: Boolean = false,
@@ -171,7 +169,6 @@ fun LibraryScreen(
     var trackToDelete by remember { mutableStateOf<TrackEntity?>(null) }
     var deleteDialogStep by remember { mutableIntStateOf(0) }
     var pendingDeleteTrackId by rememberSaveable { mutableStateOf<Long?>(null) }
-    var showSearchSheet by remember { mutableStateOf(false) }
 
     // Multi-select (Songs tab). Empty set = normal mode.
     val selectedIds = remember { mutableStateListOf<Long>() }
@@ -217,14 +214,6 @@ fun LibraryScreen(
     var expandedFolderPath by remember { mutableStateOf<String?>(null) }
 
     Box(modifier = Modifier.fillMaxSize()) {
-    if (showSearchSheet) {
-        SearchSheet(
-            playbackController = playbackController,
-            onDismiss = { showSearchSheet = false },
-            viewModel = viewModel
-        )
-    }
-
 
     Column(
         modifier = Modifier.fillMaxSize()
@@ -260,7 +249,7 @@ fun LibraryScreen(
             }
             Spacer(modifier = Modifier.width(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = { showSearchSheet = true }) {
+                IconButton(onClick = onSearchClick) {
                     Icon(
                         imageVector = Icons.Default.Search,
                         contentDescription = "Search",

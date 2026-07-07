@@ -4,12 +4,10 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Block
@@ -52,7 +50,6 @@ fun SearchScreen(
     viewModel: MainViewModel = hiltViewModel()
 ) {
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
-    val searchTagFilter by viewModel.searchTagFilter.collectAsStateWithLifecycle()
     val searchResults by viewModel.searchResults.collectAsStateWithLifecycle()
     val allTags by viewModel.allTags.collectAsStateWithLifecycle()
     val dislikedTrackIds by viewModel.dislikedTrackIds.collectAsStateWithLifecycle()
@@ -71,12 +68,20 @@ fun SearchScreen(
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
 
-    // After the IME hides on the first back press, the next back should clear
-    // the active search — not pop the Search tab and land on Home.
-    BackHandler(enabled = searchQuery.isNotEmpty()) {
-        viewModel.clearSearch()
-        focusManager.clearFocus()
-        keyboardController?.hide()
+    // Back peels ONE layer at a time, mirroring how the state was built up:
+    // the system hides the IME first; then back clears the typed query; then it
+    // clears any active tag filter; only with everything at rest does it pop to
+    // Home. Previously filters were never cleared by back (it just popped),
+    // while a query took an extra press — inconsistent in both directions.
+    val tagFilterActive = includeTagNames.isNotEmpty() || excludeTagNames.isNotEmpty()
+    BackHandler(enabled = searchQuery.isNotEmpty() || tagFilterActive) {
+        if (searchQuery.isNotEmpty()) {
+            viewModel.clearSearch()
+            focusManager.clearFocus()
+            keyboardController?.hide()
+        } else {
+            viewModel.clearTagFilter()
+        }
     }
 
     // Keep a local TextFieldValue to control cursor position
@@ -110,7 +115,7 @@ fun SearchScreen(
             .padding(16.dp)
     ) {
         Text(
-            text = "Browse",
+            text = "Search",
             fontSize = 32.sp,
             fontWeight = FontWeight.Bold,
             color = Fvox.onSurface,
@@ -197,11 +202,12 @@ fun SearchScreen(
                     onClear = { viewModel.clearTagFilter() },
                     modifier = Modifier.padding(bottom = 12.dp)
                 )
-                val filterActive = includeTagNames.isNotEmpty() || excludeTagNames.isNotEmpty()
-                if (!filterActive) {
-                    // No filter set → colorful browse grid. Tapping a card runs a normal
-                    // text search for that tag (applyTagFilter, unchanged behaviour).
-                    TagsGrid(tags = allTags, onTagClick = { viewModel.applyTagFilter(it) })
+                if (!tagFilterActive) {
+                    // No filter set → colorful browse grid. A card tap REQUIRES that tag —
+                    // the same first step as tapping its chip above — so every tag touch on
+                    // this page speaks one language (the tri-state require/exclude cycle)
+                    // instead of grid taps secretly running a text search.
+                    TagsGrid(tags = allTags, onTagClick = { viewModel.cycleTagFilterState(it) })
                 } else if (tagFilterResults.isEmpty()) {
                     Box(
                         modifier = Modifier.fillMaxWidth().padding(top = 40.dp),
@@ -243,16 +249,6 @@ fun SearchScreen(
                 }
             }
         } else {
-            // Chips stay visible while results are shown so tapping Disliked (or
-            // any tag) always re-applies chip mode — even after editing the bar.
-            if (allTags.isNotEmpty()) {
-                TagFilterRow(
-                    tags = allTags,
-                    selectedTagFilter = searchTagFilter,
-                    onTagClick = { viewModel.applyTagFilter(it) },
-                    modifier = Modifier.padding(bottom = 12.dp)
-                )
-            }
             if (searchResults.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text("No results found for \"$searchQuery\"", color = Fvox.onSurface.copy(alpha = 0.5f))
@@ -292,44 +288,6 @@ fun SearchScreen(
                     }
                 }
             }
-        }
-    }
-}
-
-@Composable
-fun TagFilterRow(
-    tags: List<TagEntity>,
-    selectedTagFilter: String?,
-    onTagClick: (String) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        tags.forEach { tag ->
-            val isSelected = selectedTagFilter != null &&
-                tag.name.equals(selectedTagFilter, ignoreCase = true)
-            FilterChip(
-                selected = isSelected,
-                onClick = { onTagClick(tag.name) },
-                label = {
-                    Text(
-                        text = formatTagDisplayName(tag.name),
-                        fontSize = 13.sp
-                    )
-                },
-                colors = FilterChipDefaults.filterChipColors(
-                    // Solid tag color + white label when selected (reads better than dark
-                    // text on a faint tint).
-                    selectedContainerColor = Color(tag.color),
-                    selectedLabelColor = Color.White,
-                    containerColor = Fvox.surfaceVariant,
-                    labelColor = Fvox.onSurface.copy(alpha = 0.75f)
-                )
-            )
         }
     }
 }

@@ -83,7 +83,6 @@ import com.freqvox.ui.components.TagPickerSheet
 import com.freqvox.ui.components.TrackActionsDialogs
 import com.freqvox.ui.components.TrackOptionsSheet
 import com.freqvox.ui.components.rememberTrackActionsState
-import com.freqvox.ui.search.SearchSheet
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
@@ -95,6 +94,7 @@ fun HomeScreen(
     playbackController: PlaybackController,
     onTrackClick: (TrackEntity, List<TrackEntity>) -> Unit,
     onOpenPanel: () -> Unit = {},
+    onSearchClick: () -> Unit = {},
     hasUnseenStory: Boolean = false,
     onOpenStory: () -> Unit = {},
     onLongPressStory: () -> Unit = {},
@@ -124,16 +124,7 @@ fun HomeScreen(
 
     var refreshTrigger by remember { mutableStateOf(0) }
     var isRefreshing by remember { mutableStateOf(false) }
-    var showSearchSheet by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
-
-    if (showSearchSheet) {
-        SearchSheet(
-            playbackController = playbackController,
-            onDismiss = { showSearchSheet = false },
-            viewModel = viewModel
-        )
-    }
 
     if (taggingTrackId != null) {
         val targetId = taggingTrackId
@@ -246,7 +237,7 @@ fun HomeScreen(
             greeting = greeting,
             totalSongs = totalSongs,
             totalDurationMs = totalDuration,
-            onSearchClick = { showSearchSheet = true },
+            onSearchClick = onSearchClick,
             themeMode = themeMode,
             onCycleTheme = { viewModel.cycleTheme() },
             onOpenPanel = onOpenPanel,
