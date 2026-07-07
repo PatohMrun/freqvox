@@ -26,33 +26,27 @@ data class RadioStation(
 
 data class CountryOption(val code: String, val label: String)
 
-// Curated Kenyan stations — verified stream URLs, loaded without any API call
+// Curated Kenyan stations — every URL below was probe-verified (HTTP 200 + audio/* content
+// type) on 2026-07-07. The previous list had rotted: Royal Media (Citizen/Inooro/Ramogi/
+// Mulembe/Musyi/Chamgei/Egesa/Wimwaro), Radio Africa (Classic 105/Kiss/Jambo), Standard
+// (Maisha/Spice) and KBC pulled their public streams behind their own apps — those return
+// 403/404 everywhere, including the radio-browser directory, so they're dropped rather than
+// listed as dead play buttons.
 val KENYA_CURATED_STATIONS = listOf(
-    RadioStation("ke_capital",   "Capital FM",         "https://icecast.teletrax.com/capitalfm",                    "Kenya", "98.4 FM · Hip Hop, R&B, Pop",          0xFF7C3AED),
-    RadioStation("ke_classic",   "Classic 105",        "https://streams.radio.co/s6db01f11e/listen",               "Kenya", "105.2 FM · Classic Hits, Talk",          0xFF1E3A5F),
-    RadioStation("ke_kiss",      "Kiss 100 FM",        "https://streams.radio.co/sa35c5cba5/listen",               "Kenya", "100.3 FM · Top 40, Pop",                 0xFF9D174D),
-    RadioStation("ke_jambo",     "Radio Jambo",        "https://streams.radio.co/s837130df1/listen",               "Kenya", "97.5 FM · News, Sports, Swahili",        0xFF065F46),
-    RadioStation("ke_citizen",   "Radio Citizen",      "https://edge.iono.fm/xice/citizen_fm_live.aac",            "Kenya", "National · News, Local Music, Swahili",  0xFF166534),
-    RadioStation("ke_nrg",       "NRG Radio",          "https://streamingv2.shoutcast.com/nrg-radio-ke",                         "Kenya", "97.1 FM · Youth, Urban, Afrobeats",      0xFF1D4ED8),
-    RadioStation("ke_maisha",    "Radio Maisha",       "https://edge.iono.fm/xice/standard_rm_live.aac",           "Kenya", "National · Bongo, Swahili Pop",          0xFF831843),
-    RadioStation("ke_ghetto",    "Ghetto Radio",       "https://s3.radio.co/sbefab6c14/listen",                   "Kenya", "89.5 FM · Reggae, Sheng, Youth",         0xFF064E3B),
-    RadioStation("ke_spice",     "Spice FM",           "https://edge.iono.fm/xice/standard_spice_live.aac",        "Kenya", "94.4 FM · Soul, R&B",                    0xFF78350F),
-    RadioStation("ke_nation",    "Nation FM",          "http://stream.radiojar.com/3by7s8eg65quv",                "Kenya", "96.3 FM · News, Talk",                   0xFF1D4ED8),
-    RadioStation("ke_kbc",       "KBC English",        "https://kbc-ice.stream.co.ke/english.mp3",                "Kenya", "National · News, English",               0xFF1E3A5F),
-    RadioStation("ke_inooro",    "Inooro FM",          "https://edge.iono.fm/xice/inooro_fm_live.aac",             "Kenya", "98.9 FM · Kikuyu",                       0xFF713F12),
-    RadioStation("ke_kameme",    "Kameme FM",          "https://kamemefm-atunwadigital.streamguys1.com/kamemefm",  "Kenya", "101.1 FM · Kikuyu",                      0xFF713F12),
-    RadioStation("ke_ramogi",    "Ramogi FM",          "https://edge.iono.fm/xice/ramogi_fm_live.aac",             "Kenya", "107.1 FM · Luo",                         0xFF064E3B),
-    RadioStation("ke_kass",      "Kass FM",            "https://s3.radio.co/s9c647b0bc/listen",                   "Kenya", "89.1 FM · Kalenjin",                     0xFF7C2D12),
-    RadioStation("ke_mulembe",   "Mulembe FM",         "https://edge.iono.fm/xice/mulembe_fm_live.aac",            "Kenya", "97.9 FM · Luhya",                        0xFF065F46),
-    RadioStation("ke_musyi",     "Musyi FM",           "https://edge.iono.fm/xice/musyi_fm_live.aac",              "Kenya", "102.2 FM · Kamba",                       0xFF451A03),
-    RadioStation("ke_chamgei",   "Chamgei FM",         "https://edge.iono.fm/xice/chamgei_fm_live.aac",            "Kenya", "90.4 FM · Kalenjin",                     0xFF4C1D95),
-    RadioStation("ke_egesa",     "Egesa FM",           "https://edge.iono.fm/xice/egesa_fm_live.aac",              "Kenya", "94.6 FM · Kisii",                        0xFF1F2937),
-    RadioStation("ke_wimwaro",   "Wimwaro FM",         "https://edge.iono.fm/xice/wimwaro_fm_live.aac",            "Kenya", "93.0 FM · Embu",                         0xFF713F12),
-    RadioStation("ke_easyfm",    "Easy FM",            "https://stream.zeno.fm/wvw02zaqpxquv",                    "Kenya", "101.5 FM · Soul, Easy Listening",        0xFF831843),
-    RadioStation("ke_coro",      "KBC Coro FM",        "https://kbc-ice.stream.co.ke/coro.mp3",                   "Kenya", "99.5 FM · Kikuyu",                       0xFF374151),
-    RadioStation("ke_mayienga",  "KBC Mayienga FM",    "https://kbc-ice.stream.co.ke/mayienga.mp3",               "Kenya", "93.5 FM · Luo",                          0xFF164E63),
-    RadioStation("ke_mwatu",     "KBC Mwatu FM",       "https://kbc-ice.stream.co.ke/mwatu.mp3",                  "Kenya", "104.3 FM · Kamba",                       0xFF064E3B),
-    RadioStation("ke_pwani",     "KBC Pwani FM",       "https://kbc-ice.stream.co.ke/pwani.mp3",                  "Kenya", "104.7 FM · Swahili, Coastal",             0xFF065F46),
+    RadioStation("ke_capital",  "Capital FM",           "https://atunwadigital.streamguys1.com/capitalfm",          "Kenya", "98.4 FM · Hip Hop, R&B, Pop",       0xFF7C3AED),
+    RadioStation("ke_kameme",   "Kameme FM",            "https://kamemefm-atunwadigital.streamguys1.com/kamemefm",  "Kenya", "101.1 FM · Kikuyu",                 0xFF713F12),
+    RadioStation("ke_nrg",      "NRG Radio",            "https://streamingv2.shoutcast.com/nrg-radio-ke",           "Kenya", "Youth, Urban, Afrobeats",           0xFF1D4ED8),
+    RadioStation("ke_nation",   "Nation FM",            "http://stream.radiojar.com/3by7s8eg65quv",                 "Kenya", "96.3 FM · News, Talk",              0xFF1E3A5F),
+    RadioStation("ke_easyfm",   "Easy FM",              "https://stream.zeno.fm/wvw02zaqpxquv",                     "Kenya", "101.5 FM · Soul, Easy Listening",   0xFF831843),
+    RadioStation("ke_ghetto",   "Ghetto Radio",         "https://stream.zeno.fm/kvudezx1h2zuv",                     "Kenya", "89.5 FM · Reggae, Sheng, Youth",    0xFF064E3B),
+    RadioStation("ke_radio47",  "Radio 47",             "https://streaming.shoutcast.com/radio-47",                 "Kenya", "Hapa Ndipo! · Swahili Hits",        0xFF9D174D),
+    RadioStation("ke_taach",    "Taach FM",             "https://pegasus.nucast.co.uk:8064/stream",                 "Kenya", "Kalenjin · Music & Talk",           0xFF7C2D12),
+    RadioStation("ke_jil",      "Jesus Is Lord Radio",  "https://s3.radio.co/s97f38db97/listen",                    "Kenya", "Gospel · Christian",                0xFF166534),
+    RadioStation("ke_kenya1",   "Kenya1 FM",            "https://stream.zeno.fm/cmgkmed5u18uv",                     "Kenya", "News, Comedy, Talk",                0xFF374151),
+    RadioStation("ke_jembe",    "Jembe FM",             "https://cast3.asurahosting.com/proxy/jembemed/stream",     "Kenya", "Swahili · Coastal Vibes",           0xFF065F46),
+    RadioStation("ke_emmachev", "Emmachev Radio",       "https://radio.emmachev.com/listen/emmachev-radio/radio.mp3", "Kenya", "Urban, Indie",                    0xFF451A03),
+    RadioStation("ke_at254",    "AT254 Radio",          "https://s127.radiolize.com/radio/8100/radio.mp3",          "Kenya", "Online · Urban Hits",               0xFF4C1D95),
+    RadioStation("ke_campus",   "Campus Radio",         "https://stream.zenolive.com/mayn36v1v8quv.aac",            "Kenya", "Campus · Youth",                    0xFF78350F),
 )
 
 // African countries first, then global; null = World (no filter)
