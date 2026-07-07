@@ -56,8 +56,15 @@ class BackupRepository @Inject constructor(
     private val crossfadePrefs: CrossfadePreferences,
     private val themePrefs: ThemePreferences,
     private val artworkPrefs: ArtworkPreferences,
-    private val eqManager: FreqvoxEqualizerManager
+    private val eqManager: FreqvoxEqualizerManager,
+    private val accentPrefs: com.freqvox.data.prefs.AccentPreferences,
+    private val tagProfilePrefs: com.freqvox.data.prefs.TagProfilePreferences
 ) {
+    // Radio favourites live in RadioViewModel's prefs file. They're exported/restored as the
+    // OPAQUE stored rows (tab-delimited station entries) rather than re-encoding station
+    // fields here — one format owner (the ViewModel), and a set-union merge on restore.
+    private val radioFavPrefs = context.getSharedPreferences("radio_favorites", Context.MODE_PRIVATE)
+
     sealed class Result {
         data class Success(val message: String) : Result()
         data class Error(val message: String) : Result()
@@ -186,11 +193,37 @@ class BackupRepository @Inject constructor(
             .put("artAllowMeteredWifi", artworkPrefs.allowMeteredWifi)
             .put("eqEnabled", eqManager.isEnabled.value)
             .put("eqPreset", eqManager.currentPreset.value.toInt())
+            // v5: custom accent (controls colour + optional gradient pin).
+            .put("accentEnabled", accentPrefs.enabled)
+            .put("accentColor", accentPrefs.color)
+            .put("accentPinGradient", accentPrefs.pinGradient)
         // Equalizer band levels (band index → millibel), for a custom (non-preset) curve.
         val eqBands = JSONObject()
         eqManager.bandLevels.value.forEach { (band, level) -> eqBands.put(band.toString(), level) }
         settings.put("eqBands", eqBands)
         root.put("settings", settings)
+
+        // v5: per-tag playback profiles (tag name → EQ preset index). Preset indices are
+        // device-EQ-specific — same caveat as eqPreset above — but restore on the same or a
+        // similar device is exactly what the user expects.
+        val profilesObj = JSONObject()
+        tagProfilePrefs.all().forEach { (tag, preset) -> profilesObj.put(tag, preset) }
+        root.put("tagProfiles", profilesObj)
+
+        // v5: "Edit info" metadata overrides (path-keyed, like stats).
+        val overridesArr = JSONArray()
+        trackRepository.getAllMetadataOverrides().forEach { (trackPath, v) ->
+            overridesArr.put(
+                JSONObject().put("path", trackPath)
+                    .put("title", v.first).put("artist", v.second).put("album", v.third)
+            )
+        }
+        root.put("metadataOverrides", overridesArr)
+
+        // v5: radio favourites, as the opaque stored rows.
+        val radioArr = JSONArray()
+        (radioFavPrefs.getStringSet("station_data", emptySet()) ?: emptySet()).forEach { radioArr.put(it) }
+        root.put("radioFavorites", radioArr)
 
         return root.toString(2)
     }
@@ -378,6 +411,45 @@ class BackupRepository @Inject constructor(
                     levels = bands
                 )
             }
+
+            // v5: custom accent. Prefs-backed; the live theme picks it up on next app start.
+            if (s.has("accentEnabled")) accentPrefs.enabled = s.optBoolean("accentEnabled")
+            if (s.has("accentColor")) accentPrefs.color = s.optInt("accentColor", com.freqvox.data.prefs.AccentPreferences.DEFAULT_COLOR)
+            if (s.has("accentPinGradient")) accentPrefs.pinGradient = s.optBoolean("accentPinGradient")
+        }
+
+        // 7) v5: per-tag playback profiles (skip malformed / "none" entries).
+        root.optJSONObject("tagProfiles")?.let { po ->
+            po.keys().forEach { tag ->
+                val preset = po.optInt(tag, -1)
+                if (preset >= 0) tagProfilePrefs.setProfile(tag, preset)
+            }
+        }
+
+        // 8) v5: "Edit info" overrides — persist each, and apply immediately to any row that
+        //    resolves by path so the restored names show without waiting for a rescan.
+        root.optJSONArray("metadataOverrides")?.let { arr ->
+            for (i in 0 until arr.length()) {
+                val o = arr.optJSONObject(i) ?: continue
+                val trackPath = o.optString("path")
+                val title = o.optString("title")
+                if (trackPath.isBlank() || title.isBlank()) continue
+                val artist = o.optString("artist")
+                val album = o.optString("album")
+                trackRepository.setMetadataOverride(trackPath, title, artist, album)
+                tracksByPath[trackPath]?.let {
+                    trackDao.updateTrack(it.copy(title = title, artist = artist, album = album))
+                }
+            }
+        }
+
+        // 9) v5: radio favourites — union with what's already saved (never removes).
+        root.optJSONArray("radioFavorites")?.let { arr ->
+            val merged = (radioFavPrefs.getStringSet("station_data", emptySet()) ?: emptySet()).toMutableSet()
+            for (i in 0 until arr.length()) {
+                arr.optString(i).takeIf { it.isNotBlank() }?.let { merged.add(it) }
+            }
+            radioFavPrefs.edit().putStringSet("station_data", merged).apply()
         }
 
         return Result.Success(
@@ -403,9 +475,11 @@ class BackupRepository @Inject constructor(
     companion object {
         // v2 adds "excludedFolders". v3 adds "history" (timestamped play/skip events) and a
         // "settings" block (crossfade / album mode / volume normalization / theme / art policy).
-        // v4 extends "settings" with the equalizer (enabled / preset / band levels). Older files
-        // simply lack the newer keys and restore fine — every added block/field is guarded by a
-        // presence check, so v1–v3 backups remain fully compatible.
-        private const val BACKUP_VERSION = 4
+        // v4 extends "settings" with the equalizer (enabled / preset / band levels).
+        // v5 adds the custom accent (settings), "tagProfiles" (tag → EQ preset),
+        // "metadataOverrides" (Edit-info fixes) and "radioFavorites". Older files simply lack
+        // the newer keys and restore fine — every added block/field is guarded by a presence
+        // check, so v1–v4 backups remain fully compatible.
+        private const val BACKUP_VERSION = 5
     }
 }

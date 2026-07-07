@@ -60,6 +60,19 @@ class TrackRepository @Inject constructor(
             ?.split('\u0001')?.takeIf { it.size == 3 }
             ?.let { Triple(it[0], it[1], it[2]) }
 
+    /** Every "Edit info" override (path → title/artist/album), for backup export. */
+    fun getAllMetadataOverrides(): Map<String, Triple<String, String, String>> =
+        metadataOverridePrefs.all.keys.mapNotNull { path ->
+            metadataOverrideFor(path)?.let { path to it }
+        }.toMap()
+
+    /** Persists one override (backup restore). The caller applies it to any matching DB row. */
+    fun setMetadataOverride(path: String, title: String, artist: String, album: String) {
+        metadataOverridePrefs.edit().putString(
+            path, listOf(title, artist, album).joinToString("\u0001")
+        ).apply()
+    }
+
     fun getRecentPlayHistory(): Flow<List<PlayHistoryEntity>> {
         val since = System.currentTimeMillis() - 90L * 86_400_000
         return playHistoryDao.getHistorySinceFlow(since)
