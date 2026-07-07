@@ -46,7 +46,6 @@ fun RadioScreen(
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val error by viewModel.error.collectAsStateWithLifecycle()
     val favorites by viewModel.favorites.collectAsStateWithLifecycle()
-    val favoriteStations by viewModel.favoriteStations.collectAsStateWithLifecycle()
     val selectedGenre by viewModel.selectedGenre.collectAsStateWithLifecycle()
     val selectedCountryCode by viewModel.selectedCountryCode.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()

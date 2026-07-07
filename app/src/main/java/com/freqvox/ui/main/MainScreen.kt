@@ -398,7 +398,7 @@ fun MainScreen(
                                             if (currentTitle == track.title) {
                                                 playbackController.togglePlayPause()
                                             } else {
-                                                playbackController.playMediaUri(track.path, track.title, track.artist, track.id.toString(), track.artworkPath)
+                                                playbackController.playMediaUri(track.path, track.title, track.artist, track.id.toString(), track.artworkPath, track.album)
                                             }
                                         },
                                         onSearchClick = {

@@ -446,10 +446,14 @@ class PlaybackController(
         }
     }
 
-    fun playMediaUri(uri: String, title: String, artist: String, trackId: String, artworkPath: String? = null) {
+    fun playMediaUri(uri: String, title: String, artist: String, trackId: String, artworkPath: String? = null, album: String? = null) {
+        // albumTitle must ride on every in-app MediaItem: album-mode crossfade suppression and
+        // stop-after-album both compare it. This path (Library tap, radio) was the one builder
+        // that dropped it, silently disabling both features for tracks started here.
         val metadataBuilder = MediaMetadata.Builder()
             .setTitle(title)
             .setArtist(artist)
+            .setAlbumTitle(album)
 
         if (artworkPath != null) {
             metadataBuilder.setArtworkUri(Uri.parse("file://$artworkPath"))

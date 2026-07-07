@@ -203,6 +203,10 @@ class RadioViewModel @Inject constructor(
         }
         _favoriteStations.value = newList
         persistFavorites(newList)
+        // The Favorites tab renders _stations, which doLoad only refreshes on genre/country/
+        // query changes — so unfavoriting while ON that tab left the row visible (a stale
+        // snapshot). Mirror the change into the visible list immediately.
+        if (_selectedGenre.value == "Favorites") _stations.value = newList
     }
 
     private suspend fun doLoad(genre: String, countryCode: String?, query: String) {
