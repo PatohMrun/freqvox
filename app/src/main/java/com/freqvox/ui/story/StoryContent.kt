@@ -63,7 +63,7 @@ object StoryContent {
             "With Album mode on, consecutive tracks from the same album butt-join gaplessly instead of crossfading.", IllustrationKind.CROSSFADE, StoryCta("Open Crossfade", StoryActionType.OPEN_CROSSFADE)),
         emj("tip-profiles", T, "EQ per tag", "Give a tag its own equalizer preset — it's applied automatically when a matching song plays.", "🎛️", StoryCta("Playback profiles", StoryActionType.OPEN_PROFILES)),
         emj("tip-volnorm", T, "Even it out", "Volume normalization tames loudness jumps between tracks on shuffle.", "🔊", StoryCta("Open Crossfade", StoryActionType.OPEN_CROSSFADE)),
-        emj("tip-accent", T, "Make it yours", "Pin a fixed accent colour, or let the gradient follow each album's art.", "🎨", StoryCta("Appearance", StoryActionType.OPEN_ACCENT)),
+        emj("tip-accent", T, "Make it yours", "Pick from 16 swatches to colour the buttons and switches — and pin the background gradient too, or let it keep following each album's art.", "🎨", StoryCta("Appearance", StoryActionType.OPEN_ACCENT)),
         emj("tip-theme", T, "Light or dark", "Tap the sun/moon in the header to cycle System, Light and Dark.", "🌗"),
         ill("tip-sleep", T, "Drift off", "The sleep timer fades out gently before it stops — or you can stop at the end of the current album.", IllustrationKind.TIMER),
         ill("tip-eq", T, "Shape the sound", "A full equalizer lives in the side panel's Audio section.", IllustrationKind.STATS),
@@ -85,10 +85,10 @@ object StoryContent {
         ill("how-lyrics-seek", T, "Tap a lyric to jump",
             "With synced .lrc lyrics, the current line is highlighted — tap any line to jump straight to that moment.", IllustrationKind.LYRICS),
         ill("how-boolean-tags", T, "Filter with logic",
-            "In Browse, tap a tag to require it, tap again to exclude it: \"chill AND workout, NOT throwback\".", IllustrationKind.TAGS, StoryCta("Try it", StoryActionType.OPEN_SEARCH)),
+            "In Search, tap a tag to require it, tap again to exclude it: \"chill AND workout, NOT throwback\".", IllustrationKind.TAGS, StoryCta("Try it", StoryActionType.OPEN_SEARCH)),
         ill("how-pull-refresh", T, "Pull for more",
             "Pull down on Home for a completely fresh remix of your library.", IllustrationKind.GENERIC),
-        emj("how-edit-info", T, "Fix the details", "Wrong title, artist or album? Long-press the song → Edit info.", "✏️"),
+        emj("how-edit-info", T, "Fix the details", "Wrong title, artist or album? Long-press the song → Edit info. Your fix sticks — even after library rescans.", "✏️"),
         ill("how-share-card", T, "Share a track",
             "Long-press → Share as image turns any song into a poster card you can send anywhere.", IllustrationKind.SHARE),
         ill("how-custom-tag", T, "Make your own tags",
@@ -103,7 +103,17 @@ object StoryContent {
         emj("how-settings", T, "One place for everything", "The gear opens it all: audio, library tools, backup and tag management.", "⚙️"),
         ill("how-search", T, "Find anything",
             "Search by title, artist or album — or browse your whole library by tag.", IllustrationKind.SEARCH, StoryCta("Search", StoryActionType.OPEN_SEARCH)),
-        emj("how-addqueue", T, "Line it up", "Add to queue drops a song at the end of what's already playing.", "➕")
+        emj("how-addqueue", T, "Line it up", "Add to queue drops a song at the end of what's already playing.", "➕"),
+
+        // ── Newer features (2.78–2.81) ────────────────────────────────────────
+        ill("how-search-anywhere", T, "Search from anywhere",
+            "The magnifier on Home and Library drops you straight into Search, keyboard ready.", IllustrationKind.SEARCH, StoryCta("Try it", StoryActionType.OPEN_SEARCH)),
+        ill("how-see-disliked", T, "See what you've hidden",
+            "Disliked songs leave your feed, but they're not gone — in Search, require the Disliked tag to review them.", IllustrationKind.TAGS, StoryCta("Open Search", StoryActionType.OPEN_SEARCH)),
+        ill("how-back-layers", T, "Back, one layer at a time",
+            "In Search, Back clears the keyboard first, then your typed search, then tag filters — then it leaves.", IllustrationKind.GESTURE),
+        emj("tip-pin-gradient", T, "Two looks, one colour",
+            "A custom accent colours the controls while the backdrop keeps dancing with your music — pin the gradient only if you want both constant.", "🖌️", StoryCta("Appearance", StoryActionType.OPEN_ACCENT))
     )
 
     /** A snapshot of the user's live state, used to generate contextual (personalized) tips that
@@ -145,7 +155,7 @@ object StoryContent {
                 SegmentVisual.AlbumArt(s.mostSkippedTrack), accent = accentFor("ctx-skip"))
         if (s.fixedAccentDefault)
             out += emj("ctx-accent", T, "Lock in a look",
-                "Your gradient follows each cover right now — pin a fixed accent if you'd rather it stayed constant.", "🎨", StoryCta("Appearance", StoryActionType.OPEN_ACCENT))
+                "Everything follows each cover's colours right now — pick a custom accent for the controls, and optionally pin the gradient too.", "🎨", StoryCta("Appearance", StoryActionType.OPEN_ACCENT))
         if (!s.hasProfiles && s.hasCustomTags)
             out += emj("ctx-profiles", T, "Auto-EQ per tag",
                 "Give a tag its own EQ preset — perfect for a 'podcast' or 'bass' tag.", "🎛️", StoryCta("Playback profiles", StoryActionType.OPEN_PROFILES))
