@@ -26,6 +26,10 @@ import kotlinx.coroutines.launch
 import java.util.Calendar
 import javax.inject.Inject
 
+/** Shared compiled normalizer — the search pipeline used to construct this same Regex
+ *  inline ~4x per track per keystroke emission (plus the duplicate grouping sweeps). */
+private val NON_ALNUM_REGEX = Regex("[^A-Za-z0-9]")
+
 @HiltViewModel
 class MainViewModel @Inject constructor(
     private val trackRepository: TrackRepository,
@@ -314,17 +318,17 @@ class MainViewModel @Inject constructor(
         if (query.isBlank()) {
             emptyList()
         } else {
-            val normalizedQuery = query.replace(Regex("[^A-Za-z0-9]"), "").lowercase()
+            val normalizedQuery = query.replace(NON_ALNUM_REGEX, "").lowercase()
 
             // Allow exact matches on tag names first
             val matchingIds = tags.filterKeys {
-                it.replace(Regex("[^A-Za-z0-9]"), "").lowercase().contains(normalizedQuery)
+                it.replace(NON_ALNUM_REGEX, "").lowercase().contains(normalizedQuery)
             }.values.flatten().toSet()
 
             active.filter { track ->
-                val normTitle = track.title.replace(Regex("[^A-Za-z0-9]"), "").lowercase()
-                val normArtist = track.artist.replace(Regex("[^A-Za-z0-9]"), "").lowercase()
-                val normAlbum = track.album.replace(Regex("[^A-Za-z0-9]"), "").lowercase()
+                val normTitle = track.title.replace(NON_ALNUM_REGEX, "").lowercase()
+                val normArtist = track.artist.replace(NON_ALNUM_REGEX, "").lowercase()
+                val normAlbum = track.album.replace(NON_ALNUM_REGEX, "").lowercase()
 
                 normTitle.contains(normalizedQuery) ||
                 normArtist.contains(normalizedQuery) ||
@@ -387,7 +391,7 @@ class MainViewModel @Inject constructor(
     val duplicateGroups: StateFlow<List<List<TrackEntity>>> = allTracks
         .map { tracks ->
             tracks.groupBy {
-                (it.title + "|" + it.artist).replace(Regex("[^A-Za-z0-9]"), "").lowercase()
+                (it.title + "|" + it.artist).replace(NON_ALNUM_REGEX, "").lowercase()
             }.values
                 .filter { it.size > 1 }
                 .map { grp -> grp.sortedByDescending { it.playCount } }
@@ -594,7 +598,7 @@ class MainViewModel @Inject constructor(
             // Duplicates sheet is open, so its .value here would almost always be the stale
             // initial emptyList and the "N duplicates" tip would never fire.
             val dupCount = allTracks.value
-                .groupBy { (it.title + "|" + it.artist).replace(Regex("[^A-Za-z0-9]"), "").lowercase() }
+                .groupBy { (it.title + "|" + it.artist).replace(NON_ALNUM_REGEX, "").lowercase() }
                 .values.count { it.size > 1 }
             val ctx = com.freqvox.ui.story.StoryContent.StoryState(
                 crossfadeOff = crossfadePrefs.durationSeconds == 0,

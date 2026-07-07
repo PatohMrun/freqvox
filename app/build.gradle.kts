@@ -13,8 +13,8 @@ android {
         applicationId = "com.freqvox"
         minSdk = 26
         targetSdk = 35
-        versionCode = 121
-        versionName = "2.83"
+        versionCode = 122
+        versionName = "2.84"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

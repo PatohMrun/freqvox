@@ -136,17 +136,20 @@ class TrackRepository @Inject constructor(
 
                 // Explicit Fallback: If MediaStore failed to read the metadata, try extracting it directly
                 if (finalArtist == "Unknown Artist") {
+                    val retriever = android.media.MediaMetadataRetriever()
                     try {
-                        val retriever = android.media.MediaMetadataRetriever()
                         retriever.setDataSource(context, android.net.Uri.parse(path))
                         val embeddedArtist = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_ARTIST)
                         val embeddedTitle = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_TITLE)
-                        
+
                         if (!embeddedArtist.isNullOrBlank()) finalArtist = embeddedArtist
                         if (!embeddedTitle.isNullOrBlank()) finalTitle = embeddedTitle
-                        retriever.release()
                     } catch (e: Exception) {
                         // Ignore extraction errors
+                    } finally {
+                        // release() must run even when setDataSource/extract throws — the old
+                        // in-try release leaked the native retriever on every unreadable file.
+                        runCatching { retriever.release() }
                     }
                 }
 
@@ -397,32 +400,38 @@ class TrackRepository @Inject constructor(
         // so BOTH the displayed title and the online art-lookup query stay clean — noisy
         // tokens otherwise return wrong matches and trip the lookup's confidence gate.
         // Order matters: remove tagged blocks first, then collapse the gaps they leave.
-        val ci = RegexOption.IGNORE_CASE
         var t = title
-
-        // Bitrate/quality tags Vidmate appends: (256k), (128kbps), (0)
-        t = t.replace(Regex("\\(\\s*\\d+\\s*k(bps)?\\s*\\)", ci), "")
-        t = t.replace(Regex("\\(\\s*0\\s*\\)"), "")
-
-        // Skiza ringtone promos: "[Skiza 8545083]", "SMS SKIZA 8548829 to 811",
-        // "For Skiza SmS skiza 69813080 To 811", "DIAL 811 174# To set as Skiza".
-        t = t.replace(Regex("\\[[^\\]]*skiza[^\\]]*\\]", ci), "")
-        t = t.replace(Regex("dial\\s+[0-9#\\s]+to\\s+set\\s+as\\s+skiza", ci), "")
-        t = t.replace(Regex("(for\\s+)?(sms\\s+)?skiza[\\s\\d#]*to\\s+\\d+", ci), "")
-
-        // "Official"/format tags — parenthesized, bracketed, or bare.
-        t = t.replace(Regex("[\\(\\[]\\s*(official\\s+)?(music\\s+)?(lyric\\s+)?(video|audio|lyrics?|visuali[sz]er)\\s*[\\)\\]]", ci), "")
-        t = t.replace(Regex("\\bofficial\\s+(music\\s+)?(lyric\\s+)?(video|audio)\\b", ci), "")
-        t = t.replace(Regex("\\b(visuali[sz]er|lyric\\s+video)\\b", ci), "")
-
-        // Resolution tags: (4K), [HD], (1080p)
-        t = t.replace(Regex("[\\(\\[]\\s*(4k|8k|hd|fhd|\\d{3,4}p)\\s*[\\)\\]]", ci), "")
-
-        // Collapse the whitespace / empty brackets / stray separators left behind.
-        t = t.replace(Regex("[\\(\\[]\\s*[\\)\\]]"), "")
-        t = t.replace(Regex("\\s{2,}"), " ").trim()
+        CLEAN_TITLE_REGEXES.forEach { t = t.replace(it, "") }
+        t = t.replace(MULTISPACE_REGEX, " ").trim()
         t = t.trim(' ', '-', '|', '_', '·', '•').trim()
         return t
+    }
+
+    private companion object {
+        private val CI = RegexOption.IGNORE_CASE
+
+        /** Junk-token patterns, applied in order (see [cleanMetadata]). Compiled ONCE — the old
+         *  per-call Regex() constructions recompiled ~12 patterns for every track on every scan,
+         *  and the auto-rescan runs on each MediaStore change. */
+        val CLEAN_TITLE_REGEXES = listOf(
+            // Bitrate/quality tags Vidmate appends: (256k), (128kbps), (0)
+            Regex("\\(\\s*\\d+\\s*k(bps)?\\s*\\)", CI),
+            Regex("\\(\\s*0\\s*\\)"),
+            // Skiza ringtone promos: "[Skiza 8545083]", "SMS SKIZA 8548829 to 811",
+            // "For Skiza SmS skiza 69813080 To 811", "DIAL 811 174# To set as Skiza".
+            Regex("\\[[^\\]]*skiza[^\\]]*\\]", CI),
+            Regex("dial\\s+[0-9#\\s]+to\\s+set\\s+as\\s+skiza", CI),
+            Regex("(for\\s+)?(sms\\s+)?skiza[\\s\\d#]*to\\s+\\d+", CI),
+            // "Official"/format tags — parenthesized, bracketed, or bare.
+            Regex("[\\(\\[]\\s*(official\\s+)?(music\\s+)?(lyric\\s+)?(video|audio|lyrics?|visuali[sz]er)\\s*[\\)\\]]", CI),
+            Regex("\\bofficial\\s+(music\\s+)?(lyric\\s+)?(video|audio)\\b", CI),
+            Regex("\\b(visuali[sz]er|lyric\\s+video)\\b", CI),
+            // Resolution tags: (4K), [HD], (1080p)
+            Regex("[\\(\\[]\\s*(4k|8k|hd|fhd|\\d{3,4}p)\\s*[\\)\\]]", CI),
+            // Empty brackets left behind by the removals above.
+            Regex("[\\(\\[]\\s*[\\)\\]]")
+        )
+        val MULTISPACE_REGEX = Regex("\\s{2,}")
     }
 
     fun getTagsForTrack(trackId: Long): Flow<List<TagEntity>> = tagDao.getTagsForTrack(trackId)
