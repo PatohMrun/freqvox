@@ -9,7 +9,8 @@ import javax.inject.Singleton
  * "Fixed accent" appearance option. By default Freqvox derives the background-gradient palette
  * from each track's album art (the dynamic signature). When [enabled], the whole gradient is
  * pinned to a single user-chosen [color] instead, for people who prefer a consistent look.
- * The static UI accent token (Fvox.accent) is unaffected either way.
+ * Since 2.74 the UI accent token (Fvox.accent — switches, chips, rings) follows the same
+ * colour too, legibility-clamped per mode in DynamicTheme; accentAlt keeps its rose semantics.
  */
 @Singleton
 class AccentPreferences @Inject constructor(

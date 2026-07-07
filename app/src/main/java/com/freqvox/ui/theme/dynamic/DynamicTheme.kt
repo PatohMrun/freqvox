@@ -10,6 +10,7 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
@@ -159,6 +160,26 @@ private fun adjustAccentForMode(color: Color, isLight: Boolean): Color {
     return Color(android.graphics.Color.HSVToColor(hsv))
 }
 
+/**
+ * Fixed-accent variant of the UI accent token: the user's swatch becomes Fvox.accent (buttons,
+ * switches, rings, active states), constrained so the white [FreqvoxColors.onAccent] text keeps
+ * reading on it. Light mode reuses the gradient clamp (dark-on-white AND white-on-it). Dark mode
+ * darkens bright swatches by LUMINANCE — HSV value alone doesn't track legibility: the default
+ * violet has v=1.0 yet low luminance, while amber at the same v washes white text out.
+ */
+private fun accentTokenFor(swatch: Color, isLight: Boolean): Color {
+    if (isLight) return adjustAccentForMode(swatch, true)
+    var c = swatch
+    val hsv = FloatArray(3)
+    while (c.luminance() > 0.32f) {
+        android.graphics.Color.colorToHSV(c.toArgb(), hsv)
+        if (hsv[2] <= 0.30f) break
+        hsv[2] -= 0.05f
+        c = Color(android.graphics.Color.HSVToColor(hsv))
+    }
+    return c
+}
+
 /** Decodes [path] downsampled so its largest side is ≈[targetPx], for cheap palette extraction. */
 private fun decodeDownsampled(path: String, targetPx: Int): Bitmap? {
     val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
@@ -261,11 +282,21 @@ fun DynamicTheme(
         )
     }
 
+    // Fixed accent also recolours the Fvox accent token, so controls (switches, chips, rings,
+    // progress) match the pinned gradient instead of staying brand-violet. accentAlt is left
+    // alone on purpose — it carries destructive/favourite semantics (rose), which shouldn't
+    // follow a cosmetic colour choice.
+    val baseFvox = if (isLight) FreqvoxLightColors else FreqvoxDarkColors
+    val fvoxColors = remember(fixedAccent, isLight) {
+        if (fixedAccent == null) baseFvox
+        else baseFvox.copy(accent = accentTokenFor(fixedAccent, isLight))
+    }
+
     CompositionLocalProvider(
         LocalGradientPrimary   provides animPrimary,
         LocalGradientSecondary provides animSecondary,
         LocalGradientTertiary  provides animTertiary,
-        LocalFreqvoxColors     provides if (isLight) FreqvoxLightColors else FreqvoxDarkColors
+        LocalFreqvoxColors     provides fvoxColors
     ) {
         MaterialTheme(colorScheme = colorScheme, content = content)
     }

@@ -55,7 +55,7 @@ fun AccentSheet(
                 modifier = Modifier.padding(start = 4.dp, top = 4.dp)
             )
             Text(
-                text = "By default the gradient is drawn from each track's album art. Pin it to one colour for a consistent look.",
+                text = "By default the gradient is drawn from each track's album art. Pin it — along with buttons, switches and highlights — to one colour for a consistent look.",
                 color = Fvox.onSurface.copy(alpha = 0.4f),
                 fontSize = 12.sp,
                 modifier = Modifier.padding(start = 4.dp, top = 4.dp, bottom = 16.dp)
