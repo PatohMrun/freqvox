@@ -221,9 +221,13 @@ fun MainScreen(
 
     val fixedAccentEnabled by viewModel.fixedAccentEnabled.collectAsStateWithLifecycle()
     val fixedAccentColor by viewModel.fixedAccentColor.collectAsStateWithLifecycle()
-    val fixedAccent = if (fixedAccentEnabled) androidx.compose.ui.graphics.Color(fixedAccentColor) else null
+    val accentPinGradient by viewModel.accentPinGradient.collectAsStateWithLifecycle()
+    // Custom accent always drives the UI token; it only pins the gradient when the user
+    // additionally opts in — otherwise the backdrop stays album-dynamic.
+    val customAccent = if (fixedAccentEnabled) androidx.compose.ui.graphics.Color(fixedAccentColor) else null
+    val pinnedGradient = if (accentPinGradient) customAccent else null
 
-    DynamicTheme(artworkPath = currentArtworkUri?.path, trackTitle = currentTrackTitle, isLight = isLight, fixedAccent = fixedAccent) {
+    DynamicTheme(artworkPath = currentArtworkUri?.path, trackTitle = currentTrackTitle, isLight = isLight, fixedAccent = pinnedGradient, uiAccent = customAccent) {
         Box(modifier = Modifier.fillMaxSize()) {
             // Gradient background is its own composable so MainScreen scope doesn't
             // recompose when DynamicTheme animates colors mid-track-change.
@@ -650,8 +654,10 @@ fun MainScreen(
                 com.freqvox.ui.settings.AccentSheet(
                     enabled = fixedAccentEnabled,
                     selectedColor = fixedAccentColor,
+                    pinGradient = accentPinGradient,
                     onToggle = { viewModel.setFixedAccentEnabled(it) },
                     onSelectColor = { viewModel.setFixedAccentColor(it) },
+                    onTogglePinGradient = { viewModel.setAccentPinGradient(it) },
                     onDismiss = { showAccentSheet = false }
                 )
             }

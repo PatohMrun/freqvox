@@ -21,16 +21,19 @@ import com.freqvox.data.prefs.AccentPreferences
 import com.freqvox.ui.theme.Fvox
 
 /**
- * Picks a fixed accent for the background gradient, or leaves it album-derived (the default).
- * When "Fixed accent" is on, every screen's gradient is pinned to the chosen swatch.
+ * Custom accent colour with two independent effects: the swatch always recolours the UI
+ * controls (Fvox.accent); "Pin background gradient" additionally freezes the backdrop to the
+ * swatch — off, the gradient keeps flowing from each track's album art as usual.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AccentSheet(
     enabled: Boolean,
     selectedColor: Int,
+    pinGradient: Boolean,
     onToggle: (Boolean) -> Unit,
     onSelectColor: (Int) -> Unit,
+    onTogglePinGradient: (Boolean) -> Unit,
     onDismiss: () -> Unit
 ) {
     ModalBottomSheet(
@@ -55,7 +58,7 @@ fun AccentSheet(
                 modifier = Modifier.padding(start = 4.dp, top = 4.dp)
             )
             Text(
-                text = "By default the gradient is drawn from each track's album art. Pin it — along with buttons, switches and highlights — to one colour for a consistent look.",
+                text = "Colour the app's buttons, switches and highlights with a swatch of your choice. Pin the background gradient too, or leave it flowing from each track's album art.",
                 color = Fvox.onSurface.copy(alpha = 0.4f),
                 fontSize = 12.sp,
                 modifier = Modifier.padding(start = 4.dp, top = 4.dp, bottom = 16.dp)
@@ -70,7 +73,7 @@ fun AccentSheet(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    "Fixed accent",
+                    "Custom accent",
                     color = Fvox.onSurface,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.SemiBold,
@@ -86,34 +89,75 @@ fun AccentSheet(
                 )
             }
 
+            // Sub-option: only meaningful while the custom accent is on.
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
+                    .clickable(enabled = enabled) { onTogglePinGradient(!pinGradient) }
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                val alpha = if (enabled) 1f else 0.4f
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        "Pin background gradient",
+                        color = Fvox.onSurface.copy(alpha = alpha),
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        "Off: the backdrop keeps following each track's album art.",
+                        color = Fvox.onSurface.copy(alpha = alpha * 0.5f),
+                        fontSize = 12.sp,
+                        modifier = Modifier.padding(top = 2.dp, end = 8.dp)
+                    )
+                }
+                Switch(
+                    checked = enabled && pinGradient,
+                    onCheckedChange = onTogglePinGradient,
+                    enabled = enabled,
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Fvox.onAccent,
+                        checkedTrackColor = Fvox.accent
+                    )
+                )
+            }
+
             Spacer(Modifier.height(12.dp))
 
             val swatchAlpha = if (enabled) 1f else 0.35f
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                AccentPreferences.SWATCHES.forEach { argb ->
-                    val selected = enabled && argb == selectedColor
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .aspectRatio(1f)
-                            .clip(CircleShape)
-                            .background(Color(argb).copy(alpha = swatchAlpha))
-                            .then(
-                                if (selected) Modifier.border(2.5.dp, Fvox.onSurface, CircleShape)
-                                else Modifier
-                            )
-                            .clickable {
-                                onSelectColor(argb)
-                                if (!enabled) onToggle(true)
-                            },
-                        contentAlignment = Alignment.Center
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                AccentPreferences.SWATCHES.chunked(8).forEach { rowSwatches ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        if (selected) {
-                            Icon(Icons.Default.Check, contentDescription = "Selected", tint = Color.White, modifier = Modifier.size(18.dp))
+                        rowSwatches.forEach { argb ->
+                            val selected = enabled && argb == selectedColor
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .aspectRatio(1f)
+                                    .clip(CircleShape)
+                                    .background(Color(argb).copy(alpha = swatchAlpha))
+                                    .then(
+                                        if (selected) Modifier.border(2.5.dp, Fvox.onSurface, CircleShape)
+                                        else Modifier
+                                    )
+                                    .clickable {
+                                        onSelectColor(argb)
+                                        if (!enabled) onToggle(true)
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (selected) {
+                                    Icon(Icons.Default.Check, contentDescription = "Selected", tint = Color.White, modifier = Modifier.size(18.dp))
+                                }
+                            }
                         }
+                        // Pad the last row so partial rows keep equal swatch sizes.
+                        repeat(8 - rowSwatches.size) { Spacer(Modifier.weight(1f)) }
                     }
                 }
             }

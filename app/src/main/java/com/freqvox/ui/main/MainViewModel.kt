@@ -104,6 +104,14 @@ class MainViewModel @Inject constructor(
         accentPrefs.color = color
         _fixedAccentColor.value = color
     }
+    // Whether the chosen accent ALSO pins the background gradient (off = gradient stays
+    // album-dynamic while the UI controls follow the swatch).
+    private val _accentPinGradient = MutableStateFlow(accentPrefs.pinGradient)
+    val accentPinGradient: StateFlow<Boolean> = _accentPinGradient.asStateFlow()
+    fun setAccentPinGradient(pin: Boolean) {
+        accentPrefs.pinGradient = pin
+        _accentPinGradient.value = pin
+    }
 
     // Theme mode for the in-header toggle. The actual palette selection happens at the
     // composition root (MainActivity), which observes the same singleton StateFlow.

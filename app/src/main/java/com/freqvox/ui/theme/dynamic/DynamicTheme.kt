@@ -198,7 +198,11 @@ fun DynamicTheme(
     artworkPath: String?,
     trackTitle: String,
     isLight: Boolean = false,
+    /** Pins the background GRADIENT to this colour (null = album-derived dynamic palette). */
     fixedAccent: Color? = null,
+    /** Recolours the Fvox.accent TOKEN (controls) to this colour — independent of the
+     *  gradient, so controls can follow a custom swatch while the backdrop stays dynamic. */
+    uiAccent: Color? = null,
     content: @Composable () -> Unit
 ) {
     val context = LocalContext.current
@@ -282,14 +286,13 @@ fun DynamicTheme(
         )
     }
 
-    // Fixed accent also recolours the Fvox accent token, so controls (switches, chips, rings,
-    // progress) match the pinned gradient instead of staying brand-violet. accentAlt is left
-    // alone on purpose — it carries destructive/favourite semantics (rose), which shouldn't
-    // follow a cosmetic colour choice.
+    // Custom accent recolours the Fvox accent token (switches, chips, rings, progress).
+    // accentAlt is left alone on purpose — it carries destructive/favourite semantics (rose),
+    // which shouldn't follow a cosmetic colour choice.
     val baseFvox = if (isLight) FreqvoxLightColors else FreqvoxDarkColors
-    val fvoxColors = remember(fixedAccent, isLight) {
-        if (fixedAccent == null) baseFvox
-        else baseFvox.copy(accent = accentTokenFor(fixedAccent, isLight))
+    val fvoxColors = remember(uiAccent, isLight) {
+        if (uiAccent == null) baseFvox
+        else baseFvox.copy(accent = accentTokenFor(uiAccent, isLight))
     }
 
     CompositionLocalProvider(
