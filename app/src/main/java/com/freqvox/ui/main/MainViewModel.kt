@@ -1056,8 +1056,15 @@ class MainViewModel @Inject constructor(
     // ── Tag management ──────────────────────────────────────────────────────────
     fun updateTag(tag: TagEntity, newName: String, newColor: Int) {
         if (newName.isBlank()) return
+        val normalized = newName.trim().lowercase()
+        // Renaming onto another tag's name would leave two same-named tags (allTags
+        // distinctBy(name) then hides one, orphaning its track links).
+        if (allTags.value.any { it.id != tag.id && it.name.lowercase() == normalized }) {
+            postSnackbar("A tag named \"${newName.trim()}\" already exists")
+            return
+        }
         viewModelScope.launch {
-            trackRepository.updateTag(tag.copy(name = newName.trim().lowercase(), color = newColor))
+            trackRepository.updateTag(tag.copy(name = normalized, color = newColor))
         }
     }
 

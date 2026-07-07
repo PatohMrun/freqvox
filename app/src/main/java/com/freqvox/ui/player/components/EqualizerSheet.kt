@@ -40,7 +40,10 @@ fun EqualizerSheet(
     val bandLevels by equalizerManager.bandLevels.collectAsStateWithLifecycle()
     val currentPreset by equalizerManager.currentPreset.collectAsStateWithLifecycle()
     val eqParams by equalizerManager.params.collectAsStateWithLifecycle()
-    val presets = remember { equalizerManager.getPresets() }
+    // Keyed on eqParams: the equalizer attaches to the audio session only once playback has
+    // started, so presets are empty until then — re-query when init() publishes real params
+    // (e.g. the user starts a track while this sheet is open).
+    val presets = remember(eqParams) { equalizerManager.getPresets() }
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
@@ -90,6 +93,26 @@ fun EqualizerSheet(
             }
 
             Spacer(modifier = Modifier.height(32.dp))
+
+            // Before any playback this process, the Equalizer effect isn't attached yet
+            // (numBands == 0, no presets): opened from the side panel that used to render as a
+            // blank sheet with a do-nothing look. Explain instead. The switch above still works —
+            // enabled-state persists and applies when the EQ attaches.
+            if (eqParams.numBands == 0) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 48.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        "Play a track first — the equalizer attaches to the audio engine when playback starts.",
+                        color = Fvox.onSurface.copy(alpha = 0.5f),
+                        fontSize = 13.sp
+                    )
+                }
+                return@Column
+            }
 
             Text(
                 "PRESETS",

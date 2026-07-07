@@ -348,8 +348,17 @@ fun MainScreen(
                                 popExitTransition = { slideOutHorizontally(animationSpec = tween(150), targetOffsetX = { 50 }) + fadeOut(animationSpec = tween(150)) }
                             ) {
                                 composable(Screen.Home.route) {
+                                    // viewModel is passed explicitly to every tab: hiltViewModel()
+                                    // inside a NavHost destination scopes to that destination's
+                                    // back-stack entry, giving each tab its OWN MainViewModel.
+                                    // One-shot channels (dislikeEvents, snackbarMessages,
+                                    // openPlaylistTab) are per-instance, so emitters in the tabs
+                                    // never reached the collectors living here on the
+                                    // activity-scoped instance — dislike snackbar/auto-skip and
+                                    // the side-panel playlist quick-jump were silently dead.
                                     HomeScreen(
                                         playbackController = playbackController,
+                                        viewModel = viewModel,
                                         onOpenPanel = openPanel,
                                         onTrackClick = { track, contextTracks ->
                                             val currentTitle = playbackController.currentTrackTitle.value
@@ -372,6 +381,7 @@ fun MainScreen(
                                 composable(Screen.Search.route) {
                                     SearchScreen(
                                         playbackController = playbackController,
+                                        viewModel = viewModel,
                                         focusTrigger = searchFocusTrigger,
                                         onFocusConsumed = { searchFocusTrigger = 0L }
                                     )
@@ -379,6 +389,7 @@ fun MainScreen(
                                 composable(Screen.Library.route) {
                                     LibraryScreen(
                                         playbackController = playbackController,
+                                        viewModel = viewModel,
                                         onOpenPanel = openPanel,
                                         hasUnseenStory = hasUnseenStory,
                                         onOpenStory = { showStory = true },
