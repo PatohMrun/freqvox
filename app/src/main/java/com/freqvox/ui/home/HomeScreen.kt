@@ -88,7 +88,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import java.util.*
-import kotlin.random.Random
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -109,7 +108,6 @@ fun HomeScreen(
     val isPlaying by playbackController.isPlaying.collectAsStateWithLifecycle()
     val currentTrackTitle by playbackController.currentTrackTitle.collectAsStateWithLifecycle()
     val playHistory by viewModel.playHistory.collectAsStateWithLifecycle()
-    val taggedTrackIds by viewModel.taggedTrackIds.collectAsStateWithLifecycle()
     val allTags by viewModel.allTags.collectAsStateWithLifecycle()
     val taggingTrackId by viewModel.taggingTrackId.collectAsStateWithLifecycle()
     val taggingTrackTags by viewModel.taggingTrackTags.collectAsStateWithLifecycle()
@@ -175,18 +173,15 @@ fun HomeScreen(
     var pageCount by remember(activeTracks, refreshTrigger) { mutableIntStateOf(1) }
     val maxPages = 20
 
-    val feedItems: List<PagedFeedItem> = remember(
-        activeTracks, playHistory, taggedTrackIds, refreshTrigger, pageCount
-    ) {
-        val ctx = FeedContext(playHistory, taggedTrackIds)
-        var session = FeedSessionState()
-        (1..pageCount).flatMap { page ->
-            val pageRandom = Random(refreshTrigger * 1_000_003L + page * 31L)
-            val result = FeedGenerator.generateFeed(activeTracks, ctx, pageRandom, session)
-            session = result.session
-            result.items.map { PagedFeedItem(page, it) }
-        }
+    // Generation happens in MainViewModel on Dispatchers.Default (seeds, session threading
+    // and refresh semantics preserved there); this screen just publishes what it wants —
+    // (refreshTrigger, pageCount) — and renders whatever the flow delivers. On refresh the
+    // previous feed stays visible until the replacement lands, so there's no empty flash.
+    LaunchedEffect(refreshTrigger, pageCount) {
+        viewModel.setFeedParams(refreshTrigger, pageCount)
     }
+    val feedItems by viewModel.homeFeed.collectAsStateWithLifecycle()
+    val dailyMixes by viewModel.dailyMixes.collectAsStateWithLifecycle()
     val reachedEnd = pageCount >= maxPages
 
     val heroTrack = currentTrack
@@ -297,10 +292,6 @@ fun HomeScreen(
         // Daily Mixes — themed sets that stay stable for the whole calendar day (seeded by
         // date), so they don't reshuffle every time the feed regenerates.
         item {
-            val epochDay = remember { java.time.LocalDate.now().toEpochDay() }
-            val dailyMixes = remember(activeTracks, taggedTrackIds, epochDay) {
-                generateDailyMixes(activeTracks, taggedTrackIds, epochDay)
-            }
             if (dailyMixes.isNotEmpty()) {
                 DailyMixesRow(
                     mixes = dailyMixes,

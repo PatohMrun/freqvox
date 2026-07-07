@@ -421,6 +421,73 @@ class MainViewModel @Inject constructor(
         .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    // ── Home feed (built here, on Dispatchers.Default — not during composition) ─
+    // The feed used to be generated inside a remember{} while HomeScreen composed, blocking
+    // the main thread for every page on open, refresh and pagination ("the waiter cooks at
+    // the table"). Semantics preserved exactly:
+    //  - per-page determinism: seed = refreshTrigger * 1_000_003L + page * 31L, unchanged;
+    //  - cross-page artist/album exclusion: FeedSessionState threads page→page; the session
+    //    AFTER each page is cached so growing pageCount appends ONLY the new page (the old
+    //    remember{} regenerated every page on each pagination step);
+    //  - pull-to-refresh: a new refreshTrigger misses the cache → fresh pages + fresh session;
+    //  - a pageCount reset (Home re-entered) truncates to the deterministic prefix.
+    data class FeedParams(val refreshTrigger: Int, val pageCount: Int)
+    private val _feedParams = MutableStateFlow(FeedParams(0, 1))
+    fun setFeedParams(refreshTrigger: Int, pageCount: Int) {
+        _feedParams.value = FeedParams(refreshTrigger, pageCount)
+    }
+
+    private data class FeedCache(
+        val tracks: List<TrackEntity>,
+        val history: List<PlayHistoryEntity>,
+        val tags: Map<String, Set<Long>>,
+        val refreshTrigger: Int,
+        val pages: List<List<com.freqvox.ui.home.FeedItem>>,
+        /** Session state AFTER each page, so any prefix can be extended without replaying. */
+        val sessions: List<com.freqvox.ui.home.FeedSessionState>
+    )
+
+    // Only ever touched inside the combine transform below, which runs serially in the
+    // stateIn coroutine — no concurrent access.
+    private var feedCache: FeedCache? = null
+
+    val homeFeed: StateFlow<List<com.freqvox.ui.home.PagedFeedItem>> = combine(
+        activeTracks, playHistory, taggedTrackIds, _feedParams
+    ) { tracks, history, tags, params ->
+        val cached = feedCache?.takeIf {
+            it.refreshTrigger == params.refreshTrigger &&
+                it.tracks == tracks && it.history == history && it.tags == tags
+        }
+        val keep = minOf(cached?.pages?.size ?: 0, params.pageCount)
+        val pages = ArrayList<List<com.freqvox.ui.home.FeedItem>>(params.pageCount)
+        val sessions = ArrayList<com.freqvox.ui.home.FeedSessionState>(params.pageCount)
+        if (cached != null && keep > 0) {
+            pages += cached.pages.take(keep)
+            sessions += cached.sessions.take(keep)
+        }
+        var session = sessions.lastOrNull() ?: com.freqvox.ui.home.FeedSessionState()
+        val ctx = com.freqvox.ui.home.FeedContext(history, tags)
+        while (pages.size < params.pageCount && tracks.isNotEmpty()) {
+            val page = pages.size + 1
+            val pageRandom = kotlin.random.Random(params.refreshTrigger * 1_000_003L + page * 31L)
+            val result = com.freqvox.ui.home.FeedGenerator.generateFeed(tracks, ctx, pageRandom, session)
+            session = result.session
+            pages += result.items
+            sessions += session
+        }
+        feedCache = FeedCache(tracks, history, tags, params.refreshTrigger, pages, sessions)
+        pages.flatMapIndexed { i, items -> items.map { com.freqvox.ui.home.PagedFeedItem(i + 1, it) } }
+    }.flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    // Daily Mixes — date-seeded so they're stable all day; same off-main-thread motivation.
+    val dailyMixes: StateFlow<List<com.freqvox.ui.home.DailyMix>> = combine(
+        activeTracks, taggedTrackIds
+    ) { tracks, tags ->
+        com.freqvox.ui.home.generateDailyMixes(tracks, tags, java.time.LocalDate.now().toEpochDay())
+    }.flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     val recentlyAdded: StateFlow<List<TrackEntity>> = activeTracks
         .map { tracks -> tracks.take(10) }
         .stateIn(
