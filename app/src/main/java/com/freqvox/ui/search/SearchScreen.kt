@@ -8,7 +8,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Check
@@ -192,8 +194,22 @@ fun SearchScreen(
                         )
                     }
                 }
+            } else if (!tagFilterActive) {
+                // No filter → ONLY the grid. The chip row used to render here too, but it
+                // duplicated the grid (every tag twice on one screen) and, being an uncapped
+                // FlowRow, grew VERTICALLY with the tag collection until it squeezed the grid
+                // out. A card tap REQUIRES that tag — the first step of the same tri-state
+                // cycle the chips speak — and the chips then appear as the editing UI.
+                Text(
+                    text = "Tap a tag to filter · tap it again on the chips to exclude",
+                    color = Fvox.onSurface.copy(alpha = 0.4f),
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(bottom = 12.dp)
+                )
+                TagsGrid(tags = allTags, onTagClick = { viewModel.cycleTagFilterState(it) })
             } else {
-                // Boolean tag filter: tap a chip to require it, tap again to exclude it.
+                // Filter active → chips become the editing surface (height-capped, scrolls
+                // internally past ~3 rows so a big tag collection can't crowd the results).
                 BooleanTagFilterRow(
                     tags = allTags,
                     include = includeTagNames,
@@ -202,13 +218,7 @@ fun SearchScreen(
                     onClear = { viewModel.clearTagFilter() },
                     modifier = Modifier.padding(bottom = 12.dp)
                 )
-                if (!tagFilterActive) {
-                    // No filter set → colorful browse grid. A card tap REQUIRES that tag —
-                    // the same first step as tapping its chip above — so every tag touch on
-                    // this page speaks one language (the tri-state require/exclude cycle)
-                    // instead of grid taps secretly running a text search.
-                    TagsGrid(tags = allTags, onTagClick = { viewModel.cycleTagFilterState(it) })
-                } else if (tagFilterResults.isEmpty()) {
+                if (tagFilterResults.isEmpty()) {
                     Box(
                         modifier = Modifier.fillMaxWidth().padding(top = 40.dp),
                         contentAlignment = Alignment.Center
@@ -309,7 +319,13 @@ fun BooleanTagFilterRow(
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
+        // Capped at roughly three chip rows: a FlowRow grows vertically with the tag
+        // collection, and uncapped it ate the screen before the results could render.
         FlowRow(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = 136.dp)
+                .verticalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
@@ -357,6 +373,7 @@ fun BooleanTagFilterRow(
             }
         }
 
+        // (Chips only render while a filter is active now, so the summary always applies.)
         if (include.isNotEmpty() || exclude.isNotEmpty()) {
             val summary = buildString {
                 if (include.isNotEmpty()) append(include.joinToString(" AND ") { formatTagDisplayName(it) })
@@ -385,13 +402,6 @@ fun BooleanTagFilterRow(
                     modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable { onClear() }.padding(horizontal = 8.dp, vertical = 4.dp)
                 )
             }
-        } else {
-            Text(
-                text = "Tap a tag to require it · tap again to exclude",
-                color = Fvox.onSurface.copy(alpha = 0.4f),
-                fontSize = 12.sp,
-                modifier = Modifier.padding(top = 8.dp)
-            )
         }
     }
 }
