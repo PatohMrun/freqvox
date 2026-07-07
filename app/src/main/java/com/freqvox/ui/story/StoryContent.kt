@@ -1,6 +1,7 @@
 package com.freqvox.ui.story
 
 import androidx.compose.ui.graphics.Color
+import com.freqvox.data.local.entities.TrackEntity
 import com.freqvox.ui.main.MainViewModel
 
 /**
@@ -113,7 +114,7 @@ object StoryContent {
         val untaggedCount: Int = 0,
         val hasCustomTags: Boolean = true,
         val duplicateGroups: Int = 0,
-        val mostSkippedTitle: String? = null,
+        val mostSkippedTrack: TrackEntity? = null,
         val mostSkippedCount: Int = 0,
         val fixedAccentDefault: Boolean = false,
         val hasProfiles: Boolean = true
@@ -138,9 +139,10 @@ object StoryContent {
         if (s.duplicateGroups > 0)
             out += emj("ctx-dupes", T, "${s.duplicateGroups} possible duplicate${if (s.duplicateGroups == 1) "" else "s"}",
                 "Freqvox spotted songs that share a title and artist — clean them up in a tap.", "🧹", StoryCta("Review", StoryActionType.OPEN_DUPLICATES))
-        if (s.mostSkippedTitle != null && s.mostSkippedCount >= 3)
-            out += emj("ctx-skip", T, "Always skipping this?",
-                "\"${s.mostSkippedTitle}\" gets skipped a lot (${s.mostSkippedCount}×). Dislike it to keep it out of your feed.", "⏭️")
+        if (s.mostSkippedTrack != null && s.mostSkippedCount >= 3)
+            out += StorySegment("ctx-skip", T, "Always skipping this?",
+                "\"${s.mostSkippedTrack.title}\" gets skipped a lot (${s.mostSkippedCount}×). Dislike it to keep it out of your feed.",
+                SegmentVisual.AlbumArt(s.mostSkippedTrack), accent = accentFor("ctx-skip"))
         if (s.fixedAccentDefault)
             out += emj("ctx-accent", T, "Lock in a look",
                 "Your gradient follows each cover right now — pin a fixed accent if you'd rather it stayed constant.", "🎨", StoryCta("Appearance", StoryActionType.OPEN_ACCENT))
@@ -161,8 +163,8 @@ object StoryContent {
         // Contextual tips, forced-eligible so QA can see them all.
         segs += contextualTips(StoryState(
             crossfadeOff = true, eqUnused = true, untaggedCount = 42, hasCustomTags = true,
-            duplicateGroups = 3, mostSkippedTitle = "Example Song", mostSkippedCount = 7,
-            fixedAccentDefault = true, hasProfiles = false
+            duplicateGroups = 3, mostSkippedTrack = stats.topTracks.firstOrNull()?.first,
+            mostSkippedCount = 7, fixedAccentDefault = true, hasProfiles = false
         ))
 
         val spark = stats.weekDailyMinutes.ifEmpty { listOf(0.2f, 0.6f, 0.4f, 0.9f, 0.5f, 0.75f, 0.35f) }
@@ -186,7 +188,11 @@ object StoryContent {
         return StoryDrop("preview-$epochDay", epochDay, SegmentKind.TIP, segs)
     }
 
-    data class MilestoneDef(val key: String, val emoji: String, val title: String, val body: String)
+    /** [track] set on track-specific milestones: its cover then replaces the emoji badge. */
+    data class MilestoneDef(
+        val key: String, val emoji: String, val title: String, val body: String,
+        val track: TrackEntity? = null
+    )
 
     /** Achievements the user currently qualifies for, highest first. The scheduler shows the first
      *  un-celebrated one; viewing it marks it celebrated so it fires only once. */
@@ -201,7 +207,7 @@ object StoryContent {
             stats.totalPlays >= 500 -> out += MilestoneDef("plays500", "🌟", "500 plays", "Halfway to a thousand — keep the music going.")
         }
         stats.topTracks.firstOrNull()?.let { (t, c) ->
-            if (c >= 100) out += MilestoneDef("track100-${t.id}", "💯", "100 plays of one song", "\"${t.title}\" is a certified favourite.")
+            if (c >= 100) out += MilestoneDef("track100-${t.id}", "💯", "100 plays of one song", "\"${t.title}\" is a certified favourite.", track = t)
         }
         return out
     }
@@ -213,7 +219,8 @@ object StoryContent {
         segments = listOf(
             StorySegment(
                 "m-${def.key}", SegmentKind.MILESTONE, def.title, def.body,
-                SegmentVisual.Emoji(def.emoji), accent = accentFor(def.key)
+                def.track?.let { SegmentVisual.AlbumArt(it) } ?: SegmentVisual.Emoji(def.emoji),
+                accent = accentFor(def.key)
             )
         )
     )

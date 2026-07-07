@@ -560,7 +560,7 @@ class MainViewModel @Inject constructor(
                 untaggedCount = allTracks.value.count { it.id !in tagged },
                 hasCustomTags = allTags.value.any { it.name.lowercase() !in setOf("liked", "disliked") },
                 duplicateGroups = dupCount,
-                mostSkippedTitle = stats.mostSkipped.firstOrNull()?.first?.title,
+                mostSkippedTrack = stats.mostSkipped.firstOrNull()?.first,
                 mostSkippedCount = stats.mostSkipped.firstOrNull()?.second ?: 0,
                 fixedAccentDefault = !accentPrefs.enabled,
                 hasProfiles = tagProfilePrefs.all().isNotEmpty()
