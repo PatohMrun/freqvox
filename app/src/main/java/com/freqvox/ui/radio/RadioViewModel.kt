@@ -42,7 +42,10 @@ val KENYA_CURATED_STATIONS = listOf(
     RadioStation("ke_capital",  "Capital FM",           "https://atunwadigital.streamguys1.com/capitalfm",          "Kenya", "98.4 FM · Hip Hop, R&B, Pop",       0xFF7C3AED),
     RadioStation("ke_maisha",   "Radio Maisha",         "https://radiomaisha-atunwadigital.streamguys1.com/radiomaisha",    "Kenya", "National · Bongo, Swahili Pop",  0xFF831843),
     RadioStation("ke_milele",   "Milele FM",            "https://milelefm-atunwadigital.streamguys1.com/milelefm",  "Kenya", "Swahili · Music & Talk",            0xFFD81B60),
-    RadioStation("ke_nrg",      "NRG Radio",            "https://streamingv2.shoutcast.com/nrg-radio-ke",           "Kenya", "Youth, Urban, Afrobeats",           0xFF1D4ED8),
+    // NOTE: NRG's old shoutcast mount is dead and shoutcast MISROUTES it to an unrelated
+    // station ("RTFM Lounge") with a healthy-looking 200 — the directory still lists it as ok.
+    // This broadcast.radio URL is NRG's own player stream, verified serving real MP3 frames.
+    RadioStation("ke_nrg",      "NRG Radio",            "https://uksouth.streaming.broadcast.radio/nrg",            "Kenya", "Youth, Urban, Afrobeats",           0xFF1D4ED8),
     RadioStation("ke_nation",   "Nation FM",            "http://stream.radiojar.com/3by7s8eg65quv",                 "Kenya", "96.3 FM · News, Talk",              0xFF1E3A5F),
     RadioStation("ke_spice",    "Spice FM",             "https://spicefm-atunwadigital.streamguys1.com/spicefm",    "Kenya", "94.4 FM · Talk, Soul",              0xFF78350F),
     RadioStation("ke_easyfm",   "Easy FM",              "https://stream.zeno.fm/wvw02zaqpxquv",                     "Kenya", "101.5 FM · Soul, Easy Listening",   0xFF831843),
