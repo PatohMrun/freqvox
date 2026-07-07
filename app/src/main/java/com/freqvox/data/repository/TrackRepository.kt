@@ -47,6 +47,19 @@ class TrackRepository @Inject constructor(
         scanPrefs.edit().putStringSet("excluded_folders", folders).apply()
     }
 
+    // User metadata edits ("Edit info"), keyed by path. MediaStore recomputes TITLE/ARTIST/
+    // ALBUM from the file's embedded tags on every scan — and on modern Android usually
+    // REJECTS direct writes to those columns even with write consent. So the app's own edits
+    // are stored here and re-applied over each scan's freshly-derived values; the MediaStore
+    // write is attempted purely as best-effort for other apps.
+    private val metadataOverridePrefs =
+        context.getSharedPreferences("freqvox_metadata_overrides", Context.MODE_PRIVATE)
+
+    private fun metadataOverrideFor(path: String): Triple<String, String, String>? =
+        metadataOverridePrefs.getString(path, null)
+            ?.split('\u0001')?.takeIf { it.size == 3 }
+            ?.let { Triple(it[0], it[1], it[2]) }
+
     fun getRecentPlayHistory(): Flow<List<PlayHistoryEntity>> {
         val since = System.currentTimeMillis() - 90L * 86_400_000
         return playHistoryDao.getHistorySinceFlow(since)
@@ -99,7 +112,7 @@ class TrackRepository @Inject constructor(
                 val rawTitle = cursor.getString(titleColumn) ?: continue
                 if (rawTitle.isBlank()) continue
                 val rawArtist = cursor.getString(artistColumn)
-                val album = cursor.getString(albumColumn) ?: ""
+                var finalAlbum = cursor.getString(albumColumn) ?: ""
                 val duration = cursor.getLong(durationColumn)
                 val dateAdded = cursor.getLong(dateAddedColumn)
                 val rawDataPath = cursor.getString(dataColumn) ?: ""
@@ -158,6 +171,15 @@ class TrackRepository @Inject constructor(
                     }
                 }
 
+                // User "Edit info" overrides win over everything derived above — MediaStore
+                // and the heuristics rebuild stale values on every scan, which used to
+                // silently revert the user's edits.
+                metadataOverrideFor(path)?.let { (t, a, al) ->
+                    finalTitle = t
+                    finalArtist = a
+                    finalAlbum = al
+                }
+
                 // STATS PRESERVATION: look up by PATH (stable across MediaStore
                 // re-indexes), not by id. Without this every scan would either
                 // miss the row entirely (id changed) or overwrite playCount /
@@ -171,7 +193,7 @@ class TrackRepository @Inject constructor(
                         id = id,
                         title = finalTitle,
                         artist = finalArtist,
-                        album = album,
+                        album = finalAlbum,
                         duration = duration,
                         dateAdded = dateAdded,
                         path = path,
@@ -427,12 +449,19 @@ class TrackRepository @Inject constructor(
     suspend fun updateTrackMetadata(trackId: Long, title: String, artist: String, album: String) =
         withContext(Dispatchers.IO) {
             val t = trackDao.getTrackById(trackId) ?: return@withContext
+            // Persist as an override FIRST so the next scan re-applies it instead of
+            // rebuilding the old values from MediaStore/heuristics.
+            metadataOverridePrefs.edit().putString(
+                t.path,
+                listOf(title.trim(), artist.trim(), album.trim()).joinToString("\u0001")
+            ).apply()
             trackDao.updateTrack(t.copy(title = title.trim(), artist = artist.trim(), album = album.trim()))
         }
 
     /** Removes all app data for a track after the media file has been deleted (or user chose library-only removal). */
     suspend fun purgeTrackFromLibrary(trackId: Long) = withContext(Dispatchers.IO) {
         val path = trackDao.getTrackById(trackId)?.path
+        if (path != null) metadataOverridePrefs.edit().remove(path).apply()
         trackDao.deleteTrackTagsForTrack(trackId)
         trackDao.deletePlayHistoryForTrack(trackId)
         trackDao.deleteSkipHistoryForTrack(trackId)

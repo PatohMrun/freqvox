@@ -103,19 +103,23 @@ fun TrackActionsDialogs(
         pendingDeleteTrackId = null
     }
 
-    // Metadata edit — on Android 11+ the write needs consent first, then we apply + update the DB.
-    // Saveable so a config change during the system consent sheet doesn't strand the pending edit.
+    // Metadata edit. The edit ALWAYS lands in the app's own library (stored as an override
+    // that survives rescans — see TrackRepository); the MediaStore write is best-effort only,
+    // because modern Android usually rejects TITLE/ARTIST/ALBUM writes (they're recomputed
+    // from the file's tags) — that rejection used to block the whole edit with
+    // "Couldn't update this file". Saveable so a config change during the system consent
+    // sheet doesn't strand the pending edit.
     var pendingEdit by rememberSaveable { mutableStateOf<Pair<Long, Triple<String, String, String>>?>(null) }
     val editLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartIntentSenderForResult()
     ) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
-            pendingEdit?.let { (id, v) ->
-                if (MediaMetadataWriter.applyUpdate(context, id, v.first, v.second, v.third)) {
-                    viewModel.updateTrackMetadata(id, v.first, v.second, v.third)
-                    viewModel.postSnackbar("Info updated")
-                } else viewModel.postSnackbar("Couldn't update this file")
+        pendingEdit?.let { (id, v) ->
+            if (result.resultCode == Activity.RESULT_OK) {
+                MediaMetadataWriter.applyUpdate(context, id, v.first, v.second, v.third)
             }
+            // Consent denied only skips the MediaStore attempt — the in-app edit still applies.
+            viewModel.updateTrackMetadata(id, v.first, v.second, v.third)
+            viewModel.postSnackbar("Info updated")
         }
         pendingEdit = null
     }
@@ -126,17 +130,18 @@ fun TrackActionsDialogs(
             onSave = { title, artist, album ->
                 val id = track.id
                 state.closeEditDialog()
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    val req = MediaMetadataWriter.createWriteRequest(context, id)
-                    if (req != null) {
-                        pendingEdit = id to Triple(title, artist, album)
-                        editLauncher.launch(req)
-                    } else viewModel.postSnackbar("Couldn't request edit permission")
+                val req = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    MediaMetadataWriter.createWriteRequest(context, id)
+                } else null
+                if (req != null) {
+                    pendingEdit = id to Triple(title, artist, album)
+                    editLauncher.launch(req)
                 } else {
-                    if (MediaMetadataWriter.applyUpdate(context, id, title, artist, album)) {
-                        viewModel.updateTrackMetadata(id, title, artist, album)
-                        viewModel.postSnackbar("Info updated")
-                    } else viewModel.postSnackbar("Couldn't update this file")
+                    // No consent flow available (pre-R, or the request failed) — try the
+                    // resolver directly, but apply the in-app edit regardless.
+                    MediaMetadataWriter.applyUpdate(context, id, title, artist, album)
+                    viewModel.updateTrackMetadata(id, title, artist, album)
+                    viewModel.postSnackbar("Info updated")
                 }
             },
             onDismiss = { state.closeEditDialog() }
