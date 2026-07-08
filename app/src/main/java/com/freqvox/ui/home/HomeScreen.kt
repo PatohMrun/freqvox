@@ -175,9 +175,14 @@ fun HomeScreen(
     val dailyMixes by viewModel.dailyMixes.collectAsStateWithLifecycle()
     val reachedEnd = pageCount >= maxPages
 
-    val heroTrack = currentTrack
-        ?: activeTracks.find { it.id == playHistory.firstOrNull()?.trackId }
-        ?: activeTracks.firstOrNull()
+    // "Jump Back In" = the PREVIOUS song, not the current one. The current track already owns
+    // the mini-player and full player — duplicating it here wasted the hero card (the original
+    // design intent was "what you were listening to before this"). Most recent history entry
+    // that isn't the current track wins; falls back to the current track (no history yet) and
+    // then to anything at all (fresh install).
+    val heroTrack = activeTracks.find { track ->
+        track.id == playHistory.firstOrNull { it.trackId != currentTrack?.id }?.trackId
+    } ?: currentTrack ?: activeTracks.firstOrNull()
 
     val listState = rememberLazyListState()
 

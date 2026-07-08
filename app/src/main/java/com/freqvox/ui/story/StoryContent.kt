@@ -222,17 +222,18 @@ object StoryContent {
         return out
     }
 
+    /** One milestone as a single story card — the scheduler composes these into the active drop. */
+    fun milestoneSegment(def: MilestoneDef): StorySegment = StorySegment(
+        "m-${def.key}", SegmentKind.MILESTONE, def.title, def.body,
+        def.track?.let { SegmentVisual.AlbumArt(it) } ?: SegmentVisual.Emoji(def.emoji),
+        accent = accentFor(def.key)
+    )
+
     fun milestoneDrop(def: MilestoneDef, epochDay: Long): StoryDrop = StoryDrop(
         id = "milestone-${def.key}",
         createdDay = epochDay,
         kind = SegmentKind.MILESTONE,
-        segments = listOf(
-            StorySegment(
-                "m-${def.key}", SegmentKind.MILESTONE, def.title, def.body,
-                def.track?.let { SegmentVisual.AlbumArt(it) } ?: SegmentVisual.Emoji(def.emoji),
-                accent = accentFor(def.key)
-            )
-        )
+        segments = listOf(milestoneSegment(def))
     )
 
     /** A multi-segment "Your week in Freqvox" recap. Segments are included only when they have data. */

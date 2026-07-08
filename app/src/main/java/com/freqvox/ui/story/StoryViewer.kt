@@ -140,7 +140,9 @@ fun StoryViewer(
                 modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
                 horizontalArrangement = Arrangement.End
             ) {
-                if (onShare != null && drop.kind == SegmentKind.RECAP) {
+                // Composed drops can carry the recap under a MILESTONE kind — offer share
+                // whenever recap content is actually present, not just when it leads.
+                if (onShare != null && drop.segments.any { it.kind == SegmentKind.RECAP }) {
                     IconButton(onClick = onShare) {
                         Icon(Icons.Default.Share, contentDescription = "Share", tint = Color.White)
                     }

@@ -619,11 +619,11 @@ class MainViewModel @Inject constructor(
             storyScheduler.activeDrop(ListeningStats(), emptyList(), storyEpochDay)
         )
     val hasUnseenStory: StateFlow<Boolean> = combine(activeStoryDrop, _storySeenBump) { drop, _ ->
-        storyScheduler.isUnseen(drop.id)
+        storyScheduler.isUnseen(drop)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     fun markStorySeen() {
-        storyScheduler.markSeen(activeStoryDrop.value.id)
+        storyScheduler.markSeen(activeStoryDrop.value)
         _storySeenBump.value++
     }
 
