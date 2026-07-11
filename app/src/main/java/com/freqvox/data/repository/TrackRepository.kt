@@ -81,6 +81,10 @@ class TrackRepository @Inject constructor(
     fun getActiveTracks(recentThreshold: Long): Flow<List<TrackEntity>> = 
         trackDao.getActiveTracks(recentThreshold)
 
+    /** Mid-scan flush size: small enough that the first songs appear near-instantly,
+     *  large enough that Room isn't hammered with tiny transactions. */
+    private val SCAN_FLUSH_BATCH = 100
+
     suspend fun scanLibrary() = withContext(Dispatchers.IO) {
         val contentResolver: ContentResolver = context.contentResolver
 
@@ -91,6 +95,9 @@ class TrackRepository @Inject constructor(
             trackDao.getAllTracks().first().associateBy { it.path }
 
         val tracksInMediaStore = mutableListOf<TrackEntity>()
+        // How many rows have already been flushed to the DB mid-scan (see the batch upsert
+        // in the cursor loop).
+        var flushedCount = 0
 
         val projection = arrayOf(
             MediaStore.Audio.Media._ID,
@@ -147,22 +154,36 @@ class TrackRepository @Inject constructor(
                     else -> rawArtist
                 }
 
-                // Explicit Fallback: If MediaStore failed to read the metadata, try extracting it directly
-                if (finalArtist == "Unknown Artist") {
-                    val retriever = android.media.MediaMetadataRetriever()
-                    try {
-                        retriever.setDataSource(context, android.net.Uri.parse(path))
-                        val embeddedArtist = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_ARTIST)
-                        val embeddedTitle = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_TITLE)
+                // Row already in the DB? Its metadata was resolved by this same pipeline on a
+                // previous scan — needed both for stats preservation below and to skip the
+                // expensive per-file retriever fallback.
+                val existing = existingByPath[path]
 
-                        if (!embeddedArtist.isNullOrBlank()) finalArtist = embeddedArtist
-                        if (!embeddedTitle.isNullOrBlank()) finalTitle = embeddedTitle
-                    } catch (e: Exception) {
-                        // Ignore extraction errors
-                    } finally {
-                        // release() must run even when setDataSource/extract throws — the old
-                        // in-try release leaked the native retriever on every unreadable file.
-                        runCatching { retriever.release() }
+                // Explicit Fallback: If MediaStore failed to read the metadata, try extracting it
+                // directly. Only for tracks we HAVEN'T resolved before — re-running the native
+                // MediaMetadataRetriever on every unknown-artist file on every scan was the main
+                // reason a rescan took so long that the UI seemed to never update.
+                if (finalArtist == "Unknown Artist") {
+                    if (existing != null && existing.artist != "Unknown Artist") {
+                        // Reuse the previous scan's resolution (retriever/heuristics output).
+                        finalArtist = existing.artist
+                        finalTitle = existing.title
+                    } else {
+                        val retriever = android.media.MediaMetadataRetriever()
+                        try {
+                            retriever.setDataSource(context, android.net.Uri.parse(path))
+                            val embeddedArtist = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_ARTIST)
+                            val embeddedTitle = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_TITLE)
+
+                            if (!embeddedArtist.isNullOrBlank()) finalArtist = embeddedArtist
+                            if (!embeddedTitle.isNullOrBlank()) finalTitle = embeddedTitle
+                        } catch (e: Exception) {
+                            // Ignore extraction errors
+                        } finally {
+                            // release() must run even when setDataSource/extract throws — the old
+                            // in-try release leaked the native retriever on every unreadable file.
+                            runCatching { retriever.release() }
+                        }
                     }
                 }
 
@@ -196,14 +217,11 @@ class TrackRepository @Inject constructor(
                     finalAlbum = al
                 }
 
-                // STATS PRESERVATION: look up by PATH (stable across MediaStore
-                // re-indexes), not by id. Without this every scan would either
-                // miss the row entirely (id changed) or overwrite playCount /
-                // lastPlayed / totalPlayTime / skipCount with the defaults via
-                // @Upsert, making Recently/Most/Least Played go empty and any
-                // cached artwork be re-extracted on every launch.
-                val existing = existingByPath[path]
-
+                // STATS PRESERVATION: `existing` was looked up by PATH above (stable across
+                // MediaStore re-indexes, unlike the id). Without carrying these fields over,
+                // every scan would overwrite playCount / lastPlayed / totalPlayTime /
+                // skipCount with defaults via @Upsert, making Recently/Most/Least Played go
+                // empty and cached artwork be re-extracted on every launch.
                 tracksInMediaStore.add(
                     TrackEntity(
                         id = id,
@@ -221,6 +239,18 @@ class TrackRepository @Inject constructor(
                         skipCount = existing?.skipCount ?: 0
                     )
                 )
+
+                // INCREMENTAL VISIBILITY: flush a batch to the DB as the walk progresses, so
+                // Room's allTracks flow re-emits and songs stream into the UI DURING the scan.
+                // A single upsert at the end meant nothing appeared until the whole library
+                // (incl. slow metadata fallbacks) had been processed — "rescan looks dead".
+                // Migrations/removals still run once at the end (they need the complete set).
+                if (tracksInMediaStore.size - flushedCount >= SCAN_FLUSH_BATCH) {
+                    trackDao.upsertTracks(
+                        tracksInMediaStore.subList(flushedCount, tracksInMediaStore.size).toList()
+                    )
+                    flushedCount = tracksInMediaStore.size
+                }
             }
         }
 
@@ -252,7 +282,13 @@ class TrackRepository @Inject constructor(
             // new one, which fires the ForeignKey.CASCADE on playlist_tracks
             // and silently wipes every track's playlist membership on every
             // scan. @Upsert mutates the row in place, so cross-refs survive.
-            trackDao.upsertTracks(tracksInMediaStore)
+            // Most rows were already flushed incrementally during the walk;
+            // only the final partial batch remains.
+            if (tracksInMediaStore.size > flushedCount) {
+                trackDao.upsertTracks(
+                    tracksInMediaStore.subList(flushedCount, tracksInMediaStore.size).toList()
+                )
+            }
 
             idMigrations.forEach { (oldId, newId) ->
                 trackDao.migrateTrackReferences(oldId, newId)
