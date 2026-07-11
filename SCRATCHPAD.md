@@ -109,3 +109,67 @@ Still no online art fetch — embedded only.
 - JSON via `org.json` (no new dependency; matches RadioViewModel).
 - Settings entry point: the circular logo avatar in the Library header (was inert) → Settings sheet.
 - Backup/restore uses SAF (`CreateDocument`/`OpenDocument`) so no storage permission is needed.
+
+## Discrepancy fixes (user-reported)  → builds 2.90–2.91 (code 128–129)
+- **Edit info everywhere (2.90):** `LibraryTrackItem` gained optional `onRequestEdit` +
+  "Edit info" menu row → Library Songs tab and both Search surfaces now match Home.
+  Library hosts a `TrackActionsDialogs` purely for the edit dialog (add/delete stay local).
+- **Story hold-release (2.91):** registered empty `onLongPress` in the viewer's
+  `detectTapGestures` — releasing a hold now just resumes (WhatsApp behaviour) instead of
+  firing `onTap` (next/prev/dismiss).
+- **Story share = current card (2.91):** `onShare` now receives the visible `StorySegment`;
+  RECAP cards keep the rich weekly poster, everything else gets a new generic poster
+  (`StoryShareCard.shareSegment`: accent gradient + emoji/album-art hero + wrapped title/body).
+  Share button always visible now (was recap-drops only).
+- **Story cadence (2.91):** tip rotation 2 days → DAILY (`TIP_INTERVAL_DAYS = 1`); post-view
+  cooldown weighted ~80% 1-day / 20% 2-day (was uniform 1–2). Effective cadence was locked to
+  every-2-days because the drop id only changed with the tip period. +6 new pool cards:
+  playback speed, save-queue-as-playlist, stop-after-track, Android Auto, radio favourites,
+  Jump Back In (features shipped 2.82–2.90 that the pool didn't cover).
+- **Stats honesty + design (2.91):** play now counts at CUMULATIVE 30s listened (was single
+  segment > 5s — skimming inflated Total plays/Top tracks). StatsSheet: explicit timeframe
+  labels ("All-time totals · a play counts after 30 seconds", "THIS WEEK", "BY HOUR OF DAY ·
+  LAST 90 DAYS") + new day-by-day week bars (reuses `weekDailyMinutes`).
+- **Backup v6 (2.91):** adds `libraryUi` (tab order + last tab), `storyState` (celebrated
+  milestones union-merged — restore no longer re-fires achievements; recap week max-merged),
+  `sidePanelSections`. Never exported by design: VidMate SAF grant, network-consent flags.
+- **Rescan feedback (2.91):** `scanLibrary(reportResult = true)` from the side panel diffs
+  paths across the scan and posts "Scan complete — N new / M removed / up to date (K songs)".
+  Root cause of "never works": the MediaStore observer already auto-scans, so manual passes
+  found nothing and said nothing. Automatic scans stay silent.
+
+## Lyrics persistence + online, live rescan, poster heroes  → 2.92 (code 130)
+- **Lyrics never persisted (root cause ×2):** picked .lrc was parsed into composable state
+  only (gone on dismiss), AND the sidecar lookup did `File(track.path)` where path is a
+  content:// URI → never resolved. New `data/lyrics/LyricsStore`: real path via MediaStore
+  DATA query; picked files COPIED to filesDir/lyrics keyed by md5(realPath) (stable across
+  id reissue); load order = saved copy → sidecar.
+- **Online lyrics (LRCLIB):** `LyricsStore.fetchOnline` — /api/get exact (artist+title+duration)
+  then /api/search fallback; synced preferred, plain accepted; hits persisted like imports.
+  Explicit user tap only. LyricsSheet: "Search online" primary CTA + header icon; plain
+  lyrics render unsynced (no highlight/seek) — parseLrc would have dropped them.
+- **Rescan now streams into UI:** scan flushes upserts every 100 rows during the cursor walk
+  (Room flow re-emits → songs appear DURING scan); final block upserts only the remainder.
+  Also skips MediaMetadataRetriever for already-resolved tracks (reuses previous scan's
+  artist/title) — the per-file retriever on every scan was the big stall.
+- **Share poster heroes:** shareSegment always draws a hero (art → emoji → 🎵 fallback);
+  MainScreen maps IllustrationKind → emoji so illustration cards aren't blank.
+
+## Lyrics source chain + honest network errors  → 2.93 (code 131)
+- **Lyrics fallbacks:** fetchOnline now tries LRCLIB → NetEase (duration-matched ±4s,
+  Referer header) → Lyrics.ovh (plain). Hit from any source persists; result labeled
+  ("Synced lyrics from NetEase"). NotFound only when ALL sources cleanly missed;
+  a source that errored yields Error instead.
+- **"Check your connection" lie fixed (radio):** radio-browser was ONE hardcoded mirror
+  (de1) and any failure — including their server being busy — blamed the user's internet.
+  Now fails over de1 → nl1 → at1, and on total failure checks ConnectivityManager:
+  no network → "No internet connection."; network fine → "The station directory isn't
+  responding — try again shortly." Lyrics sheet error similarly reworded.
+
+## Lyrics sync offset  → 2.95 (code 133)
+- Per-track ± nudge for synced lyrics: "Sync −0.5s / +0.5s" row above the karaoke view
+  (synced only). + fires lines earlier, − delays; tap the readout to reset; clamp ±30s.
+- Remembered per track in "freqvox_lyrics_offsets" prefs, SAME stable key (md5 of real
+  path) as the lyrics file — survives restarts, rescans, id reissue.
+- offsetFor/setOffset are suspend (keyFor does a MediaStore query — off main thread).
+- Highlight uses currentPosition + offset; tap-to-seek compensates (timestamp − offset).
