@@ -44,6 +44,109 @@ object StoryShareCard {
         context.startActivity(Intent.createChooser(send, "Share your week").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     }
 
+    /**
+     * Shares any single story card (tip / milestone / algorithm explainer) as a poster:
+     * accent-derived gradient, the card's emoji or album art as the hero, then title + body.
+     * The weekly recap keeps its richer dedicated poster ([shareRecap]); this covers the rest,
+     * so the share button always reflects the card actually on screen.
+     */
+    fun shareSegment(
+        context: Context,
+        title: String,
+        body: String,
+        emoji: String?,
+        artPath: String?,
+        accentArgb: Int
+    ) {
+        val w = 1080; val h = 1350
+        val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        val c = Canvas(bmp)
+        val p = Paint(Paint.ANTI_ALIAS_FLAG)
+
+        // Same gradient recipe as the recap poster, seeded by the card's accent.
+        val hsv = FloatArray(3); Color.colorToHSV(accentArgb, hsv)
+        val mid = Color.HSVToColor(floatArrayOf(hsv[0], hsv[1].coerceIn(0.4f, 0.9f), 0.42f))
+        val dark = Color.HSVToColor(floatArrayOf(hsv[0], (hsv[1] * 0.9f).coerceIn(0f, 1f), 0.09f))
+        p.shader = LinearGradient(0f, 0f, 0f, h.toFloat(), intArrayOf(mid, dark), null, Shader.TileMode.CLAMP)
+        c.drawRect(0f, 0f, w.toFloat(), h.toFloat(), p)
+        p.shader = null
+
+        // Hero: album art (rounded square) when it decodes, else an emoji — ALWAYS one of
+        // the two. Cards whose art file is missing/unreadable used to render a blank hole
+        // where the cover should be; now they fall back to a music-note badge.
+        val art = artPath?.let { runCatching { BitmapFactory.decodeFile(it) }.getOrNull() }
+        var textTop = 640f
+        if (art != null) {
+            val size = 480
+            val left = (w - size) / 2f; val top = 180f
+            val scaled = Bitmap.createScaledBitmap(art, size, size, true)
+            val path = Path().apply {
+                addRoundRect(left, top, left + size, top + size, 48f, 48f, Path.Direction.CW)
+            }
+            c.save(); c.clipPath(path)
+            c.drawBitmap(scaled, left, top, p)
+            c.restore()
+            textTop = top + size + 130f
+        } else {
+            val hero = emoji?.takeIf { it.isNotBlank() } ?: "🎵"
+            p.color = Color.WHITE
+            p.textAlign = Paint.Align.CENTER
+            p.textSize = 300f
+            c.drawText(hero, w / 2f, 500f, p)
+            textTop = 680f
+        }
+
+        // Title (wrapped) + body (wrapped, dimmer).
+        p.textAlign = Paint.Align.CENTER
+        p.color = Color.WHITE
+        p.isFakeBoldText = true
+        p.textSize = 74f
+        var y = textTop
+        wrapText(title, p, w - 160f).forEach { line -> c.drawText(line, w / 2f, y, p); y += 88f }
+        y += 24f
+        p.isFakeBoldText = false
+        p.color = Color.argb(210, 255, 255, 255)
+        p.textSize = 44f
+        wrapText(body, p, w - 200f).forEach { line -> c.drawText(line, w / 2f, y, p); y += 60f }
+
+        p.color = Color.argb(170, 255, 255, 255); p.isFakeBoldText = true; p.textSize = 34f
+        c.drawText("F R E Q V O X", w / 2f, h - 80f, p)
+
+        shareBitmap(context, bmp, "freqvox_card.png", title)
+    }
+
+    /** Greedy word wrap against the paint's current text size. */
+    private fun wrapText(text: String, p: Paint, maxWidth: Float): List<String> {
+        val words = text.split(' ')
+        val lines = mutableListOf<String>()
+        var current = StringBuilder()
+        words.forEach { word ->
+            val candidate = if (current.isEmpty()) word else "$current $word"
+            if (p.measureText(candidate) <= maxWidth) {
+                current = StringBuilder(candidate)
+            } else {
+                if (current.isNotEmpty()) lines.add(current.toString())
+                current = StringBuilder(word)
+            }
+        }
+        if (current.isNotEmpty()) lines.add(current.toString())
+        return lines
+    }
+
+    private fun shareBitmap(context: Context, bmp: Bitmap, fileName: String, text: String) {
+        val dir = File(context.cacheDir, "shared").apply { mkdirs() }
+        val file = File(dir, fileName)
+        FileOutputStream(file).use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+        val send = Intent(Intent.ACTION_SEND).apply {
+            type = "image/png"
+            putExtra(Intent.EXTRA_STREAM, uri)
+            putExtra(Intent.EXTRA_TEXT, text)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        context.startActivity(Intent.createChooser(send, "Share").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    }
+
     private fun render(
         weekMinutes: Long, dailyMinutes: List<Float>, topArtist: String?, topTrack: String?, streakDays: Int, artPath: String?
     ): Bitmap {

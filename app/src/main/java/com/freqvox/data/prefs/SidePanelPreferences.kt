@@ -25,5 +25,16 @@ class SidePanelPreferences @Inject constructor(
         prefs.edit().putBoolean(keyFor(title), expanded).apply()
     }
 
+    /** Raw key→expanded map, for backup export. Keys are already section-scoped. */
+    fun exportAll(): Map<String, Boolean> =
+        prefs.all.mapNotNull { (k, v) -> (v as? Boolean)?.let { k to it } }.toMap()
+
+    /** Backup restore: re-applies exported raw keys as-is. */
+    fun importAll(sections: Map<String, Boolean>) {
+        val e = prefs.edit()
+        sections.forEach { (k, v) -> e.putBoolean(k, v) }
+        e.apply()
+    }
+
     private fun keyFor(title: String) = "section_${title.lowercase()}"
 }

@@ -25,6 +25,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import com.freqvox.ui.theme.Fvox
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -257,8 +258,10 @@ fun MainScreen(
                         onOpenProfiles = { scope.launch { drawerState.close() }; showProfilesSheet = true },
                         onRescan = {
                             scope.launch { drawerState.close() }
-                            viewModel.scanLibrary()
                             viewModel.postSnackbar("Rescanning library…")
+                            // reportResult: a completion snackbar with the diff follows —
+                            // the silent version made manual rescans look like they did nothing.
+                            viewModel.scanLibrary(reportResult = true)
                         },
                         onPlaylistClick = { pl ->
                             // Quick-jump: OPEN the playlist in the Library (Playlists tab,
@@ -544,16 +547,54 @@ fun MainScreen(
                     drop = activeStoryDrop,
                     onAction = handleStoryAction,
                     onDismiss = { showStory = false },
-                    onShare = {
-                        com.freqvox.media.StoryShareCard.shareRecap(
-                            context = storyContext,
-                            weekMinutes = listeningStats.weekMinutes,
-                            dailyMinutes = listeningStats.weekDailyMinutes,
-                            topArtist = listeningStats.topArtistTrack?.artist,
-                            topTrack = listeningStats.topTracks.firstOrNull()?.first?.title,
-                            streakDays = listeningStats.currentStreakDays,
-                            artPath = listeningStats.topArtistTrack?.artworkPath
-                        )
+                    onShare = { segment ->
+                        // Share what's on screen: recap cards get the rich weekly poster,
+                        // every other card gets its own poster (emoji/art + title + body).
+                        if (segment.kind == com.freqvox.ui.story.SegmentKind.RECAP) {
+                            com.freqvox.media.StoryShareCard.shareRecap(
+                                context = storyContext,
+                                weekMinutes = listeningStats.weekMinutes,
+                                dailyMinutes = listeningStats.weekDailyMinutes,
+                                topArtist = listeningStats.topArtistTrack?.artist,
+                                topTrack = listeningStats.topTracks.firstOrNull()?.first?.title,
+                                streakDays = listeningStats.currentStreakDays,
+                                artPath = listeningStats.topArtistTrack?.artworkPath
+                            )
+                        } else {
+                            // Every visual type maps to a hero for the poster: emoji cards use
+                            // their own, illustration cards get a themed stand-in (the in-app
+                            // vector art can't be rasterized off-screen), art cards pass their
+                            // cover path (shareSegment falls back to 🎵 if it won't decode).
+                            val heroEmoji = when (val v = segment.visual) {
+                                is com.freqvox.ui.story.SegmentVisual.Emoji -> v.emoji
+                                is com.freqvox.ui.story.SegmentVisual.Illustration -> when (v.kind) {
+                                    com.freqvox.ui.story.IllustrationKind.FEED_FLOW -> "🌊"
+                                    com.freqvox.ui.story.IllustrationKind.TAGS -> "🏷️"
+                                    com.freqvox.ui.story.IllustrationKind.CROSSFADE -> "🎚️"
+                                    com.freqvox.ui.story.IllustrationKind.SHUFFLE -> "🔀"
+                                    com.freqvox.ui.story.IllustrationKind.STATS -> "📊"
+                                    com.freqvox.ui.story.IllustrationKind.GESTURE -> "👆"
+                                    com.freqvox.ui.story.IllustrationKind.TIMER -> "⏲️"
+                                    com.freqvox.ui.story.IllustrationKind.LYRICS -> "🎤"
+                                    com.freqvox.ui.story.IllustrationKind.PLAYLIST -> "🎶"
+                                    com.freqvox.ui.story.IllustrationKind.SHARE -> "📤"
+                                    com.freqvox.ui.story.IllustrationKind.SEARCH -> "🔍"
+                                    com.freqvox.ui.story.IllustrationKind.GENERIC -> "✨"
+                                }
+                                else -> null
+                            }
+                            com.freqvox.media.StoryShareCard.shareSegment(
+                                context = storyContext,
+                                title = segment.title,
+                                body = segment.body,
+                                emoji = heroEmoji,
+                                artPath = (segment.visual as? com.freqvox.ui.story.SegmentVisual.AlbumArt)
+                                    ?.track?.artworkPath,
+                                // Pool cards always set an accent; the violet default matches
+                                // StoryShareCard's own fallback for the rare accent-less card.
+                                accentArgb = (segment.accent ?: Color(0xFF7C4DFF)).toArgb()
+                            )
+                        }
                     }
                 )
             }

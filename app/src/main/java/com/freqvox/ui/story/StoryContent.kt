@@ -113,7 +113,21 @@ object StoryContent {
         ill("how-back-layers", T, "Back, one layer at a time",
             "In Search, Back clears the keyboard first, then your typed search, then tag filters — then it leaves.", IllustrationKind.GESTURE),
         emj("tip-pin-gradient", T, "Two looks, one colour",
-            "A custom accent colours the controls while the backdrop keeps dancing with your music — pin the gradient only if you want both constant.", "🖌️", StoryCta("Appearance", StoryActionType.OPEN_ACCENT))
+            "A custom accent colours the controls while the backdrop keeps dancing with your music — pin the gradient only if you want both constant.", "🖌️", StoryCta("Appearance", StoryActionType.OPEN_ACCENT)),
+
+        // ── Newer features (2.82–2.90) ────────────────────────────────────────
+        emj("tip-speed", T, "Set the pace",
+            "Playback speed lives in the player — slow things down to 0.8× or push a mix to 1.5×.", "⏩"),
+        emj("how-save-queue", T, "Keep that queue",
+            "Built the perfect run of songs? Save the whole queue as a playlist, straight from the queue sheet.", "💾"),
+        emj("tip-stop-after", T, "Just one more song",
+            "Stop after current track finishes what's playing, then goes quiet — no fumbling for pause.", "🛑"),
+        emj("tip-auto", T, "Take it on the road",
+            "Freqvox works with Android Auto — your songs, playlists and tags on the car screen.", "🚗"),
+        emj("tip-radio-fav", T, "Pin your stations",
+            "Heart any radio station to keep it at the top of the Radio tab — favourites even ride along in backups.", "📻"),
+        emj("how-jump-back", T, "Pick up where you left off",
+            "Jump Back In on Home remembers the song you were last playing — one tap resumes it.", "⏮️")
     )
 
     /** A snapshot of the user's live state, used to generate contextual (personalized) tips that

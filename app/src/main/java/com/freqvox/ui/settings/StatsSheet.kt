@@ -49,7 +49,14 @@ fun StatsSheet(
                 color = Fvox.onSurface,
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(start = 4.dp, top = 4.dp, bottom = 16.dp)
+                modifier = Modifier.padding(start = 4.dp, top = 4.dp)
+            )
+            // Timeframes used to be implicit, which made numbers feel arbitrary.
+            Text(
+                text = "All-time totals · a play counts after 30 seconds",
+                color = Fvox.onSurface.copy(alpha = 0.45f),
+                fontSize = 12.sp,
+                modifier = Modifier.padding(start = 4.dp, top = 2.dp, bottom = 16.dp)
             )
 
             val hours = stats.totalMinutes / 60
@@ -101,9 +108,9 @@ fun StatsSheet(
                 return@Column
             }
 
-            // ── Momentum: streak + weekly goal ─────────────────────────────────
+            // ── This week: streak + goal + day-by-day ──────────────────────────
             Spacer(modifier = Modifier.height(28.dp))
-            SectionLabel("MOMENTUM")
+            SectionLabel("THIS WEEK")
             Row(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.padding(top = 8.dp)
@@ -121,10 +128,14 @@ fun StatsSheet(
                     modifier = Modifier.weight(1f)
                 )
             }
+            if (stats.weekDailyMinutes.size == 7) {
+                Spacer(modifier = Modifier.height(12.dp))
+                WeekDayBars(fractions = stats.weekDailyMinutes, accent = accent)
+            }
 
             // ── Listening by hour ──────────────────────────────────────────────
             Spacer(modifier = Modifier.height(28.dp))
-            SectionLabel("BY HOUR OF DAY")
+            SectionLabel("BY HOUR OF DAY · LAST 90 DAYS")
             stats.peakHour?.let { ph ->
                 Text(
                     text = "Most active around ${formatHour(ph)}",
@@ -264,6 +275,56 @@ private fun SectionLabel(text: String) {
         letterSpacing = 1.5.sp,
         modifier = Modifier.padding(start = 4.dp, bottom = 10.dp)
     )
+}
+
+/**
+ * Day-by-day bars for the current 7-day window. [fractions] come from
+ * ListeningStats.weekDailyMinutes: oldest→today, each normalized against the
+ * week's biggest day (so bars show the SHAPE of the week, not absolute minutes —
+ * the total lives in the goal card above).
+ */
+@Composable
+private fun WeekDayBars(fractions: List<Float>, accent: Color) {
+    val today = java.time.LocalDate.now()
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .background(accent.copy(alpha = 0.10f))
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .height(88.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.Bottom
+    ) {
+        fractions.forEachIndexed { i, f ->
+            // index 6 = today, 5 = yesterday, …
+            val day = today.minusDays((6 - i).toLong())
+            val isToday = i == 6
+            Column(
+                modifier = Modifier.weight(1f),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Bottom
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(60.dp * f.coerceIn(0.04f, 1f))
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(
+                            if (f > 0f) accent.copy(alpha = if (isToday) 1f else 0.55f)
+                            else Fvox.onSurface.copy(alpha = 0.08f)
+                        )
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    day.dayOfWeek.name.take(1),
+                    color = Fvox.onSurface.copy(alpha = if (isToday) 0.8f else 0.4f),
+                    fontSize = 10.sp,
+                    fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal
+                )
+            }
+        }
+    }
 }
 
 @Composable

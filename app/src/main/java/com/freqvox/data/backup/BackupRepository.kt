@@ -58,7 +58,10 @@ class BackupRepository @Inject constructor(
     private val artworkPrefs: ArtworkPreferences,
     private val eqManager: FreqvoxEqualizerManager,
     private val accentPrefs: com.freqvox.data.prefs.AccentPreferences,
-    private val tagProfilePrefs: com.freqvox.data.prefs.TagProfilePreferences
+    private val tagProfilePrefs: com.freqvox.data.prefs.TagProfilePreferences,
+    private val libraryUiPrefs: com.freqvox.data.prefs.LibraryUiPreferences,
+    private val storyPrefs: com.freqvox.data.prefs.StoryPreferences,
+    private val sidePanelPrefs: com.freqvox.data.prefs.SidePanelPreferences
 ) {
     // Radio favourites live in RadioViewModel's prefs file. They're exported/restored as the
     // OPAQUE stored rows (tab-delimited station entries) rather than re-encoding station
@@ -224,6 +227,29 @@ class BackupRepository @Inject constructor(
         val radioArr = JSONArray()
         (radioFavPrefs.getStringSet("station_data", emptySet()) ?: emptySet()).forEach { radioArr.put(it) }
         root.put("radioFavorites", radioArr)
+
+        // v6: Library UI curation — custom tab order + last-open tab.
+        val libUi = JSONObject()
+        libraryUiPrefs.lastTab?.let { libUi.put("lastTab", it) }
+        val tabOrderArr = JSONArray()
+        libraryUiPrefs.tabOrder.forEach { tabOrderArr.put(it) }
+        libUi.put("tabOrder", tabOrderArr)
+        root.put("libraryUi", libUi)
+
+        // v6: story state that misbehaves visibly when lost — celebrated milestones (so a
+        // restore doesn't re-fire every achievement) and the recap week marker. Transient
+        // scheduling state (cooldown, current tip) is deliberately NOT exported.
+        val storyObj = JSONObject()
+        val celebratedArr = JSONArray()
+        storyPrefs.celebratedMilestones().forEach { celebratedArr.put(it) }
+        storyObj.put("celebratedMilestones", celebratedArr)
+        if (storyPrefs.lastRecapWeek >= 0) storyObj.put("lastRecapWeek", storyPrefs.lastRecapWeek)
+        root.put("storyState", storyObj)
+
+        // v6: side-panel section expand/collapse choices.
+        val panelObj = JSONObject()
+        sidePanelPrefs.exportAll().forEach { (k, v) -> panelObj.put(k, v) }
+        root.put("sidePanelSections", panelObj)
 
         return root.toString(2)
     }
@@ -452,6 +478,37 @@ class BackupRepository @Inject constructor(
             radioFavPrefs.edit().putStringSet("station_data", merged).apply()
         }
 
+        // 10) v6: Library UI — the backup's arrangement wins (restoring "my setup" is the
+        //     point); unknown tab names are ignored by the reader, so this can't crash.
+        root.optJSONObject("libraryUi")?.let { ui ->
+            ui.optJSONArray("tabOrder")?.let { arr ->
+                val order = (0 until arr.length()).mapNotNull { arr.optString(it).takeIf { s -> s.isNotBlank() } }
+                if (order.isNotEmpty()) libraryUiPrefs.tabOrder = order
+            }
+            ui.optString("lastTab").takeIf { it.isNotBlank() }?.let { libraryUiPrefs.lastTab = it }
+        }
+
+        // 11) v6: story state — celebrated milestones are union-merged so already-earned
+        //     achievements don't re-fire after a restore; recap week takes the max.
+        root.optJSONObject("storyState")?.let { st ->
+            st.optJSONArray("celebratedMilestones")?.let { arr ->
+                for (i in 0 until arr.length()) {
+                    arr.optString(i).takeIf { it.isNotBlank() }
+                        ?.let { storyPrefs.markMilestoneCelebrated(it) }
+                }
+            }
+            if (st.has("lastRecapWeek")) {
+                storyPrefs.lastRecapWeek = maxOf(storyPrefs.lastRecapWeek, st.optLong("lastRecapWeek"))
+            }
+        }
+
+        // 12) v6: side-panel section states.
+        root.optJSONObject("sidePanelSections")?.let { po ->
+            val map = mutableMapOf<String, Boolean>()
+            po.keys().forEach { k -> map[k] = po.optBoolean(k) }
+            if (map.isNotEmpty()) sidePanelPrefs.importAll(map)
+        }
+
         return Result.Success(
             "Restored: $tagsApplied tag(s) on $tracksMatched track(s), $playlistsRestored playlist(s)"
         )
@@ -477,9 +534,12 @@ class BackupRepository @Inject constructor(
         // "settings" block (crossfade / album mode / volume normalization / theme / art policy).
         // v4 extends "settings" with the equalizer (enabled / preset / band levels).
         // v5 adds the custom accent (settings), "tagProfiles" (tag → EQ preset),
-        // "metadataOverrides" (Edit-info fixes) and "radioFavorites". Older files simply lack
-        // the newer keys and restore fine — every added block/field is guarded by a presence
-        // check, so v1–v4 backups remain fully compatible.
-        private const val BACKUP_VERSION = 5
+        // "metadataOverrides" (Edit-info fixes) and "radioFavorites". v6 adds "libraryUi"
+        // (tab order/last tab), "storyState" (celebrated milestones + recap week) and
+        // "sidePanelSections". Older files simply lack the newer keys and restore fine —
+        // every added block/field is guarded by a presence check, so v1–v5 backups remain
+        // fully compatible. Deliberately NEVER exported: the VidMate SAF grant (a URI
+        // permission can't survive restore) and network-consent flags (per-device choice).
+        private const val BACKUP_VERSION = 6
     }
 }

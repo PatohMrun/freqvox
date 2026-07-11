@@ -46,7 +46,7 @@ fun StoryViewer(
     drop: StoryDrop,
     onAction: (StoryActionType) -> Unit,
     onDismiss: () -> Unit,
-    onShare: (() -> Unit)? = null
+    onShare: ((StorySegment) -> Unit)? = null
 ) {
     BackHandler(onBack = onDismiss)
 
@@ -94,6 +94,10 @@ fun StoryViewer(
                         tryAwaitRelease()
                         paused = false
                     },
+                    // Consumes holds: with onLongPress registered, releasing a press held past
+                    // the long-press timeout no longer fires onTap — so hold-to-pause just
+                    // RESUMES on release (WhatsApp behaviour) instead of skipping/dismissing.
+                    onLongPress = { },
                     onTap = { offset ->
                         if (offset.x < size.width / 2f) {
                             if (index > 0) index-- else progress = 0f
@@ -140,11 +144,11 @@ fun StoryViewer(
                 modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
                 horizontalArrangement = Arrangement.End
             ) {
-                // Composed drops can carry the recap under a MILESTONE kind — offer share
-                // whenever recap content is actually present, not just when it leads.
-                if (onShare != null && drop.segments.any { it.kind == SegmentKind.RECAP }) {
-                    IconButton(onClick = onShare) {
-                        Icon(Icons.Default.Share, contentDescription = "Share", tint = Color.White)
+                // Shares the card CURRENTLY on screen (it used to always render the weekly
+                // recap regardless of which segment was visible).
+                if (onShare != null) {
+                    IconButton(onClick = { onShare(segment) }) {
+                        Icon(Icons.Default.Share, contentDescription = "Share this card", tint = Color.White)
                     }
                 }
                 IconButton(onClick = onDismiss) {

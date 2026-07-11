@@ -776,8 +776,14 @@ class MainViewModel @Inject constructor(
         observeNowPlayingArtwork()
     }
 
-    fun scanLibrary() {
+    fun scanLibrary(reportResult: Boolean = false) {
         viewModelScope.launch {
+            // For a user-initiated rescan, diff the library by PATH across the scan so the
+            // result can be reported. Without this the manual "Rescan library" looked dead:
+            // the MediaStore observer already auto-scans on change, so a manual pass usually
+            // finds nothing new — and said nothing.
+            val before = if (reportResult)
+                trackRepository.allTracks.first().mapTo(HashSet()) { it.path } else emptySet()
             // isScanning drives the "Scanning…" UI on an empty library. It clears once
             // the scan returns; tracks appear via the allTracks flow as soon as they're
             // upserted, so the list replaces the indicator without waiting for artwork.
@@ -786,6 +792,23 @@ class MainViewModel @Inject constructor(
                 trackRepository.scanLibrary()
             } finally {
                 _isScanning.value = false
+            }
+            if (reportResult) {
+                val after = trackRepository.allTracks.first().mapTo(HashSet()) { it.path }
+                val added = (after - before).size
+                val removed = (before - after).size
+                postSnackbar(
+                    when {
+                        added == 0 && removed == 0 ->
+                            "Scan complete — library is up to date (${after.size} songs)"
+                        else -> buildString {
+                            append("Scan complete — ")
+                            if (added > 0) append("$added new song${if (added == 1) "" else "s"}")
+                            if (added > 0 && removed > 0) append(", ")
+                            if (removed > 0) append("$removed removed")
+                        }
+                    }
+                )
             }
             // Drop hidden-folder entries whose folder no longer has any tracks (everything
             // in it was deleted/moved), so the hidden list doesn't accumulate dead folders.

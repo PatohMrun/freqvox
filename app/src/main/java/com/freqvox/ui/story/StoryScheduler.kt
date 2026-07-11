@@ -88,9 +88,11 @@ class StoryScheduler @Inject constructor(
     fun markSeen(drop: StoryDrop) {
         // Only consuming NEW content starts a cooldown — re-viewing the current drop
         // (tapping the faded ring) must not keep pushing the next one further out.
+        // Weighted, not uniform: mostly a 1-day gap (daily feel), with an occasional
+        // 2-day gap (~1 in 5) purely to break the monotony of a fixed rhythm.
         if (prefs.lastSeenDropId != drop.id) {
-            prefs.nextDropEarliestDay =
-                java.time.LocalDate.now().toEpochDay() + (1..MAX_GAP_DAYS).random()
+            val gap = if ((1..5).random() == 1) 2L else 1L
+            prefs.nextDropEarliestDay = java.time.LocalDate.now().toEpochDay() + gap
         }
         prefs.lastSeenDropId = drop.id
         drop.id.split('|').forEach { part ->
@@ -104,9 +106,10 @@ class StoryScheduler @Inject constructor(
     }
 
     companion object {
-        /** The rotating tip refreshes every 2 days (was 3 — "felt distanced"). */
-        private const val TIP_INTERVAL_DAYS = 2L
-        /** Post-view cooldown for ROUTINE drops: 1–2 days (milestone drops bypass it). */
-        private const val MAX_GAP_DAYS = 2
+        /** The rotating tip refreshes DAILY — the drop id changes every day, so once the
+         *  post-view cooldown (1 day, occasionally 2) lapses there is always fresh content
+         *  to relight the ring. With a 2-day tip period the effective cadence was locked to
+         *  every-2-days even when the cooldown had already expired. */
+        private const val TIP_INTERVAL_DAYS = 1L
     }
 }

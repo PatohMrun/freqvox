@@ -124,6 +124,10 @@ class PlaybackController(
     // it's treated as ordinary navigation.
     private val SKIP_THRESHOLD_MS = 15_000L
 
+    // A track earns a play once it's been listened to for this long in total
+    // (the streaming-industry "counts as a play" bar).
+    private val PLAY_COUNT_THRESHOLD_MS = 30_000L
+
     init {
         startPositionPolling()
     }
@@ -393,9 +397,15 @@ class PlaybackController(
         if (playStartTime <= 0L) return
         val durationPlayed = System.currentTimeMillis() - playStartTime
         if (durationPlayed <= 0L) return
-        // Count the play exactly once (first segment past the 5s threshold); every
-        // other segment only accrues listen time so playCount isn't inflated.
-        val countThisSegment = !playCounted && durationPlayed > 5000L
+        // Count the play exactly once, when CUMULATIVE listening for this track crosses 30s
+        // (the industry-standard "counts as a play" bar — Spotify/Last.fm use the same).
+        // The old 5s bar meant skimming through songs racked up plays, which made Total
+        // plays / Top tracks in Stats look inflated. historyAccumulated + the open segment
+        // is the per-track cumulative, so paused-and-resumed listens still reach the bar.
+        // (Deliberate: clips shorter than 30s never count — matches the standard.)
+        val listenedTotal = historyAccumulated +
+            (if (historySegmentStart > 0L) System.currentTimeMillis() - historySegmentStart else 0L)
+        val countThisSegment = !playCounted && listenedTotal >= PLAY_COUNT_THRESHOLD_MS
         if (countThisSegment) playCounted = true
         scope.launch(Dispatchers.IO) {
             if (countThisSegment) {
