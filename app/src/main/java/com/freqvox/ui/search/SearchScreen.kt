@@ -244,6 +244,7 @@ fun SearchScreen(
                                 },
                                 onAddToPlaylist = { trackActions.openAddToPlaylist(track) },
                                 onRequestDelete = { trackActions.openDeleteFlow(track) },
+                                onRequestEdit = { trackActions.openEdit(track) },
                                 onToggleDislike = { viewModel.toggleDislikeForTrack(track.id) },
                                 onPlayNext = {
                                     playbackController.playTrackNext(track)
@@ -285,6 +286,7 @@ fun SearchScreen(
                             },
                             onAddToPlaylist = { trackActions.openAddToPlaylist(track) },
                             onRequestDelete = { trackActions.openDeleteFlow(track) },
+                            onRequestEdit = { trackActions.openEdit(track) },
                             onToggleDislike = { viewModel.toggleDislikeForTrack(track.id) },
                             onPlayNext = {
                                 playbackController.playTrackNext(track)

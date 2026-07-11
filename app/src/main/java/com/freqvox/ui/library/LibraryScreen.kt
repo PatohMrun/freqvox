@@ -170,6 +170,16 @@ fun LibraryScreen(
     var deleteDialogStep by remember { mutableIntStateOf(0) }
     var pendingDeleteTrackId by rememberSaveable { mutableStateOf<Long?>(null) }
 
+    // Hosts only the "Edit info" dialog + its MediaStore consent flow (shared with Home/Search).
+    // Add-to-playlist and delete keep their existing Library-local dialogs above; those actions
+    // are never opened on this state, so those branches of TrackActionsDialogs stay dormant.
+    val trackActions = com.freqvox.ui.components.rememberTrackActionsState()
+    com.freqvox.ui.components.TrackActionsDialogs(
+        state = trackActions,
+        viewModel = viewModel,
+        playlists = allPlaylists
+    )
+
     // Multi-select (Songs tab). Empty set = normal mode.
     val selectedIds = remember { mutableStateListOf<Long>() }
     val selectionMode = selectedIds.isNotEmpty()
@@ -405,6 +415,7 @@ fun LibraryScreen(
                                 trackToDelete = track
                                 deleteDialogStep = 1
                             },
+                            onRequestEdit = { trackActions.openEdit(track) },
                             onAddToPlaylist = { trackToAdd = track },
                             onToggleDislike = { viewModel.toggleDislikeForTrack(track.id) },
                             onPlayNext = {
@@ -861,6 +872,7 @@ fun LibraryTrackItem(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
     onRequestDelete: (() -> Unit)? = null,
+    onRequestEdit: (() -> Unit)? = null,
     onAddToPlaylist: (() -> Unit)? = null,
     onToggleDislike: (() -> Unit)? = null,
     onPlayNext: (() -> Unit)? = null,
@@ -1010,6 +1022,18 @@ fun LibraryTrackItem(
                             },
                             leadingIcon = {
                                 Icon(Icons.Default.PlaylistAdd, contentDescription = null, tint = Fvox.onSurface)
+                            }
+                        )
+                    }
+                    if (onRequestEdit != null) {
+                        DropdownMenuItem(
+                            text = { Text("Edit info", color = Fvox.onSurface) },
+                            onClick = {
+                                showMenu = false
+                                onRequestEdit.invoke()
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Default.Edit, contentDescription = null, tint = Fvox.onSurface)
                             }
                         )
                     }
