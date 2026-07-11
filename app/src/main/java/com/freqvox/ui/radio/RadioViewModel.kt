@@ -137,7 +137,15 @@ private val GENRE_TAGS = mapOf(
 
 val ALL_GENRES: List<String> = listOf("Top", "Favorites") + GENRE_TAGS.keys.filter { it != "Top" && it != "Favorites" }
 
-private const val API_BASE = "https://de1.api.radio-browser.info/json/stations"
+// radio-browser.info is a volunteer-run mirror network and individual mirrors go down or
+// get overloaded regularly. A single hardcoded server meant every mirror hiccup surfaced
+// as "check your connection" even on perfectly healthy internet — so each request now
+// fails over across mirrors in order.
+private val API_MIRRORS = listOf(
+    "https://de1.api.radio-browser.info/json/stations",
+    "https://nl1.api.radio-browser.info/json/stations",
+    "https://at1.api.radio-browser.info/json/stations"
+)
 private const val LIMIT = 50
 
 @HiltViewModel
@@ -237,32 +245,54 @@ class RadioViewModel @Inject constructor(
         }
         _isLoading.value = true
         _error.value = null
-        try {
-            val countryParam = if (countryCode != null) "&countrycode=${URLEncoder.encode(countryCode, "UTF-8")}" else ""
-            val urlString = when {
-                query.isNotBlank() -> {
-                    val encoded = URLEncoder.encode(query, "UTF-8")
-                    "$API_BASE/search?name=$encoded&limit=$LIMIT&hidebroken=true&order=clickcount&reverse=true$countryParam"
-                }
-                genre == "Top" -> {
-                    if (countryCode != null) {
-                        "$API_BASE/bycountrycodeexact/${URLEncoder.encode(countryCode, "UTF-8")}?limit=$LIMIT&hidebroken=true&order=clickcount&reverse=true"
-                    } else {
-                        "$API_BASE/topclick?limit=$LIMIT&hidebroken=true"
-                    }
-                }
-                else -> {
-                    val tag = URLEncoder.encode(GENRE_TAGS[genre] ?: genre.lowercase(), "UTF-8")
-                    "$API_BASE/bytag/$tag?limit=$LIMIT&hidebroken=true&order=clickcount&reverse=true$countryParam"
+        val countryParam = if (countryCode != null) "&countrycode=${URLEncoder.encode(countryCode, "UTF-8")}" else ""
+        val endpoint = when {
+            query.isNotBlank() -> {
+                val encoded = URLEncoder.encode(query, "UTF-8")
+                "/search?name=$encoded&limit=$LIMIT&hidebroken=true&order=clickcount&reverse=true$countryParam"
+            }
+            genre == "Top" -> {
+                if (countryCode != null) {
+                    "/bycountrycodeexact/${URLEncoder.encode(countryCode, "UTF-8")}?limit=$LIMIT&hidebroken=true&order=clickcount&reverse=true"
+                } else {
+                    "/topclick?limit=$LIMIT&hidebroken=true"
                 }
             }
-            _stations.value = fetchStations(urlString, genre)
-        } catch (e: Exception) {
-            _error.value = "Couldn't load stations — check your connection."
-            _stations.value = emptyList()
-        } finally {
-            _isLoading.value = false
+            else -> {
+                val tag = URLEncoder.encode(GENRE_TAGS[genre] ?: genre.lowercase(), "UTF-8")
+                "/bytag/$tag?limit=$LIMIT&hidebroken=true&order=clickcount&reverse=true$countryParam"
+            }
         }
+        // Fail over across mirrors — one flaky volunteer server must not read as an
+        // internet problem on the user's side.
+        var loaded = false
+        for (base in API_MIRRORS) {
+            try {
+                _stations.value = fetchStations("$base$endpoint", genre)
+                loaded = true
+                break
+            } catch (_: Exception) {
+                // try the next mirror
+            }
+        }
+        if (!loaded) {
+            // Only blame connectivity when there genuinely is none; otherwise it's the
+            // directory service having a bad moment, and the message should say so.
+            _error.value = if (hasNetwork()) {
+                "The station directory isn't responding — try again shortly."
+            } else {
+                "No internet connection."
+            }
+            _stations.value = emptyList()
+        }
+        _isLoading.value = false
+    }
+
+    private fun hasNetwork(): Boolean {
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE)
+            as? android.net.ConnectivityManager ?: return true
+        val caps = cm.getNetworkCapabilities(cm.activeNetwork ?: return false) ?: return false
+        return caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }
 
     private suspend fun fetchStations(urlString: String, genre: String): List<RadioStation> =
