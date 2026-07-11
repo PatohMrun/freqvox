@@ -130,15 +130,14 @@ fun AppSidePanel(
         modifier = Modifier.width(320.dp)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            Column(
+            // ── Library header — PINNED above the scroll area, so the identity and the
+            // tracks·hours line stay visible while the sections scroll underneath. ──────
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
-                    .weight(1f)
-                    .verticalScroll(rememberScrollState())
                     .padding(horizontal = 16.dp)
-                    .padding(top = 24.dp, bottom = 16.dp)
+                    .padding(top = 24.dp, bottom = 14.dp)
             ) {
-            // ── Library header ──────────────────────────────────────────────────
-            Row(verticalAlignment = Alignment.CenterVertically) {
                 Surface(
                     modifier = Modifier.size(48.dp),
                     shape = CircleShape,
@@ -160,6 +159,15 @@ fun AppSidePanel(
                     )
                 }
             }
+            HorizontalDivider(color = Fvox.onSurface.copy(alpha = 0.08f), thickness = 1.dp)
+
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp)
+                    .padding(top = 12.dp, bottom = 16.dp)
+            ) {
 
             AccordionSection(viewModel, "INSIGHTS") {
                 PanelRow(Icons.Default.QueryStats, "Listening stats", onOpenStats)
