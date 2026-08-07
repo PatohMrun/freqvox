@@ -228,11 +228,22 @@ class CrossfadeController(
         normTail = normMain
         normMain = 1f
 
-        // Start tailPlayer exactly at the handoff point to maintain perfect beat-sync.
-        // While there is a microscopic hardware gap as AudioTrack wakes up, attempting
-        // to stagger this causes overlapping echoes because ExoPlayer decoder warmup
-        // times are unpredictable across devices.
-        tailPlayer.volume = rampTail * duckFactor * prefs.sleepGain
+        // The fade timeline is the outgoing track's ACTUAL remaining audio, measured now.
+        // If this trigger landed late (busy main thread), remaining is shorter than the
+        // nominal window, and a ramp sized to the nominal window would spend its last
+        // stretch fading against a tail that has already run out of file.
+        val handoffPos = mainPlayer.currentPosition
+        val duration = mainPlayer.duration
+        val fadeMs =
+            if (duration != C.TIME_UNSET) (duration - handoffPos).coerceIn(200L, windowMs)
+            else windowMs
+
+        // Correct the tail onto the true handoff point before starting it. Pre-arm seeked it
+        // to the NOMINAL window start; if the trigger fired late the tail would replay audio
+        // the listener already heard. The corrective seek lands inside already-buffered data
+        // on a warm decoder, so it is cheap and keeps the handoff beat-synced.
+        tailPlayer.seekTo(handoffPos)
+        tailPlayer.volume = rampTail * duckFactor * prefs.sleepGain * normTail
         tailPlayer.play()
 
         // Incoming track: jump the session player forward NOW.
@@ -245,30 +256,50 @@ class CrossfadeController(
         mainPlayer.seekToNextMediaItem()
         mainPlayer.play()
 
-        ramp(windowMs)
+        ramp(fadeMs, tailFadeStart = handoffPos)
     }
 
-    private fun ramp(windowMs: Long) {
-        val steps = (windowMs / RAMP_STEP_MS).coerceAtLeast(1)
-        var i = 0L
+    private fun ramp(fadeMs: Long, tailFadeStart: Long) {
+        // Wall-clock safety budget, accumulated only while playback is intended (playWhenReady):
+        // if a position stalls — incoming track stuck buffering, tail wedged — the fade still
+        // ends instead of stranding crossfading=true forever. A user PAUSE doesn't accumulate,
+        // so a paused fade waits indefinitely and resumes mid-fade.
+        var activeMs = 0L
         val stepper = object : Runnable {
             override fun run() {
                 if (!crossfading) return                // cancelled
-                i++
-                val t = (i.toFloat() / steps).coerceIn(0f, 1f)
-                
+
+                // Gains follow the players' MEDIA positions, not the wall clock. The incoming
+                // track's position sits at 0 until its pipeline actually produces sound
+                // (decoder + AudioTrack refill + Bluetooth latency, up to ~500ms), so it fades
+                // in from true silence instead of popping in at whatever level a wall-clock
+                // ramp had already reached — the old "volume dips, then jumps up" transition.
+                // Positions also freeze on pause, so a mid-fade pause resumes mid-fade rather
+                // than completing silently and snapping to full on resume.
+                val tMain = (mainPlayer.currentPosition.toFloat() / fadeMs).coerceIn(0f, 1f)
+                val tailDone = tailPlayer.playbackState == Player.STATE_ENDED ||
+                    tailPlayer.playbackState == Player.STATE_IDLE
+                val tTail =
+                    if (tailDone) 1f
+                    else ((tailPlayer.currentPosition - tailFadeStart).toFloat() / fadeMs)
+                        .coerceIn(0f, 1f)
+
                 // Equal-Power Crossfade: Human hearing perceives audio power logarithmically.
-                // A linear crossfade (t and 1-t) causes acoustic power to drop by 50% in the middle 
+                // A linear crossfade (t and 1-t) causes acoustic power to drop by 50% in the middle
                 // of the fade, creating an audible "volume dip".
                 // Using sine/cosine curves maintains a constant 100% power output throughout the entire transition.
-                rampMain = kotlin.math.sin(t * (Math.PI / 2)).toFloat()
-                rampTail = kotlin.math.cos(t * (Math.PI / 2)).toFloat()
+                rampMain = kotlin.math.sin(tMain * (Math.PI / 2)).toFloat()
+                rampTail = kotlin.math.cos(tTail * (Math.PI / 2)).toFloat()
                 applyVolumes()
 
-                if (t >= 1f) finishCrossfade() else handler.postDelayed(this, RAMP_STEP_MS)
+                if (mainPlayer.playWhenReady) activeMs += RAMP_STEP_MS
+                val timedOut = activeMs > fadeMs * 2 + 3000L
+
+                if ((tMain >= 1f && tTail >= 1f) || timedOut) finishCrossfade()
+                else handler.postDelayed(this, RAMP_STEP_MS)
             }
         }
-        handler.postDelayed(stepper, RAMP_STEP_MS)
+        handler.post(stepper)
     }
 
     private fun finishCrossfade() {

@@ -123,6 +123,7 @@ fun LibraryScreen(
     onSearchClick: () -> Unit,
     onOpenPanel: () -> Unit = {},
     hasUnseenStory: Boolean = false,
+    storyCardFlags: List<Boolean> = emptyList(),
     onOpenStory: () -> Unit = {},
     viewModel: MainViewModel = hiltViewModel()
 ) {
@@ -287,30 +288,12 @@ fun LibraryScreen(
                     )
                 }
                 Spacer(modifier = Modifier.width(8.dp))
-                // Logo DP → the current story, same ring language as Home: vivid pulsing ring =
-                // unseen, faint static ring = seen. (Settings moved to the gear above.)
-                val ringPulse = rememberInfiniteTransition(label = "ring")
-                val pulse by ringPulse.animateFloat(
-                    initialValue = 1f, targetValue = 1.06f,
-                    animationSpec = infiniteRepeatable(tween(1100), RepeatMode.Reverse), label = "ringScale"
-                )
-                Box(
-                    modifier = Modifier
-                        .size(46.dp)
-                        .scale(if (hasUnseenStory) pulse else 1f)
-                        .then(
-                            if (hasUnseenStory)
-                                Modifier.border(
-                                    2.5.dp,
-                                    Brush.sweepGradient(listOf(Fvox.accent, Fvox.accentAlt, Fvox.accent)),
-                                    CircleShape
-                                )
-                            else
-                                Modifier.border(1.5.dp, Fvox.onSurface.copy(alpha = 0.18f), CircleShape)
-                        )
-                        .padding(3.dp)
-                        .clickable { onOpenStory() },
-                    contentAlignment = Alignment.Center
+                // Logo DP → the current story, same ring language as Home: WhatsApp-style
+                // segmented ring — one arc per card, vivid unviewed, faint viewed.
+                com.freqvox.ui.story.StoryRing(
+                    seenFlags = storyCardFlags,
+                    hasUnseen = hasUnseenStory,
+                    modifier = Modifier.clickable { onOpenStory() }
                 ) {
                     Surface(
                         modifier = Modifier.fillMaxSize(),

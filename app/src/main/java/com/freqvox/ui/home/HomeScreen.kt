@@ -96,6 +96,7 @@ fun HomeScreen(
     onOpenPanel: () -> Unit = {},
     onSearchClick: () -> Unit = {},
     hasUnseenStory: Boolean = false,
+    storyCardFlags: List<Boolean> = emptyList(),
     onOpenStory: () -> Unit = {},
     onLongPressStory: () -> Unit = {},
     viewModel: MainViewModel = hiltViewModel()
@@ -247,6 +248,7 @@ fun HomeScreen(
             onCycleTheme = { viewModel.cycleTheme() },
             onOpenPanel = onOpenPanel,
             hasUnseenMoment = hasUnseenStory,
+            storyCardFlags = storyCardFlags,
             onOpenMoments = onOpenStory,
             onLongPressMoments = onLongPressStory,
             modifier = Modifier.padding(horizontal = 24.dp, vertical = 24.dp)
@@ -635,7 +637,7 @@ fun SpotlightFeedBlock(
 }
 
 @Composable
-fun Header(greeting: String, totalSongs: Int, totalDurationMs: Long, onSearchClick: () -> Unit, themeMode: ThemeMode = ThemeMode.SYSTEM, onCycleTheme: () -> Unit = {}, onOpenPanel: () -> Unit = {}, hasUnseenMoment: Boolean = false, onOpenMoments: () -> Unit = {}, onLongPressMoments: () -> Unit = {}, modifier: Modifier = Modifier) {
+fun Header(greeting: String, totalSongs: Int, totalDurationMs: Long, onSearchClick: () -> Unit, themeMode: ThemeMode = ThemeMode.SYSTEM, onCycleTheme: () -> Unit = {}, onOpenPanel: () -> Unit = {}, hasUnseenMoment: Boolean = false, storyCardFlags: List<Boolean> = emptyList(), onOpenMoments: () -> Unit = {}, onLongPressMoments: () -> Unit = {}, modifier: Modifier = Modifier) {
     val hours = totalDurationMs / (1000 * 60 * 60)
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -707,31 +709,14 @@ fun Header(greeting: String, totalSongs: Int, totalDurationMs: Long, onSearchCli
                 )
             }
             Spacer(modifier = Modifier.width(8.dp))
-            // Logo DP → opens the current story. A vivid, gently pulsing ring means it's unseen;
-            // a faint static ring means seen. (Settings now lives solely on the gear.)
-            val ringPulse = rememberInfiniteTransition(label = "ring")
-            val pulse by ringPulse.animateFloat(
-                initialValue = 1f, targetValue = 1.06f,
-                animationSpec = infiniteRepeatable(tween(1100), RepeatMode.Reverse), label = "ringScale"
-            )
-            val ringScale = if (hasUnseenMoment) pulse else 1f
-            Box(
-                modifier = Modifier
-                    .size(46.dp)
-                    .scale(ringScale)
-                    .then(
-                        if (hasUnseenMoment)
-                            Modifier.border(
-                                2.5.dp,
-                                Brush.sweepGradient(listOf(Fvox.accent, Fvox.accentAlt, Fvox.accent)),
-                                CircleShape
-                            )
-                        else
-                            Modifier.border(1.5.dp, Fvox.onSurface.copy(alpha = 0.18f), CircleShape)
-                    )
-                    .padding(3.dp)
-                    .combinedClickable(onClick = onOpenMoments, onLongClick = onLongPressMoments),
-                contentAlignment = Alignment.Center
+            // Logo DP → opens the current story. WhatsApp-style segmented ring: one arc
+            // per card of the drop, vivid where unviewed, faint where already watched.
+            com.freqvox.ui.story.StoryRing(
+                seenFlags = storyCardFlags,
+                hasUnseen = hasUnseenMoment,
+                modifier = Modifier.combinedClickable(
+                    onClick = onOpenMoments, onLongClick = onLongPressMoments
+                )
             ) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),

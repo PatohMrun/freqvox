@@ -48,9 +48,14 @@
             </intent-filter>
         </service>
         
+        <!-- singleTask: external launches (media-notification tap via sessionActivity, app
+             icon, Android Auto) re-surface the ONE existing instance instead of stacking a
+             fresh MainActivity each time. Default launchMode piled instances up over a long
+             session, so the back gesture had to unwind page after page to leave the app. -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:launchMode="singleTask"
             android:theme="@style/Theme.Freqvox">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

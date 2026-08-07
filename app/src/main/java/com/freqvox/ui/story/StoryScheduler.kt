@@ -77,31 +77,81 @@ class StoryScheduler @Inject constructor(
         return StoryDrop(parts.joinToString("|"), epochDay, kind, segments)
     }
 
+    // ── Per-card view state (WhatsApp-style) ────────────────────────────────────
+    // Seen-ness is tracked per CARD, not per drop: the ring segments per card and greys
+    // out only what was actually displayed, re-opening resumes at the first unviewed
+    // card, and the cooldown starts only once the whole drop has been consumed.
+    // Persistence is keyed by the card's drop-id COMPONENT (m:/r:/t: part), so a watched
+    // card stays watched when an unrelated component changes the composed drop id — the
+    // old full-drop-id scoping wiped everything on any shift (daily tip roll, a milestone
+    // retiring mid-view, the recap arriving) and relit the ring with old cards.
+
+    private fun parts(drop: StoryDrop): List<String> =
+        drop.id.split('|').filter { it.isNotEmpty() }
+
+    /** The drop-id component a card belongs to. Milestone ids self-describe ("m-<key>");
+     *  recap cards belong to the week part, everything else is the closing tip. */
+    private fun partFor(drop: StoryDrop, segment: StorySegment): String = when {
+        segment.kind == SegmentKind.MILESTONE -> "m:" + segment.id.removePrefix("m-")
+        segment.kind == SegmentKind.RECAP -> parts(drop).firstOrNull { it.startsWith("r:") } ?: drop.id
+        else -> parts(drop).firstOrNull { it.startsWith("t:") } ?: drop.id
+    }
+
+    private fun cardKey(drop: StoryDrop, segment: StorySegment): String =
+        partFor(drop, segment) + StoryPreferences.CARD_KEY_SEP + segment.id
+
+    /** One flag per segment (drop order): true = that card has been displayed. */
+    fun seenFlags(drop: StoryDrop): List<Boolean> {
+        val seen = prefs.seenCardKeys()
+        return drop.segments.map { cardKey(drop, it) in seen }
+    }
+
+    /** Where the viewer should resume: the first unviewed card (0 if all seen — replay). */
+    fun firstUnseenIndex(drop: StoryDrop): Int =
+        seenFlags(drop).indexOfFirst { !it }.coerceAtLeast(0)
+
     fun isUnseen(drop: StoryDrop): Boolean {
-        if (prefs.lastSeenDropId == drop.id) return false
+        val seen = prefs.seenCardKeys()
+        val unseen = drop.segments.filter { cardKey(drop, it) !in seen }
+        if (unseen.isEmpty()) return false
         // Event-driven content bypasses the cooldown — an achievement just earned should
         // light the ring now, and composition guarantees it arrives bundled (no chaining).
-        if (drop.segments.any { it.kind == SegmentKind.MILESTONE }) return true
+        if (unseen.any { it.kind == SegmentKind.MILESTONE }) return true
         return java.time.LocalDate.now().toEpochDay() >= prefs.nextDropEarliestDay
     }
 
-    fun markSeen(drop: StoryDrop) {
-        // Only consuming NEW content starts a cooldown — re-viewing the current drop
-        // (tapping the faded ring) must not keep pushing the next one further out.
-        // Weighted, not uniform: mostly a 1-day gap (daily feel), with an occasional
-        // 2-day gap (~1 in 5) purely to break the monotony of a fixed rhythm.
-        if (prefs.lastSeenDropId != drop.id) {
+    /**
+     * Called by the viewer as each card is DISPLAYED. Retirement is piece-wise, so a
+     * partial view spends only what was actually watched:
+     *  - a displayed milestone card is celebrated immediately (never re-surfaces);
+     *  - the weekly recap retires once ALL its cards have been displayed;
+     *  - the post-view cooldown starts only when the WHOLE drop has been consumed
+     *    (bailing early leaves the remaining cards lit — no silent spending).
+     */
+    fun markCardSeen(drop: StoryDrop, segment: StorySegment) {
+        val seen = prefs.markCardSeen(cardKey(drop, segment), parts(drop))
+
+        // Milestone cards carry ids of the form "m-<key>" (see StoryContent.milestoneSegment).
+        if (segment.kind == SegmentKind.MILESTONE && segment.id.startsWith("m-")) {
+            prefs.markMilestoneCelebrated(segment.id.removePrefix("m-"))
+        }
+
+        // Recap retires for its week once every recap-kind card has been seen — so a
+        // recomposed drop tomorrow (new tip) won't resurrect cards already watched.
+        val recapCards = drop.segments.filter { it.kind == SegmentKind.RECAP }
+        if (recapCards.isNotEmpty() && recapCards.all { cardKey(drop, it) in seen }) {
+            drop.id.split('|').firstOrNull { it.startsWith("r:") }
+                ?.removePrefix("r:")?.toLongOrNull()
+                ?.let { prefs.lastRecapWeek = it }
+        }
+
+        // Full consumption → cooldown. Guarded by lastSeenDropId so replaying a finished
+        // drop can't keep pushing the next one out. Weighted, not uniform: mostly a 1-day
+        // gap (daily feel), occasionally 2 (~1 in 5) to break the monotony.
+        if (drop.segments.all { cardKey(drop, it) in seen } && prefs.lastSeenDropId != drop.id) {
             val gap = if ((1..5).random() == 1) 2L else 1L
             prefs.nextDropEarliestDay = java.time.LocalDate.now().toEpochDay() + gap
-        }
-        prefs.lastSeenDropId = drop.id
-        drop.id.split('|').forEach { part ->
-            when {
-                // Viewed milestones are celebrated once and never re-surface.
-                part.startsWith("m:") -> prefs.markMilestoneCelebrated(part.removePrefix("m:"))
-                // A viewed recap retires for its whole week.
-                part.startsWith("r:") -> part.removePrefix("r:").toLongOrNull()?.let { prefs.lastRecapWeek = it }
-            }
+            prefs.lastSeenDropId = drop.id
         }
     }
 

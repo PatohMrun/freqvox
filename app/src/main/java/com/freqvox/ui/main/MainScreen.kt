@@ -90,6 +90,7 @@ fun MainScreen(
     // Header stories — hosted here (not in HomeScreen) so the ring works from every tab and
     // seen-state stays on ONE MainViewModel instance (each nav destination gets its own).
     val hasUnseenStory by viewModel.hasUnseenStory.collectAsStateWithLifecycle()
+    val storyCardFlags by viewModel.storyCardSeenFlags.collectAsStateWithLifecycle()
     val activeStoryDrop by viewModel.activeStoryDrop.collectAsStateWithLifecycle()
     val activeTracks by viewModel.activeTracks.collectAsStateWithLifecycle()
     val taggedTrackIds by viewModel.taggedTrackIds.collectAsStateWithLifecycle()
@@ -138,7 +139,11 @@ fun MainScreen(
         }
     }
 
-    var showStory by remember { mutableStateOf(false) }
+    // The drop being VIEWED is frozen at ring-tap. activeStoryDrop keeps recomposing while
+    // music plays (stats → new drop object, sometimes new id/content); rendering the live
+    // value swapped cards under the open viewer, so seen-marks and the share button could
+    // hit a different card than the one on screen.
+    var viewingStory by remember { mutableStateOf<com.freqvox.ui.story.StoryDrop?>(null) }
     var previewStory by remember { mutableStateOf<com.freqvox.ui.story.StoryDrop?>(null) }
     val storyContext = androidx.compose.ui.platform.LocalContext.current
     // One handler for every story CTA, shared by the real viewer and the QA preview.
@@ -383,7 +388,8 @@ fun MainScreen(
                                             }
                                         },
                                         hasUnseenStory = hasUnseenStory,
-                                        onOpenStory = { showStory = true },
+                                        storyCardFlags = storyCardFlags,
+                                        onOpenStory = { viewingStory = activeStoryDrop.takeIf { d -> d.segments.isNotEmpty() } },
                                         onLongPressStory = {
                                             previewStory = com.freqvox.ui.story.StoryContent.previewDrop(
                                                 listeningStats, java.time.LocalDate.now().toEpochDay()
@@ -405,7 +411,8 @@ fun MainScreen(
                                         viewModel = viewModel,
                                         onOpenPanel = openPanel,
                                         hasUnseenStory = hasUnseenStory,
-                                        onOpenStory = { showStory = true },
+                                        storyCardFlags = storyCardFlags,
+                                        onOpenStory = { viewingStory = activeStoryDrop.takeIf { d -> d.segments.isNotEmpty() } },
                                         onSearchClick = openSearch
                                     )
                                 }
@@ -541,16 +548,22 @@ fun MainScreen(
             )
 
             // ── Story viewer (hosted at root so the ring works from Home AND Library) ──
-            if (showStory) {
-                LaunchedEffect(Unit) { viewModel.markStorySeen() }
+            viewingStory?.let { viewedDrop ->
                 com.freqvox.ui.story.StoryViewer(
-                    drop = activeStoryDrop,
+                    drop = viewedDrop,
                     onAction = handleStoryAction,
-                    onDismiss = { showStory = false },
+                    onDismiss = { viewingStory = null },
+                    // WhatsApp semantics: resume at the first unviewed card; each card
+                    // reports itself seen as it's displayed (no whole-drop spending).
+                    initialIndex = viewModel.firstUnseenStoryIndex(viewedDrop),
+                    onCardSeen = { viewModel.markStoryCardSeen(viewedDrop, it) },
                     onShare = { segment ->
-                        // Share what's on screen: recap cards get the rich weekly poster,
-                        // every other card gets its own poster (emoji/art + title + body).
-                        if (segment.kind == com.freqvox.ui.story.SegmentKind.RECAP) {
+                        // Share what's on screen: only the recap COVER card gets the rich
+                        // weekly poster; every other card — including the recap's own
+                        // sub-cards (top artist, streak, …) — gets a poster of ITSELF.
+                        // Keying the poster off kind==RECAP sent the generic weekly image
+                        // for whichever recap sub-card was actually visible.
+                        if (segment.id == "recap-intro") {
                             com.freqvox.media.StoryShareCard.shareRecap(
                                 context = storyContext,
                                 weekMinutes = listeningStats.weekMinutes,
@@ -567,6 +580,12 @@ fun MainScreen(
                             // cover path (shareSegment falls back to 🎵 if it won't decode).
                             val heroEmoji = when (val v = segment.visual) {
                                 is com.freqvox.ui.story.SegmentVisual.Emoji -> v.emoji
+                                // Chart-style visuals can't be rasterized off-screen either;
+                                // a themed emoji beats shareSegment's generic 🎵 fallback.
+                                is com.freqvox.ui.story.SegmentVisual.Sparkline -> "📈"
+                                is com.freqvox.ui.story.SegmentVisual.StreakCalendar -> "🔥"
+                                is com.freqvox.ui.story.SegmentVisual.Histogram -> "📊"
+                                is com.freqvox.ui.story.SegmentVisual.Bars -> "📊"
                                 is com.freqvox.ui.story.SegmentVisual.Illustration -> when (v.kind) {
                                     com.freqvox.ui.story.IllustrationKind.FEED_FLOW -> "🌊"
                                     com.freqvox.ui.story.IllustrationKind.TAGS -> "🏷️"
@@ -588,8 +607,12 @@ fun MainScreen(
                                 title = segment.title,
                                 body = segment.body,
                                 emoji = heroEmoji,
-                                artPath = (segment.visual as? com.freqvox.ui.story.SegmentVisual.AlbumArt)
-                                    ?.track?.artworkPath,
+                                artPath = when (val v = segment.visual) {
+                                    is com.freqvox.ui.story.SegmentVisual.AlbumArt -> v.track.artworkPath
+                                    is com.freqvox.ui.story.SegmentVisual.ArtCollage ->
+                                        v.tracks.firstOrNull { !it.artworkPath.isNullOrEmpty() }?.artworkPath
+                                    else -> null
+                                },
                                 // Pool cards always set an accent; the violet default matches
                                 // StoryShareCard's own fallback for the rare accent-less card.
                                 accentArgb = (segment.accent ?: Color(0xFF7C4DFF)).toArgb()

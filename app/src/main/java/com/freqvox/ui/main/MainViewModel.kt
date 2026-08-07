@@ -616,14 +616,35 @@ class MainViewModel @Inject constructor(
         .flowOn(Dispatchers.Default)
         .stateIn(
             viewModelScope, SharingStarted.WhileSubscribed(5000),
-            storyScheduler.activeDrop(ListeningStats(), emptyList(), storyEpochDay)
+            // Placeholder until real stats emit — NOT a scheduler call. activeDrop()
+            // persists its tip choice, and at construction the contextual pool is still
+            // empty, so a persisted contextual tip looked missing and got re-picked on
+            // EVERY app start: new tip → new drop id → the ring relit with different
+            // content each launch. The ring just idles on the empty drop instead.
+            com.freqvox.ui.story.StoryDrop("", storyEpochDay, com.freqvox.ui.story.SegmentKind.TIP, emptyList())
         )
     val hasUnseenStory: StateFlow<Boolean> = combine(activeStoryDrop, _storySeenBump) { drop, _ ->
         storyScheduler.isUnseen(drop)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
-    fun markStorySeen() {
-        storyScheduler.markSeen(activeStoryDrop.value)
+    /** One flag per card of the active drop (true = displayed) — drives the segmented
+     *  WhatsApp-style ring: one arc per card, greyed only where actually watched. */
+    val storyCardSeenFlags: StateFlow<List<Boolean>> =
+        combine(activeStoryDrop, _storySeenBump) { drop, _ ->
+            storyScheduler.seenFlags(drop)
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    /** Viewer resume point: the first card not yet displayed (0 = replay from start).
+     *  Takes the drop the VIEWER holds — the caller freezes activeStoryDrop when opening,
+     *  so a mid-view recomposition can't shift indices under the user. */
+    fun firstUnseenStoryIndex(drop: com.freqvox.ui.story.StoryDrop): Int =
+        storyScheduler.firstUnseenIndex(drop)
+
+    /** Per-card seen reporting from the viewer; retirement/cooldown live in the scheduler.
+     *  Marks against the frozen drop being viewed, not whatever activeStoryDrop recomposed
+     *  to since — those can differ while music plays in the background. */
+    fun markStoryCardSeen(drop: com.freqvox.ui.story.StoryDrop, segment: com.freqvox.ui.story.StorySegment) {
+        storyScheduler.markCardSeen(drop, segment)
         _storySeenBump.value++
     }
 

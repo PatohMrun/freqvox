@@ -21,6 +21,28 @@ class StoryPreferences @Inject constructor(
         get() = prefs.getString(KEY_LAST_SEEN, null)
         set(value) = prefs.edit().putString(KEY_LAST_SEEN, value).apply()
 
+    // ── Per-card view state (WhatsApp-style) ────────────────────────────────────
+    // Which cards have been displayed, as "<partId><segmentId>" keys where partId is
+    // the drop-id COMPONENT the card belongs to ("m:streak7", "r:20654", "t:20658:tip-x").
+    // Scoping to the component — not the whole drop id — means a card stays seen when an
+    // UNRELATED component changes the composed id (daily tip roll, a milestone retiring,
+    // the recap arriving); keying by full drop id wiped everything on any such shift and
+    // relit the ring with already-watched cards.
+
+    fun seenCardKeys(): Set<String> =
+        prefs.getStringSet(KEY_CARDS_SEEN, emptySet()) ?: emptySet()
+
+    /** Records one card key as seen; prunes keys whose component left the active drop
+     *  (celebrated milestone, retired recap, rolled-over tip) so the set stays tiny.
+     *  Returns the updated set. */
+    fun markCardSeen(cardKey: String, activeParts: Collection<String>): Set<String> {
+        val next = seenCardKeys()
+            .filterTo(mutableSetOf()) { key -> activeParts.any { key.startsWith(it + CARD_KEY_SEP) } }
+        next += cardKey
+        prefs.edit().putStringSet(KEY_CARDS_SEEN, next).apply()
+        return next
+    }
+
     fun celebratedMilestones(): Set<String> =
         prefs.getStringSet(KEY_MILESTONES, emptySet()) ?: emptySet()
 
@@ -58,7 +80,11 @@ class StoryPreferences @Inject constructor(
     }
 
     companion object {
+        /** Joins partId + segmentId into one card key; neither side ever contains it. */
+        const val CARD_KEY_SEP = "\u0001"
+
         private const val KEY_LAST_SEEN = "last_seen_drop"
+        private const val KEY_CARDS_SEEN = "seen_card_keys"
         private const val KEY_MILESTONES = "celebrated_milestones"
         private const val KEY_RECAP_WEEK = "last_recap_week"
         private const val KEY_NEXT_DROP_DAY = "next_drop_earliest_day"

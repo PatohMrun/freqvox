@@ -173,3 +173,19 @@ Still no online art fetch — embedded only.
   path) as the lyrics file — survives restarts, rescans, id reissue.
 - offsetFor/setOffset are suspend (keyFor does a MediaStore query — off main thread).
 - Highlight uses currentPosition + offset; tap-to-seek compensates (timestamp − offset).
+
+## WhatsApp-parity story ring  → 2.96 (code 134)
+- **Per-card seen state:** StoryPreferences stores the seen segment-id set scoped to the
+  current drop id (resets when the drop recomposes). Scheduler: seenFlags(), 
+  firstUnseenIndex(), markCardSeen() replaces markSeen().
+- **Piece-wise retirement:** milestone card celebrated the moment ITS card is displayed;
+  recap week retires when all RECAP-kind cards seen; cooldown starts only on FULL drop
+  consumption (bail-early no longer spends the rest).
+- **Segmented ring:** new StoryRing composable (Canvas arcs, one per card, rounded caps,
+  gap = 18% of slice clamped 3–8°, start 12 o'clock; 0/1 cards = unbroken circle).
+  Vivid sweep-gradient arc = unviewed, faint = viewed; pulses while any unviewed.
+  Used by BOTH Home header and Library header (old border-ring blocks replaced).
+- **Resume:** viewer takes initialIndex (first unviewed card) + onCardSeen callback
+  (fires as each card is DISPLAYED — WhatsApp semantics).
+- NOT PUBLISHED — user testing on phone first (per standing directive: never publish
+  unless explicitly told).

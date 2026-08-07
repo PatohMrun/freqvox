@@ -46,17 +46,23 @@ fun StoryViewer(
     drop: StoryDrop,
     onAction: (StoryActionType) -> Unit,
     onDismiss: () -> Unit,
-    onShare: ((StorySegment) -> Unit)? = null
+    onShare: ((StorySegment) -> Unit)? = null,
+    initialIndex: Int = 0,
+    onCardSeen: ((StorySegment) -> Unit)? = null
 ) {
     BackHandler(onBack = onDismiss)
 
     val segments = drop.segments
-    var index by remember { mutableIntStateOf(0) }
+    var index by remember { mutableIntStateOf(initialIndex.coerceIn(0, segments.lastIndex)) }
     var paused by remember { mutableStateOf(false) }
     var progress by remember { mutableFloatStateOf(0f) }
 
     val safeIndex = index.coerceIn(0, segments.lastIndex)
     val segment = segments[safeIndex]
+
+    // WhatsApp semantics: a card counts as seen the moment it's DISPLAYED — navigating
+    // away mid-timer doesn't un-see it, and cards never reached stay unseen.
+    LaunchedEffect(safeIndex) { onCardSeen?.invoke(segments[safeIndex]) }
     val accent = segment.accent ?: Fvox.accent
     val base = lerp(accent, Color.Black, 0.72f)
 
