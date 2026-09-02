@@ -32,9 +32,6 @@ object StoryContent {
     private fun ill(id: String, kind: SegmentKind, title: String, body: String, k: IllustrationKind, cta: StoryCta? = null) =
         StorySegment(id, kind, title, body, SegmentVisual.Illustration(k), accent = accentFor(id), cta = cta)
 
-    private fun emj(id: String, kind: SegmentKind, title: String, body: String, emoji: String, cta: StoryCta? = null) =
-        StorySegment(id, kind, title, body, SegmentVisual.Emoji(emoji), accent = accentFor(id), cta = cta)
-
     private val A = SegmentKind.ALGORITHM
     private val T = SegmentKind.TIP
 
@@ -61,17 +58,17 @@ object StoryContent {
             "Turn on Crossfade to overlap songs. Album mode keeps mastered segues intact.", IllustrationKind.CROSSFADE, StoryCta("Open Crossfade", StoryActionType.OPEN_CROSSFADE)),
         ill("tip-albummode", T, "Albums, as intended",
             "With Album mode on, consecutive tracks from the same album butt-join gaplessly instead of crossfading.", IllustrationKind.CROSSFADE, StoryCta("Open Crossfade", StoryActionType.OPEN_CROSSFADE)),
-        emj("tip-profiles", T, "EQ per tag", "Give a tag its own equalizer preset — it's applied automatically when a matching song plays.", "🎛️", StoryCta("Playback profiles", StoryActionType.OPEN_PROFILES)),
-        emj("tip-volnorm", T, "Even it out", "Volume normalization tames loudness jumps between tracks on shuffle.", "🔊", StoryCta("Open Crossfade", StoryActionType.OPEN_CROSSFADE)),
-        emj("tip-accent", T, "Make it yours", "Pick from 16 swatches to colour the buttons and switches — and pin the background gradient too, or let it keep following each album's art.", "🎨", StoryCta("Appearance", StoryActionType.OPEN_ACCENT)),
-        emj("tip-theme", T, "Light or dark", "Tap the sun/moon in the header to cycle System, Light and Dark.", "🌗"),
+        ill("tip-profiles", T, "EQ per tag", "Give a tag its own equalizer preset — it's applied automatically when a matching song plays.", IllustrationKind.EQUALIZER, StoryCta("Playback profiles", StoryActionType.OPEN_PROFILES)),
+        ill("tip-volnorm", T, "Even it out", "Volume normalization tames loudness jumps between tracks on shuffle.", IllustrationKind.VOLUME, StoryCta("Open Crossfade", StoryActionType.OPEN_CROSSFADE)),
+        ill("tip-accent", T, "Make it yours", "Pick from 16 swatches to colour the buttons and switches — and pin the background gradient too, or let it keep following each album's art.", IllustrationKind.PALETTE, StoryCta("Appearance", StoryActionType.OPEN_ACCENT)),
+        ill("tip-theme", T, "Light or dark", "Tap the sun/moon in the header to cycle System, Light and Dark.", IllustrationKind.THEME),
         ill("tip-sleep", T, "Drift off", "The sleep timer fades out gently before it stops — or you can stop at the end of the current album.", IllustrationKind.TIMER),
         ill("tip-eq", T, "Shape the sound", "A full equalizer lives in the side panel's Audio section.", IllustrationKind.STATS),
-        emj("tip-dupes", T, "Tidy up", "The duplicate finder groups songs that share a title and artist so you can clear the extras.", "🧹", StoryCta("Find duplicates", StoryActionType.OPEN_DUPLICATES)),
-        emj("tip-backup", T, "Never lose your work", "Back up tags, playlists, stats, settings and your EQ to one file — and restore it anytime.", "💾"),
-        emj("tip-hiddenfolders", T, "Hide the noise", "Hide folders like ringtones or voice notes instantly — nothing is deleted, and you can un-hide any time.", "📁"),
-        emj("tip-art", T, "Cover art, filled in", "Missing covers are fetched online, or recovered from your VidMate downloads.", "🖼️", StoryCta("Album art", StoryActionType.OPEN_ARTWORK)),
-        emj("tip-radio", T, "Go live", "The Radio tab streams live stations when you want something outside your library.", "📻"),
+        ill("tip-dupes", T, "Tidy up", "The duplicate finder groups songs that share a title and artist so you can clear the extras.", IllustrationKind.CLEANUP, StoryCta("Find duplicates", StoryActionType.OPEN_DUPLICATES)),
+        ill("tip-backup", T, "Never lose your work", "Back up tags, playlists, stats, settings and your EQ to one file — and restore it anytime.", IllustrationKind.SAVE),
+        ill("tip-hiddenfolders", T, "Hide the noise", "Hide folders like ringtones or voice notes instantly — nothing is deleted, and you can un-hide any time.", IllustrationKind.FOLDER),
+        ill("tip-art", T, "Cover art, filled in", "Missing covers are fetched online, or recovered from your VidMate downloads.", IllustrationKind.ARTWORK, StoryCta("Album art", StoryActionType.OPEN_ARTWORK)),
+        ill("tip-radio", T, "Go live", "The Radio tab streams live stations when you want something outside your library.", IllustrationKind.RADIO),
 
         // ── How-tos, hidden menus & gestures ──────────────────────────────────
         ill("how-longpress", T, "Long-press a song",
@@ -88,7 +85,7 @@ object StoryContent {
             "In Search, tap a tag to require it, tap again to exclude it: \"chill AND workout, NOT throwback\".", IllustrationKind.TAGS, StoryCta("Try it", StoryActionType.OPEN_SEARCH)),
         ill("how-pull-refresh", T, "Pull for more",
             "Pull down on Home for a completely fresh remix of your library.", IllustrationKind.GENERIC),
-        emj("how-edit-info", T, "Fix the details", "Wrong title, artist or album? Long-press the song → Edit info. Your fix sticks — even after library rescans.", "✏️"),
+        ill("how-edit-info", T, "Fix the details", "Wrong title, artist or album? Long-press the song → Edit info. Your fix sticks — even after library rescans.", IllustrationKind.EDIT),
         ill("how-share-card", T, "Share a track",
             "Long-press → Share as image turns any song into a poster card you can send anywhere.", IllustrationKind.SHARE),
         ill("how-custom-tag", T, "Make your own tags",
@@ -97,13 +94,13 @@ object StoryContent {
             "Tag songs, then create a smart playlist from those tags — it stays in sync as you tag more.", IllustrationKind.PLAYLIST),
         ill("how-playlist-edit", T, "Edit inside a playlist",
             "Open a playlist to rename it, reorder tracks, and add or remove songs on the fly.", IllustrationKind.PLAYLIST),
-        emj("how-play-next", T, "Jump the queue", "Use Play next to slot a song in right after the one that's playing.", "⏭️"),
+        ill("how-play-next", T, "Jump the queue", "Use Play next to slot a song in right after the one that's playing.", IllustrationKind.PLAYLIST),
         ill("how-stats", T, "Dig into your stats",
             "In Stats, tap any top artist or tag to open its own breakdown — time, plays and top tracks.", IllustrationKind.STATS, StoryCta("Open stats", StoryActionType.OPEN_STATS)),
-        emj("how-settings", T, "One place for everything", "The gear opens it all: audio, library tools, backup and tag management.", "⚙️"),
+        ill("how-settings", T, "One place for everything", "The gear opens it all: audio, library tools, backup and tag management.", IllustrationKind.SETTINGS),
         ill("how-search", T, "Find anything",
             "Search by title, artist or album — or browse your whole library by tag.", IllustrationKind.SEARCH, StoryCta("Search", StoryActionType.OPEN_SEARCH)),
-        emj("how-addqueue", T, "Line it up", "Add to queue drops a song at the end of what's already playing.", "➕"),
+        ill("how-addqueue", T, "Line it up", "Add to queue drops a song at the end of what's already playing.", IllustrationKind.PLAYLIST),
 
         // ── Newer features (2.78–2.81) ────────────────────────────────────────
         ill("how-search-anywhere", T, "Search from anywhere",
@@ -112,22 +109,22 @@ object StoryContent {
             "Disliked songs leave your feed, but they're not gone — in Search, require the Disliked tag to review them.", IllustrationKind.TAGS, StoryCta("Open Search", StoryActionType.OPEN_SEARCH)),
         ill("how-back-layers", T, "Back, one layer at a time",
             "In Search, Back clears the keyboard first, then your typed search, then tag filters — then it leaves.", IllustrationKind.GESTURE),
-        emj("tip-pin-gradient", T, "Two looks, one colour",
-            "A custom accent colours the controls while the backdrop keeps dancing with your music — pin the gradient only if you want both constant.", "🖌️", StoryCta("Appearance", StoryActionType.OPEN_ACCENT)),
+        ill("tip-pin-gradient", T, "Two looks, one colour",
+            "A custom accent colours the controls while the backdrop keeps dancing with your music — pin the gradient only if you want both constant.", IllustrationKind.PALETTE, StoryCta("Appearance", StoryActionType.OPEN_ACCENT)),
 
         // ── Newer features (2.82–2.90) ────────────────────────────────────────
-        emj("tip-speed", T, "Set the pace",
-            "Playback speed lives in the player — slow things down to 0.8× or push a mix to 1.5×.", "⏩"),
-        emj("how-save-queue", T, "Keep that queue",
-            "Built the perfect run of songs? Save the whole queue as a playlist, straight from the queue sheet.", "💾"),
-        emj("tip-stop-after", T, "Just one more song",
-            "Stop after current track finishes what's playing, then goes quiet — no fumbling for pause.", "🛑"),
-        emj("tip-auto", T, "Take it on the road",
-            "Freqvox works with Android Auto — your songs, playlists and tags on the car screen.", "🚗"),
-        emj("tip-radio-fav", T, "Pin your stations",
-            "Heart any radio station to keep it at the top of the Radio tab — favourites even ride along in backups.", "📻"),
-        emj("how-jump-back", T, "Pick up where you left off",
-            "Jump Back In on Home remembers the song you were last playing — one tap resumes it.", "⏮️")
+        ill("tip-speed", T, "Set the pace",
+            "Playback speed lives in the player — slow things down to 0.8× or push a mix to 1.5×.", IllustrationKind.SPEED),
+        ill("how-save-queue", T, "Keep that queue",
+            "Built the perfect run of songs? Save the whole queue as a playlist, straight from the queue sheet.", IllustrationKind.SAVE),
+        ill("tip-stop-after", T, "Just one more song",
+            "Stop after current track finishes what's playing, then goes quiet — no fumbling for pause.", IllustrationKind.STOP),
+        ill("tip-auto", T, "Take it on the road",
+            "Freqvox works with Android Auto — your songs, playlists and tags on the car screen.", IllustrationKind.CAR),
+        ill("tip-radio-fav", T, "Pin your stations",
+            "Heart any radio station to keep it at the top of the Radio tab — favourites even ride along in backups.", IllustrationKind.RADIO),
+        ill("how-jump-back", T, "Pick up where you left off",
+            "Jump Back In on Home remembers the song you were last playing — one tap resumes it.", IllustrationKind.REWIND)
     )
 
     /** A snapshot of the user's live state, used to generate contextual (personalized) tips that
@@ -161,18 +158,18 @@ object StoryContent {
             out += ill("ctx-firsttag", T, "Make it yours with tags",
                 "You haven't created a custom tag yet — try 'gym', 'focus', or 'late night'.", IllustrationKind.TAGS, StoryCta("Browse tags", StoryActionType.OPEN_SEARCH))
         if (s.duplicateGroups > 0)
-            out += emj("ctx-dupes", T, "${s.duplicateGroups} possible duplicate${if (s.duplicateGroups == 1) "" else "s"}",
-                "Freqvox spotted songs that share a title and artist — clean them up in a tap.", "🧹", StoryCta("Review", StoryActionType.OPEN_DUPLICATES))
+            out += ill("ctx-dupes", T, "${s.duplicateGroups} possible duplicate${if (s.duplicateGroups == 1) "" else "s"}",
+                "Freqvox spotted songs that share a title and artist — clean them up in a tap.", IllustrationKind.CLEANUP, StoryCta("Review", StoryActionType.OPEN_DUPLICATES))
         if (s.mostSkippedTrack != null && s.mostSkippedCount >= 3)
             out += StorySegment("ctx-skip", T, "Always skipping this?",
                 "\"${s.mostSkippedTrack.title}\" gets skipped a lot (${s.mostSkippedCount}×). Dislike it to keep it out of your feed.",
                 SegmentVisual.AlbumArt(s.mostSkippedTrack), accent = accentFor("ctx-skip"))
         if (s.fixedAccentDefault)
-            out += emj("ctx-accent", T, "Lock in a look",
-                "Everything follows each cover's colours right now — pick a custom accent for the controls, and optionally pin the gradient too.", "🎨", StoryCta("Appearance", StoryActionType.OPEN_ACCENT))
+            out += ill("ctx-accent", T, "Lock in a look",
+                "Everything follows each cover's colours right now — pick a custom accent for the controls, and optionally pin the gradient too.", IllustrationKind.PALETTE, StoryCta("Appearance", StoryActionType.OPEN_ACCENT))
         if (!s.hasProfiles && s.hasCustomTags)
-            out += emj("ctx-profiles", T, "Auto-EQ per tag",
-                "Give a tag its own EQ preset — perfect for a 'podcast' or 'bass' tag.", "🎛️", StoryCta("Playback profiles", StoryActionType.OPEN_PROFILES))
+            out += ill("ctx-profiles", T, "Auto-EQ per tag",
+                "Give a tag its own EQ preset — perfect for a 'podcast' or 'bass' tag.", IllustrationKind.EQUALIZER, StoryCta("Playback profiles", StoryActionType.OPEN_PROFILES))
         return out
     }
 
@@ -206,15 +203,15 @@ object StoryContent {
         }
 
         segs += weeklyRecap(stats, 0, epochDay).segments
-        val ms = metMilestones(stats).firstOrNull() ?: MilestoneDef("streak7-sample", "🔥", "7-day streak!", "Sample milestone card.")
+        val ms = metMilestones(stats).firstOrNull() ?: MilestoneDef("streak7-sample", IllustrationKind.FLAME, "7-day streak!", "Sample milestone card.")
         segs += milestoneDrop(ms, epochDay).segments
 
         return StoryDrop("preview-$epochDay", epochDay, SegmentKind.TIP, segs)
     }
 
-    /** [track] set on track-specific milestones: its cover then replaces the emoji badge. */
+    /** [track] set on track-specific milestones: its cover then replaces the illustration badge. */
     data class MilestoneDef(
-        val key: String, val emoji: String, val title: String, val body: String,
+        val key: String, val illustration: IllustrationKind, val title: String, val body: String,
         val track: TrackEntity? = null
     )
 
@@ -223,15 +220,15 @@ object StoryContent {
     fun metMilestones(stats: MainViewModel.ListeningStats): List<MilestoneDef> {
         val out = mutableListOf<MilestoneDef>()
         when {
-            stats.currentStreakDays >= 30 -> out += MilestoneDef("streak30", "🏆", "30-day streak!", "A whole month of daily listening. Legendary.")
-            stats.currentStreakDays >= 7 -> out += MilestoneDef("streak7", "🔥", "7-day streak!", "A full week, every single day. You're on fire.")
+            stats.currentStreakDays >= 30 -> out += MilestoneDef("streak30", IllustrationKind.TROPHY, "30-day streak!", "A whole month of daily listening. Legendary.")
+            stats.currentStreakDays >= 7 -> out += MilestoneDef("streak7", IllustrationKind.FLAME, "7-day streak!", "A full week, every single day. You're on fire.")
         }
         when {
-            stats.totalPlays >= 1000 -> out += MilestoneDef("plays1000", "💎", "1,000 plays", "A thousand songs played in Freqvox. That's dedication.")
-            stats.totalPlays >= 500 -> out += MilestoneDef("plays500", "🌟", "500 plays", "Halfway to a thousand — keep the music going.")
+            stats.totalPlays >= 1000 -> out += MilestoneDef("plays1000", IllustrationKind.GEM, "1,000 plays", "A thousand songs played in Freqvox. That's dedication.")
+            stats.totalPlays >= 500 -> out += MilestoneDef("plays500", IllustrationKind.STAR, "500 plays", "Halfway to a thousand — keep the music going.")
         }
         stats.topTracks.firstOrNull()?.let { (t, c) ->
-            if (c >= 100) out += MilestoneDef("track100-${t.id}", "💯", "100 plays of one song", "\"${t.title}\" is a certified favourite.", track = t)
+            if (c >= 100) out += MilestoneDef("track100-${t.id}", IllustrationKind.STAR, "100 plays of one song", "\"${t.title}\" is a certified favourite.", track = t)
         }
         return out
     }
@@ -239,7 +236,7 @@ object StoryContent {
     /** One milestone as a single story card — the scheduler composes these into the active drop. */
     fun milestoneSegment(def: MilestoneDef): StorySegment = StorySegment(
         "m-${def.key}", SegmentKind.MILESTONE, def.title, def.body,
-        def.track?.let { SegmentVisual.AlbumArt(it) } ?: SegmentVisual.Emoji(def.emoji),
+        def.track?.let { SegmentVisual.AlbumArt(it) } ?: SegmentVisual.Illustration(def.illustration),
         accent = accentFor(def.key)
     )
 

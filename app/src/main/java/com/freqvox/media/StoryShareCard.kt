@@ -246,6 +246,19 @@ object StoryShareCard {
             p.style = Paint.Style.STROKE; p.strokeWidth = strokeW; p.color = color
             c.drawLine(ox + x1, oy + y1, ox + x2, oy + y2, p)
         }
+        fun tri(color: Int, x1: Float, y1: Float, x2: Float, y2: Float, x3: Float, y3: Float) {
+            p.style = Paint.Style.FILL; p.color = color
+            val path = Path().apply { moveTo(ox + x1, oy + y1); lineTo(ox + x2, oy + y2); lineTo(ox + x3, oy + y3); close() }
+            c.drawPath(path, p)
+        }
+        fun arc(color: Int, cx: Float, cy: Float, r: Float, startAngle: Float, sweepAngle: Float, strokeW: Float) {
+            p.style = Paint.Style.STROKE; p.strokeWidth = strokeW; p.color = color
+            c.drawArc(RectF(ox + cx - r, oy + cy - r, ox + cx + r, oy + cy + r), startAngle, sweepAngle, false, p)
+        }
+        fun rectFill(color: Int, l: Float, t: Float, r: Float, b: Float) {
+            p.style = Paint.Style.FILL; p.color = color
+            c.drawRect(ox + l, oy + t, ox + r, oy + b, p)
+        }
 
         val w0 = size; val h0 = size
         when (kind) {
@@ -345,6 +358,171 @@ object StoryShareCard {
             IllustrationKind.SEARCH -> {
                 circ(accent, w0 * 0.44f, h0 * 0.44f, w0 * 0.20f, stroke = 7f)
                 line(onDark, w0 * 0.44f + w0 * 0.15f, h0 * 0.44f + h0 * 0.15f, w0 * 0.72f, h0 * 0.72f, 9f)
+            }
+            IllustrationKind.EQUALIZER -> {
+                val heights = listOf(0.35f, 0.55f, 0.3f, 0.6f)
+                val xs = listOf(0.28f, 0.43f, 0.58f, 0.73f)
+                xs.forEachIndexed { i, x ->
+                    line(withAlpha(onDark, 0.25f), w0 * x, h0 * 0.2f, w0 * x, h0 * 0.8f, 4f)
+                    circ(accent, w0 * x, h0 * heights[i], w0 * 0.035f)
+                }
+            }
+            IllustrationKind.VOLUME -> {
+                val cx = w0 * 0.5f; val cy = h0 * 0.5f
+                rr(withAlpha(onDark, 0.5f), w0 * 0.22f, h0 * 0.42f, w0 * 0.22f + w0 * 0.12f, h0 * 0.42f + h0 * 0.16f, 4f)
+                tri(withAlpha(onDark, 0.5f), w0 * 0.34f, h0 * 0.36f, w0 * 0.34f, h0 * 0.64f, w0 * 0.5f, h0 * 0.5f)
+                listOf(0.10f, 0.17f, 0.24f).forEach { rf -> arc(withAlpha(accent, 0.8f), cx, cy, w0 * rf, -35f, 70f, 4f) }
+            }
+            IllustrationKind.PALETTE -> {
+                circ(withAlpha(onDark, 0.10f), w0 / 2, h0 / 2, w0 * 0.30f)
+                listOf(
+                    Triple(0.38f, 0.4f, 0.9f), Triple(0.62f, 0.38f, 0.6f),
+                    Triple(0.4f, 0.62f, 0.7f), Triple(0.64f, 0.6f, 0.45f)
+                ).forEach { (x, y, a) -> circ(withAlpha(accent, a), w0 * x, h0 * y, w0 * 0.06f) }
+            }
+            IllustrationKind.THEME -> {
+                val sunCx = w0 * 0.32f; val sunCy = h0 * 0.5f; val sunR = w0 * 0.10f
+                circ(accent, sunCx, sunCy, sunR, stroke = 4f)
+                listOf(0.0, 60.0, 300.0).forEach { deg ->
+                    val rad = Math.toRadians(deg)
+                    val inner = sunR + w0 * 0.02f; val outer = sunR + w0 * 0.06f
+                    line(
+                        accent,
+                        sunCx + (inner * kotlin.math.cos(rad)).toFloat(), sunCy + (inner * kotlin.math.sin(rad)).toFloat(),
+                        sunCx + (outer * kotlin.math.cos(rad)).toFloat(), sunCy + (outer * kotlin.math.sin(rad)).toFloat(),
+                        4f
+                    )
+                }
+                circ(onDark, w0 * 0.66f, h0 * 0.5f, w0 * 0.12f)
+            }
+            IllustrationKind.CLEANUP -> {
+                rr(withAlpha(onDark, 0.25f), w0 * 0.26f, h0 * 0.26f, w0 * 0.26f + w0 * 0.36f, h0 * 0.26f + h0 * 0.36f, 14f)
+                rr(accent, w0 * 0.38f, h0 * 0.38f, w0 * 0.38f + w0 * 0.36f, h0 * 0.38f + h0 * 0.36f, 14f)
+                circ(onDark, w0 * 0.74f, h0 * 0.74f, w0 * 0.07f)
+                line(accent, w0 * 0.705f, h0 * 0.74f, w0 * 0.735f, h0 * 0.77f, 5f)
+                line(accent, w0 * 0.735f, h0 * 0.77f, w0 * 0.78f, h0 * 0.71f, 5f)
+            }
+            IllustrationKind.SAVE -> {
+                rr(withAlpha(onDark, 0.35f), w0 * 0.26f, h0 * 0.26f, w0 * 0.26f + w0 * 0.48f, h0 * 0.26f + h0 * 0.48f, 16f)
+                rectFill(accent, w0 * 0.36f, h0 * 0.26f, w0 * 0.36f + w0 * 0.22f, h0 * 0.26f + h0 * 0.14f)
+                line(onDark, w0 * 0.32f, h0 * 0.62f, w0 * 0.68f, h0 * 0.62f, 5f)
+            }
+            IllustrationKind.FOLDER -> {
+                rr(accent, w0 * 0.22f, h0 * 0.34f, w0 * 0.22f + w0 * 0.22f, h0 * 0.34f + h0 * 0.10f, 6f)
+                rr(withAlpha(onDark, 0.3f), w0 * 0.22f, h0 * 0.40f, w0 * 0.22f + w0 * 0.56f, h0 * 0.40f + h0 * 0.30f, 8f)
+                p.style = Paint.Style.STROKE; p.strokeWidth = 3f; p.color = withAlpha(accent, 0.5f)
+                c.drawRoundRect(RectF(ox + w0 * 0.22f, oy + h0 * 0.40f, ox + w0 * 0.22f + w0 * 0.56f, oy + h0 * 0.40f + h0 * 0.30f), 8f, 8f, p)
+            }
+            IllustrationKind.ARTWORK -> {
+                p.style = Paint.Style.STROKE; p.strokeWidth = 4f; p.color = withAlpha(onDark, 0.5f)
+                c.drawRoundRect(RectF(ox + w0 * 0.24f, oy + h0 * 0.30f, ox + w0 * 0.24f + w0 * 0.52f, oy + h0 * 0.30f + h0 * 0.42f), 10f, 10f, p)
+                circ(accent, w0 * 0.36f, h0 * 0.42f, w0 * 0.045f)
+                val mtn = Path().apply {
+                    moveTo(ox + w0 * 0.28f, oy + h0 * 0.68f); lineTo(ox + w0 * 0.42f, oy + h0 * 0.46f); lineTo(ox + w0 * 0.50f, oy + h0 * 0.56f)
+                    lineTo(ox + w0 * 0.60f, oy + h0 * 0.42f); lineTo(ox + w0 * 0.72f, oy + h0 * 0.68f); close()
+                }
+                p.style = Paint.Style.FILL; p.color = withAlpha(onDark, 0.4f)
+                c.drawPath(mtn, p)
+            }
+            IllustrationKind.RADIO -> {
+                line(withAlpha(onDark, 0.6f), w0 * 0.36f, h0 * 0.28f, w0 * 0.36f, h0 * 0.5f, 4f)
+                circ(accent, w0 * 0.36f, h0 * 0.26f, w0 * 0.03f)
+                rr(withAlpha(onDark, 0.35f), w0 * 0.26f, h0 * 0.5f, w0 * 0.26f + w0 * 0.28f, h0 * 0.5f + h0 * 0.18f, 8f)
+                listOf(0.10f, 0.18f, 0.26f).forEach { rf -> arc(withAlpha(accent, 0.75f), w0 * 0.36f, h0 * 0.26f, w0 * rf, -55f, 40f, 4f) }
+            }
+            IllustrationKind.EDIT -> {
+                p.style = Paint.Style.STROKE; p.strokeWidth = 14f; p.strokeCap = Paint.Cap.ROUND; p.color = onDark
+                c.drawLine(ox + w0 * 0.28f, oy + h0 * 0.72f, ox + w0 * 0.62f, oy + h0 * 0.38f, p)
+                p.strokeCap = Paint.Cap.BUTT
+                tri(accent, w0 * 0.62f, h0 * 0.38f, w0 * 0.70f, h0 * 0.30f, w0 * 0.72f, h0 * 0.40f)
+            }
+            IllustrationKind.SETTINGS -> {
+                for (i in 0 until 8) {
+                    val ang = Math.toRadians((i * 45).toDouble())
+                    val r = w0 * 0.30f
+                    circ(withAlpha(onDark, 0.35f), w0 / 2 + (r * kotlin.math.cos(ang)).toFloat(), h0 / 2 + (r * kotlin.math.sin(ang)).toFloat(), w0 * 0.035f)
+                }
+                circ(accent, w0 / 2, h0 / 2, w0 * 0.20f)
+                circ(withAlpha(onDark, 0.5f), w0 / 2, h0 / 2, w0 * 0.08f)
+            }
+            IllustrationKind.SPEED -> {
+                listOf(0f, 0.16f).forEach { off ->
+                    tri(accent, w0 * (0.32f + off), h0 * 0.32f, w0 * (0.32f + off), h0 * 0.68f, w0 * (0.50f + off), h0 * 0.5f)
+                }
+            }
+            IllustrationKind.REWIND -> {
+                listOf(0f, 0.16f).forEach { off ->
+                    tri(accent, w0 * (0.68f - off), h0 * 0.32f, w0 * (0.68f - off), h0 * 0.68f, w0 * (0.50f - off), h0 * 0.5f)
+                }
+            }
+            IllustrationKind.STOP -> {
+                circ(withAlpha(onDark, 0.14f), w0 / 2, h0 / 2, w0 * 0.28f)
+                rr(accent, w0 * 0.38f, h0 * 0.38f, w0 * 0.38f + w0 * 0.24f, h0 * 0.38f + h0 * 0.24f, 6f)
+            }
+            IllustrationKind.CAR -> {
+                rr(accent, w0 * 0.35f, h0 * 0.38f, w0 * 0.35f + w0 * 0.30f, h0 * 0.38f + h0 * 0.14f, 10f)
+                rr(accent, w0 * 0.20f, h0 * 0.48f, w0 * 0.20f + w0 * 0.60f, h0 * 0.48f + h0 * 0.16f, 10f)
+                circ(onDark, w0 * 0.32f, h0 * 0.66f, w0 * 0.05f)
+                circ(onDark, w0 * 0.68f, h0 * 0.66f, w0 * 0.05f)
+            }
+            IllustrationKind.FLAME -> {
+                val flame = Path().apply {
+                    moveTo(ox + w0 * 0.5f, oy + h0 * 0.22f)
+                    cubicTo(ox + w0 * 0.72f, oy + h0 * 0.42f, ox + w0 * 0.68f, oy + h0 * 0.68f, ox + w0 * 0.5f, oy + h0 * 0.78f)
+                    cubicTo(ox + w0 * 0.32f, oy + h0 * 0.68f, ox + w0 * 0.28f, oy + h0 * 0.42f, ox + w0 * 0.5f, oy + h0 * 0.22f)
+                    close()
+                }
+                p.style = Paint.Style.FILL; p.color = accent
+                c.drawPath(flame, p)
+                val inner = Path().apply {
+                    moveTo(ox + w0 * 0.5f, oy + h0 * 0.42f)
+                    cubicTo(ox + w0 * 0.60f, oy + h0 * 0.52f, ox + w0 * 0.58f, oy + h0 * 0.64f, ox + w0 * 0.5f, oy + h0 * 0.70f)
+                    cubicTo(ox + w0 * 0.42f, oy + h0 * 0.64f, ox + w0 * 0.42f, oy + h0 * 0.52f, ox + w0 * 0.5f, oy + h0 * 0.42f)
+                    close()
+                }
+                p.color = withAlpha(onDark, 0.35f)
+                c.drawPath(inner, p)
+            }
+            IllustrationKind.TROPHY -> {
+                val cup = Path().apply {
+                    moveTo(ox + w0 * 0.34f, oy + h0 * 0.28f); lineTo(ox + w0 * 0.66f, oy + h0 * 0.28f)
+                    lineTo(ox + w0 * 0.58f, oy + h0 * 0.52f); lineTo(ox + w0 * 0.42f, oy + h0 * 0.52f); close()
+                }
+                p.style = Paint.Style.FILL; p.color = accent
+                c.drawPath(cup, p)
+                arc(accent, w0 * 0.27f, h0 * 0.35f, w0 * 0.09f, 100f, 160f, 4f)
+                arc(accent, w0 * 0.73f, h0 * 0.35f, w0 * 0.09f, -80f, 160f, 4f)
+                rectFill(withAlpha(onDark, 0.5f), w0 * 0.47f, h0 * 0.52f, w0 * 0.47f + w0 * 0.06f, h0 * 0.52f + h0 * 0.10f)
+                rr(withAlpha(onDark, 0.5f), w0 * 0.36f, h0 * 0.62f, w0 * 0.36f + w0 * 0.28f, h0 * 0.62f + h0 * 0.06f, 4f)
+            }
+            IllustrationKind.STAR -> {
+                val outerR = w0 * 0.30f; val innerR = w0 * 0.13f
+                val path = Path()
+                for (i in 0 until 10) {
+                    val ang = Math.toRadians((-90 + i * 36).toDouble())
+                    val r = if (i % 2 == 0) outerR else innerR
+                    val x = ox + w0 / 2 + (r * kotlin.math.cos(ang)).toFloat()
+                    val y = oy + h0 / 2 + (r * kotlin.math.sin(ang)).toFloat()
+                    if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
+                }
+                path.close()
+                p.style = Paint.Style.FILL; p.color = accent
+                c.drawPath(path, p)
+            }
+            IllustrationKind.GEM -> {
+                val gem = Path().apply {
+                    moveTo(ox + w0 * 0.32f, oy + h0 * 0.34f)
+                    lineTo(ox + w0 * 0.68f, oy + h0 * 0.34f)
+                    lineTo(ox + w0 * 0.80f, oy + h0 * 0.46f)
+                    lineTo(ox + w0 * 0.5f, oy + h0 * 0.76f)
+                    lineTo(ox + w0 * 0.20f, oy + h0 * 0.46f)
+                    close()
+                }
+                p.style = Paint.Style.FILL; p.color = accent
+                c.drawPath(gem, p)
+                line(withAlpha(onDark, 0.35f), w0 * 0.32f, h0 * 0.34f, w0 * 0.5f, h0 * 0.46f, 3f)
+                line(withAlpha(onDark, 0.35f), w0 * 0.68f, h0 * 0.34f, w0 * 0.5f, h0 * 0.46f, 3f)
+                line(withAlpha(onDark, 0.35f), w0 * 0.5f, h0 * 0.46f, w0 * 0.5f, h0 * 0.76f, 3f)
             }
         }
         return oy + size + 130f

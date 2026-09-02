@@ -22,7 +22,10 @@ sealed interface SegmentVisual {
 
 enum class IllustrationKind {
     FEED_FLOW, TAGS, CROSSFADE, SHUFFLE, STATS, GENERIC,
-    GESTURE, TIMER, LYRICS, PLAYLIST, SHARE, SEARCH
+    GESTURE, TIMER, LYRICS, PLAYLIST, SHARE, SEARCH,
+    EQUALIZER, VOLUME, PALETTE, THEME, CLEANUP, SAVE, FOLDER,
+    ARTWORK, RADIO, EDIT, SETTINGS, SPEED, REWIND, STOP, CAR,
+    FLAME, TROPHY, STAR, GEM
 }
 
 /** A deep-link the viewer surfaces as a CTA; resolved up in MainScreen. */

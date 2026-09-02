@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.01] - 2026-09-02
+### Changed — Stories
+- **No more emoji on any story card — every tip and milestone now draws a real vector illustration.** 15 new illustrations (equalizer, volume, palette, theme, cleanup, save, folder, artwork, radio, edit, settings, speed, rewind, stop, car) replace every emoji-badged tip in the pool, and 4 more (flame, trophy, star, gem) replace the streak/plays-count milestone badges. Drawn identically in the viewer and the share poster, same as the illustration cards already were.
+
 ## [3.00] - 2026-09-02
 ### Fixed — Stories
 - **The recap and daily tip stopped refreshing over time.** The "today" used to decide the recap's week and rotate the tip was computed once when the app process started and never re-read; since the view-model instance lives for the whole process (often days, across backgrounding and app-switching), the recap could get stuck comparing against a single frozen week forever, and the same tip kept getting reselected. Now computed fresh on every use.
