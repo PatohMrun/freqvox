@@ -574,45 +574,17 @@ fun MainScreen(
                                 artPath = listeningStats.topArtistTrack?.artworkPath
                             )
                         } else {
-                            // Every visual type maps to a hero for the poster: emoji cards use
-                            // their own, illustration cards get a themed stand-in (the in-app
-                            // vector art can't be rasterized off-screen), art cards pass their
-                            // cover path (shareSegment falls back to 🎵 if it won't decode).
-                            val heroEmoji = when (val v = segment.visual) {
-                                is com.freqvox.ui.story.SegmentVisual.Emoji -> v.emoji
-                                // Chart-style visuals can't be rasterized off-screen either;
-                                // a themed emoji beats shareSegment's generic 🎵 fallback.
-                                is com.freqvox.ui.story.SegmentVisual.Sparkline -> "📈"
-                                is com.freqvox.ui.story.SegmentVisual.StreakCalendar -> "🔥"
-                                is com.freqvox.ui.story.SegmentVisual.Histogram -> "📊"
-                                is com.freqvox.ui.story.SegmentVisual.Bars -> "📊"
-                                is com.freqvox.ui.story.SegmentVisual.Illustration -> when (v.kind) {
-                                    com.freqvox.ui.story.IllustrationKind.FEED_FLOW -> "🌊"
-                                    com.freqvox.ui.story.IllustrationKind.TAGS -> "🏷️"
-                                    com.freqvox.ui.story.IllustrationKind.CROSSFADE -> "🎚️"
-                                    com.freqvox.ui.story.IllustrationKind.SHUFFLE -> "🔀"
-                                    com.freqvox.ui.story.IllustrationKind.STATS -> "📊"
-                                    com.freqvox.ui.story.IllustrationKind.GESTURE -> "👆"
-                                    com.freqvox.ui.story.IllustrationKind.TIMER -> "⏲️"
-                                    com.freqvox.ui.story.IllustrationKind.LYRICS -> "🎤"
-                                    com.freqvox.ui.story.IllustrationKind.PLAYLIST -> "🎶"
-                                    com.freqvox.ui.story.IllustrationKind.SHARE -> "📤"
-                                    com.freqvox.ui.story.IllustrationKind.SEARCH -> "🔍"
-                                    com.freqvox.ui.story.IllustrationKind.GENERIC -> "✨"
-                                }
-                                else -> null
-                            }
+                            // Every other card — including the recap's own sub-cards (top
+                            // artist, streak, minutes sparkline, …) — shares its ACTUAL visual,
+                            // redrawn onto the poster (see StoryShareCard.drawSegmentHero), not
+                            // a substitute emoji. That's what made illustration-kind cards look
+                            // "off" against what was actually on screen, and made chart-based
+                            // recap cards (sparkline/streak/bars) lose their data entirely.
                             com.freqvox.media.StoryShareCard.shareSegment(
                                 context = storyContext,
                                 title = segment.title,
                                 body = segment.body,
-                                emoji = heroEmoji,
-                                artPath = when (val v = segment.visual) {
-                                    is com.freqvox.ui.story.SegmentVisual.AlbumArt -> v.track.artworkPath
-                                    is com.freqvox.ui.story.SegmentVisual.ArtCollage ->
-                                        v.tracks.firstOrNull { !it.artworkPath.isNullOrEmpty() }?.artworkPath
-                                    else -> null
-                                },
+                                visual = segment.visual,
                                 // Pool cards always set an accent; the violet default matches
                                 // StoryShareCard's own fallback for the rare accent-less card.
                                 accentArgb = (segment.accent ?: Color(0xFF7C4DFF)).toArgb()

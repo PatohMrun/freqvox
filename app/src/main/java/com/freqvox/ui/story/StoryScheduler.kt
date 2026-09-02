@@ -62,8 +62,12 @@ class StoryScheduler @Inject constructor(
             val pick = pool.map { it.id }.filter { it !in recent }.ifEmpty { pool.map { it.id } }.random()
             prefs.currentTipId = pick
             prefs.currentTipPeriod = period
-            // Don't repeat until roughly half the evergreen pool has been seen.
-            prefs.pushRecentTip(pick, cap = (StoryContent.educationalPool.size / 2).coerceAtLeast(1))
+            // Don't repeat until every currently-eligible tip (evergreen + contextual) has
+            // been shown once. Was capped at half the evergreen pool, so repeats started
+            // well before the full rotation had played — the "tips feel finite" complaint.
+            // pool.size - 1 keeps at least one always-eligible candidate, guaranteeing a
+            // full cycle before any tip can come back around.
+            prefs.pushRecentTip(pick, cap = (pool.size - 1).coerceAtLeast(1))
             pick
         } else prefs.currentTipId!!
         segments += byId.getValue(tipId)

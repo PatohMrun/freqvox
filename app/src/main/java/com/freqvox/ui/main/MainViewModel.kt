@@ -589,7 +589,13 @@ class MainViewModel @Inject constructor(
     }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ListeningStats())
 
     // ── Header story-ring ("Stories") ──────────────────────────────────────────
-    private val storyEpochDay: Long = java.time.LocalDate.now().toEpochDay()
+    // Computed fresh on every use (NOT cached in a val): MainViewModel is obtained via a
+    // plain hiltViewModel() call at MainScreen's top level, so it lives for the whole
+    // process — often for days, across backgrounding and app-switching. A cached "today"
+    // froze the recap's week key and the tip rotation period at whatever day the app was
+    // first opened after the last real process restart, so the weekly recap stopped
+    // re-triggering and the same tip kept getting reselected.
+    private fun currentEpochDay(): Long = java.time.LocalDate.now().toEpochDay()
     private val _storySeenBump = MutableStateFlow(0)
     val activeStoryDrop: StateFlow<com.freqvox.ui.story.StoryDrop> = listeningStats
         .map { stats ->
@@ -611,7 +617,7 @@ class MainViewModel @Inject constructor(
                 fixedAccentDefault = !accentPrefs.enabled,
                 hasProfiles = tagProfilePrefs.all().isNotEmpty()
             )
-            storyScheduler.activeDrop(stats, com.freqvox.ui.story.StoryContent.contextualTips(ctx), storyEpochDay)
+            storyScheduler.activeDrop(stats, com.freqvox.ui.story.StoryContent.contextualTips(ctx), currentEpochDay())
         }
         .flowOn(Dispatchers.Default)
         .stateIn(
@@ -621,7 +627,7 @@ class MainViewModel @Inject constructor(
             // empty, so a persisted contextual tip looked missing and got re-picked on
             // EVERY app start: new tip → new drop id → the ring relit with different
             // content each launch. The ring just idles on the empty drop instead.
-            com.freqvox.ui.story.StoryDrop("", storyEpochDay, com.freqvox.ui.story.SegmentKind.TIP, emptyList())
+            com.freqvox.ui.story.StoryDrop("", currentEpochDay(), com.freqvox.ui.story.SegmentKind.TIP, emptyList())
         )
     val hasUnseenStory: StateFlow<Boolean> = combine(activeStoryDrop, _storySeenBump) { drop, _ ->
         storyScheduler.isUnseen(drop)

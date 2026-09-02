@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.00] - 2026-09-02
+### Fixed — Stories
+- **The recap and daily tip stopped refreshing over time.** The "today" used to decide the recap's week and rotate the tip was computed once when the app process started and never re-read; since the view-model instance lives for the whole process (often days, across backgrounding and app-switching), the recap could get stuck comparing against a single frozen week forever, and the same tip kept getting reselected. Now computed fresh on every use.
+- **Tips repeated well before the pool was exhausted.** The anti-repeat window only ever covered half the tip pool, so a card could resurface before you'd seen everything else — contrary to 2.63's "won't repeat until most of the pool has cycled" intent. It now covers the whole current pool (evergreen + any live contextual tips), guaranteeing a full cycle before any repeat.
+- **Shared story cards now render their actual visual, not a substitute emoji.** Illustration-kind cards previously swapped their vector art for a themed emoji on share, and the recap's own sub-cards (minutes sparkline, streak calendar, top-artist/track) lost their chart entirely and became a generic emoji card. Both are now redrawn from the real on-screen visual (same drawing logic as the viewer, ported to the poster canvas).
+
+### Internal
+- Signing key restored after an OS reinstall; verified against the previously-published certificate (unchanged, `key0`).
+- Dev environment repaired for the reinstalled OS: pinned Gradle's JDK (the system default had outgrown what this Gradle/Kotlin-DSL version can parse) and reinstalled the Android SDK (platform 35 + build-tools).
+
+## [2.96–2.99] - 2026-08-07 (batched, previously undocumented)
+### Added — Stories
+- WhatsApp-style segmented story ring: one arc per card of the active drop, vivid for unviewed, faint for viewed, pulsing while anything is unseen; a single/no-card drop still renders as a plain circle. Replaces the old single pulsing border on both Home and Library headers.
+- Per-card seen tracking replaces per-drop tracking: a milestone retires the moment its own card is displayed, the weekly recap retires once every recap card in it has been seen, and the post-view cooldown only starts once the whole drop has been consumed — bailing out early no longer silently spends the cards you didn't watch.
+- Reopening the ring resumes at the first unviewed card instead of always restarting from the top.
+
+### Fixed — Playback
+- Crossfade timing now measures the outgoing track's actual remaining audio at the moment the fade triggers, instead of assuming the nominal window — a late-firing trigger (busy main thread) no longer runs the fade against a tail that has already run out of file.
+- The crossfade ramp now has a wall-clock safety timeout so a stalled position (stuck buffering, wedged tail) can't strand a fade indefinitely, and it correctly carries the outgoing track's volume-normalization gain onto the tail player during the handoff.
+
+### Fixed — Navigation
+- The app now reuses its single running instance (`singleTask`) instead of stacking a fresh one on every external launch (notification tap, icon, Android Auto) — this was forcing the back gesture to unwind page after page just to leave the app.
+
 ## [2.70] - 2026-07-05
 ### Fixed
 - Repaired three compile errors that earlier automated build checks failed to catch (a masked exit code hid them): a duplicate `allPlaylists` declaration in the Library screen, and missing imports in the Accent sheet and the artist/tag stats sheet. Both Debug and Release variants now verified building clean.
