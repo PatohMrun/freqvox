@@ -80,7 +80,12 @@ object StoryShareCard {
 
         val textTop = drawSegmentHero(c, p, visual, accentArgb, w)
 
-        // Title (wrapped) + body (wrapped, dimmer).
+        // Title (wrapped) + body (wrapped, dimmer). Several illustration/chart hero
+        // draws above end in Paint.Style.STROKE (arcs, outlined shapes) with some
+        // leftover strokeWidth — without resetting to FILL here, drawText renders
+        // each glyph as a hollow, thick-outlined stroke instead of a filled letter
+        // (reads as bold/spaced-out/illegible).
+        p.style = Paint.Style.FILL
         p.textAlign = Paint.Align.CENTER
         p.color = Color.WHITE
         p.isFakeBoldText = true

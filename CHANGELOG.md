@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.02] - 2026-09-03
+### Fixed — Sharing
+- **Shared story-card titles rendered as illegible, thick-outlined, oddly-spaced glyphs.** A regression from 3.01's illustration work: several illustration/chart draw routines (arcs, outlined shapes — used by crossfade, shuffle, sleep timer, search, volume, cleanup, save, hidden-folders, radio, and the 1,000-plays milestone, among others) leave the canvas paint in stroke-outline mode with some leftover stroke width, and the title/body text drawn right after never reset it back to a normal filled paint — so instead of solid letters, the text rendered as hollow, thick-stroked outlines. One-line fix: reset to filled paint before drawing any text.
+
 ## [3.01] - 2026-09-02
 ### Changed — Stories
 - **No more emoji on any story card — every tip and milestone now draws a real vector illustration.** 15 new illustrations (equalizer, volume, palette, theme, cleanup, save, folder, artwork, radio, edit, settings, speed, rewind, stop, car) replace every emoji-badged tip in the pool, and 4 more (flame, trophy, star, gem) replace the streak/plays-count milestone badges. Drawn identically in the viewer and the share poster, same as the illustration cards already were.
